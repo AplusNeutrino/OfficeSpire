@@ -24,7 +24,7 @@ Validated installation:
 | Capability | Status | Evidence / notes |
 |---|---|---|
 | Build against local `sts2.dll` (M1-M3 baseline) | `runtime_pass` | User-side `dotnet build` completed successfully against the installed game files through the M3 revision-pass build. |
-| Current M4 source compiles against local `sts2.dll` | `implemented_unverified` | M4 source is committed but has not yet been built against the user's installed v0.107.1 assemblies. |
+| Current M4 source compiles against local `sts2.dll` | `implemented_unverified` | The pre-fix M4 baseline built with 0 errors / 1 nullable warning. The latest Self-target/no-effect-watchdog fixes require a fresh user-side rebuild. |
 | Native mod manifest discovered by STS2 | `runtime_pass` | Game log reports `Found mod manifest file .../mods/OfficeSpire/OfficeSpire.json`. |
 | OfficeSpire DLL loaded | `runtime_pass` | Game log reports loading `OfficeSpire.dll` and calling `OfficeSpire.ModEntry`. |
 | `[ModInitializer]` executes | `runtime_pass` | Startup diagnostics reached `initializer_enter` and `initializer_complete`. |
@@ -47,13 +47,13 @@ Validated installation:
 | Read relics/potions/pile counts | `implemented_unverified` | Implemented, but not independently validated in the M3 probe. |
 | State revision changes only on stable decision-state changes | `runtime_pass` | Runtime retest on `ac8f66a` passed: revisions remained stable while idle, stayed unchanged with `pending=true`, advanced once when each card action settled, advanced once after the enemy turn/new hand settled, and advanced once when combat ended. |
 | Vanilla gameplay remains usable with M3 loaded | `runtime_pass` | User entered a run, played cards, killed enemies and ended turns with OfficeSpire active. |
-| M4 WebSocket -> game-thread action inbox | `implemented_unverified` | `ActionInbox` is implemented with one-action serialization and no STS2 access from the network thread; not yet runtime-tested. |
-| M4 stale-revision guard | `implemented_unverified` | Implemented both before queueing and again on the game thread immediately before dispatch; requires runtime race/stale tests. |
-| M4 `queued -> accepted/rejected -> completed` lifecycle | `implemented_unverified` | Implemented with bounded `get_action_result` status history; requires runtime validation. |
-| Play untargeted card | `implemented_unverified` | M4 source validates the current hand/card and enqueues `PlayCardAction`; requires runtime validation. |
-| Play targeted card | `implemented_unverified` | M4 source resolves current hittable enemy combat IDs and enqueues `PlayCardAction`; requires runtime validation. |
-| End turn | `implemented_unverified` | M4 source enqueues `EndPlayerTurnAction` using the current round; requires runtime validation. |
-| Potion use | `implemented_unverified` | M4 source validates the current slot/target and calls the potion's normal manual-use path; requires runtime validation. |
+| M4 WebSocket -> game-thread action inbox | `runtime_pass` | Real M4 probe reached `queued` and then main-thread `accepted`, proving transport parsing, inbox queueing and main-thread consumption. |
+| M4 stale-revision guard | `implemented_unverified` | Implemented both before queueing and again on the game thread immediately before dispatch; runtime stale test not yet run. |
+| M4 `queued -> accepted/rejected -> completed` lifecycle | `runtime_fail` | First real action reached `queued -> accepted` but never completed; pending stayed true until the test timed out. A no-effect watchdog is now implemented but unverified. |
+| Play untargeted card | `runtime_fail` | Defend at hand index 0 was accepted but did not execute; energy/hand/block/revision stayed unchanged. Self-target resolution was found inconsistent with current GUI implementations and has been fixed for retest. |
+| Play targeted card | `implemented_unverified` | Not tested after the untargeted-card safety gate failed. |
+| End turn | `implemented_unverified` | Not tested after the untargeted-card safety gate failed. |
+| Potion use | `implemented_unverified` | Not tested after the untargeted-card safety gate failed. |
 | Potion discard | `not_implemented` | Deliberately deferred until the direct native path is verified rather than guessed from another adapter abstraction. |
 | Overlay UI | `not_implemented` | Planned M5. |
 | Map selection | `not_implemented` | Planned M6. |
@@ -185,7 +185,61 @@ powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action end_t
 powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action use_potion -SlotIndex 0
 ```
 
-The current M4 source must remain `implemented_unverified` until it both compiles against the user's installed STS2 assemblies and passes the runtime probes below.
+## M4 runtime probe 1 — native action no-op
+
+First real action probe against the pre-fix M4 baseline:
+
+```text
+initial:
+rev=22 pending=False
+Energy=3/3 Block=0 Hand=5
+[0] Defend can_play=True
+
+request:
+play_card hand_index=0
+
+lifecycle:
+queued rev=22
+-> accepted rev=22
+-> timeout after 20 seconds
+
+final:
+rev=22 pending=True
+Energy=3/3 Block=0 Hand=5
+```
+
+Observed conclusions:
+
+- WebSocket transport: **PASS**;
+- `ActionInbox` transport queue: **PASS**;
+- main-thread request consumption / initial validation: **PASS**;
+- native card execution: **FAIL**;
+- completion lifecycle: **FAIL**;
+- no Godot exception stack was emitted;
+- manually playing the same card through the normal UI still worked.
+
+### Root-cause finding and fix
+
+The failed baseline resolved `TargetType.Self` to `player.Creature` before constructing `PlayCardAction`. Current independent GUI implementations treat `Self` as a no-explicit-target card and construct `PlayCardAction(card, null)`; autoSpire also groups `Self` with target types that ignore explicit target IDs.
+
+OfficeSpire now mirrors that behavior:
+
+- `AnyEnemy` resolves a current living/hittable enemy;
+- `AnyAlly` / `AnyPlayer` resolve the local player's creature;
+- `Self`, `None`, AOE and random-target modes pass a null explicit target and let STS2 resolve recipients.
+
+This is a concrete source mismatch that explains the Defend baseline failure, but remains **unverified until the next runtime probe**.
+
+### No-effect lifecycle watchdog
+
+The first failure also exposed an independent lifecycle bug: once an adapter returned `accepted`, `ActionInbox` could remain active forever if the native submission silently did nothing.
+
+The inbox now fails closed and releases the lock with `code=no_effect` when either:
+
+1. STS2 was observed busy for the accepted action and then returned to the same settled revision; or
+2. no native busy/progress signal and no revision change is observed within 3000 ms.
+
+A successful action must still reach a newer settled revision to become `completed`.
 
 ## M4 compile/runtime probes
 
@@ -199,17 +253,17 @@ $env:STS2_DIR="E:\SteamLibrary\steamapps\common\Slay the Spire 2"
 ..\work\.dotnet\dotnet.exe build src\OfficeSpire.Mod\OfficeSpire.Mod.csproj -c Debug
 ```
 
-Do not promote any M4 row if the build fails, even if the source/API pattern matches an upstream mod.
+Do not promote any M4 row if the build fails.
 
-### 2. Untargeted card
+### 2. Untargeted/Self card — mandatory gate
 
-Choose a currently playable card that does not require an enemy target and note its hand index from `watch-state.ps1`.
+Use a currently playable `Self` card such as Defend and note its hand index from `watch-state.ps1`.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action play_card -HandIndex <index>
+powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action play_card -HandIndex <index> -TimeoutSeconds 10
 ```
 
-Expected lifecycle:
+Success requires:
 
 ```text
 queued
@@ -218,7 +272,19 @@ queued
 final state: rev=N+1 ... pending=False
 ```
 
-Verify the card actually leaves the hand, resources/effects match STS2, and revision advances once after settlement.
+and the card must actually leave the hand / spend energy / apply its effect.
+
+If the native submission still no-ops, the expected failure is now bounded:
+
+```text
+queued
+-> accepted
+-> no_effect
+```
+
+with `pending=False` restored; it must no longer hang indefinitely.
+
+Only after this gate passes should the remaining M4 mutations be tested.
 
 ### 3. Targeted card
 
@@ -266,7 +332,7 @@ The game must not mutate.
 
 ### 7. Conflicting action rejection
 
-While one OfficeSpire action is still pending, a second mutation should be rejected with `action_pending`. A dedicated concurrency probe can be added if manual timing is inconvenient.
+While one OfficeSpire action is still pending, a second mutation should be rejected with `action_pending`.
 
 ### 8. Window-state behavior
 
