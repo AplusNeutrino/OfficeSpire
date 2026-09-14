@@ -11,6 +11,7 @@ namespace OfficeSpire.Runtime;
 internal sealed class ActionInbox
 {
     private const int StatusHistoryLimit = 128;
+    private const long NativeActionStartTimeoutMilliseconds = 3000;
 
     private readonly object _gate = new();
     private readonly Dictionary<string, ActionResponse> _statusByRequestId =
@@ -179,7 +180,9 @@ internal sealed class ActionInbox
 
                 _active = new ActiveAction(
                     request.RequestId,
-                    request.ExpectedRevision);
+                    request.ExpectedRevision,
+                    Environment.TickCount64,
+                    SawGamePending: false);
             }
 
             Remember(result);
@@ -189,7 +192,8 @@ internal sealed class ActionInbox
     /// <summary>
     /// Merges inbox lifecycle state into the latest adapter snapshot.
     /// An accepted action remains pending until the adapter publishes a newer, settled
-    /// authoritative revision. At that boundary the action is marked completed.
+    /// authoritative revision. Silent native no-ops are failed and released rather than
+    /// permanently pinning action_pending=true.
     /// </summary>
     public StateEnvelope Observe(StateEnvelope captured)
     {
@@ -209,17 +213,63 @@ internal sealed class ActionInbox
                 return captured;
             }
 
-            if (captured.StateRevision != _active.AcceptedRevision &&
+            ActiveAction active = _active;
+
+            if (captured.ActionPending && !active.SawGamePending)
+            {
+                active = active with { SawGamePending = true };
+                _active = active;
+            }
+
+            if (captured.StateRevision != active.AcceptedRevision &&
                 !captured.ActionPending)
             {
-                ActiveAction completed = _active;
                 _active = null;
 
                 Remember(new ActionResponse(
-                    completed.RequestId,
+                    active.RequestId,
                     Accepted: true,
                     Code: "completed",
                     Message: "Action reached a newer settled authoritative decision state.",
+                    StateRevision: captured.StateRevision));
+
+                return captured;
+            }
+
+            // If STS2 was observed busy for this action and then returned to the same settled
+            // revision, the native action finished without changing decision state. Treat that
+            // as a failed/no-op action rather than leaving OfficeSpire permanently locked.
+            if (active.SawGamePending &&
+                !captured.ActionPending &&
+                captured.StateRevision == active.AcceptedRevision)
+            {
+                _active = null;
+
+                Remember(new ActionResponse(
+                    active.RequestId,
+                    Accepted: false,
+                    Code: "no_effect",
+                    Message: "STS2 returned to a settled state without advancing the decision revision.",
+                    StateRevision: captured.StateRevision));
+
+                return captured;
+            }
+
+            // Some rejected/silently dropped native submissions may be too short to be sampled as
+            // engine-busy at 20 Hz. Release those too if no native progress or revision change is
+            // observed within a bounded startup window.
+            if (!active.SawGamePending &&
+                !captured.ActionPending &&
+                captured.StateRevision == active.AcceptedRevision &&
+                ElapsedMilliseconds(active.AcceptedAtMs) >= NativeActionStartTimeoutMilliseconds)
+            {
+                _active = null;
+
+                Remember(new ActionResponse(
+                    active.RequestId,
+                    Accepted: false,
+                    Code: "no_effect",
+                    Message: $"No native action progress was observed within {NativeActionStartTimeoutMilliseconds} ms.",
                     StateRevision: captured.StateRevision));
 
                 return captured;
@@ -275,6 +325,12 @@ internal sealed class ActionInbox
         }
     }
 
+    private static long ElapsedMilliseconds(long sinceMs)
+    {
+        long now = Environment.TickCount64;
+        return now >= sinceMs ? now - sinceMs : long.MaxValue;
+    }
+
     private static ActionResponse Reject(
         ActionRequest request,
         string code,
@@ -293,5 +349,7 @@ internal sealed class ActionInbox
 
     private sealed record ActiveAction(
         string RequestId,
-        long AcceptedRevision);
+        long AcceptedRevision,
+        long AcceptedAtMs,
+        bool SawGamePending);
 }
