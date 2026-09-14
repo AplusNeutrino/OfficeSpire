@@ -5,15 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build"
+    "build": "tsc && vite build",
+    "tauri": "tauri"
   },
   "dependencies": {
-    "react": "latest",
-    "react-dom": "latest"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "typescript": "latest",
-    "vite": "latest",
-    "@vitejs/plugin-react": "latest"
+    "@vitejs/plugin-react": "^4.3.1",
+    "@tauri-apps/cli": "^2.0.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
   }
 }
