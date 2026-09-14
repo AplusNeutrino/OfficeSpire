@@ -269,8 +269,15 @@ public sealed class M4GameAdapter : IGameAdapter
 
             case TargetType.AnyAlly:
             case TargetType.AnyPlayer:
-            case TargetType.Self:
+                // These explicit single-friendly-target modes use the local player's creature.
                 target = player.Creature;
+                return true;
+
+            case TargetType.Self:
+                // STS2's normal GUI path constructs PlayCardAction with a null explicit target
+                // for Self cards (Defend is the important baseline example). Supplying the player
+                // creature here can be accepted by the synchronizer but silently fail to play.
+                target = null;
                 return true;
 
             default:
