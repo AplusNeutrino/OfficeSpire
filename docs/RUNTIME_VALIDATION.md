@@ -44,7 +44,7 @@ Validated installation:
 | Read enemy target IDs | `implemented_unverified` | Target IDs are present in M3 protocol but were not independently validated in this probe. |
 | Read enemy powers | `implemented_unverified` | Power snapshots are implemented but were not independently validated in this probe. |
 | Read relics/potions/pile counts | `implemented_unverified` | Implemented, but not independently validated in this probe. |
-| State revision changes only on stable decision-state changes | `runtime_fail` | Retest on `04c5a59` / `a746dc4` still produced a second revision roughly 0.5–1.4 s after some card plays with an identical compact visible state. Revision fix 3 replaces full-JSON/time debounce with semantic decision fingerprints, native executor-idle gating, and three stable frames; runtime retest required. |
+| State revision changes only on stable decision-state changes | `runtime_pass` | Runtime retest on `ac8f66a` passed: revisions remained stable while idle, stayed unchanged with `pending=true`, advanced once when each card action settled, advanced once after the enemy turn/new hand settled, and advanced once when combat ended. |
 | Vanilla gameplay remains usable with M3 loaded | `runtime_pass` | User entered a run, played cards, killed enemies and ended turns with OfficeSpire active. |
 | Play untargeted card | `not_implemented` | Planned M4. |
 | Play targeted card | `not_implemented` | Planned M4. |
@@ -151,7 +151,19 @@ Verify:
 4. end turn: enemy work does not churn revision and the next player decision advances once;
 5. combat-end phase transition may advance revision separately.
 
-Only after this retest passes should `state_revision` be promoted from `runtime_fail` to `runtime_pass`.
+The `ac8f66a` runtime retest passed, so `state_revision` is now promoted to `runtime_pass`.
+
+### Runtime result ? `ac8f66a`
+
+Retested on 2026-09-14 against STS2 v0.107.1 / Steam build 23811903:
+
+- idle decision states remained stable;
+- card execution set `pending=true` without advancing the committed revision;
+- each card advanced revision exactly once after executor-idle semantic settlement;
+- enemy actions and draw animations produced no intermediate committed revisions;
+- the next player decision state advanced revision once;
+- combat end advanced once from `phase=combat` to `phase=unknown`;
+- a later unknown-phase revision followed a separate `pending=true -> pending=false` non-combat decision and was not duplicate settlement.
 
 ## M4 runtime probes
 
