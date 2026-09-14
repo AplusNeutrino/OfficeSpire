@@ -1,0 +1,38 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+
+# IDEs and editors
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# JetBrains Rider
+*.sln.iml
+
+# Test and coverage output
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Logs and local settings
+*.log
+*.local.json
+OfficeSpire.settings.json
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
