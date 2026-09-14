@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { StateSnapshot } from './types';
 import { OverlayStore } from './state/overlayStore';
 import { WebSocketClient } from './network/WebSocketClient';
+import { createClientMessage } from './network/protocol';
 
 const fallback: StateSnapshot = {
   state_revision: 1,
@@ -20,13 +21,19 @@ export default function App() {
   const [state, setState] = useState(store.current);
 
   useEffect(() => {
-    client.onSnapshot((snapshot) => {
+    client.onSnapshot((snapshot: StateSnapshot) => {
       store.update(snapshot);
       setState(store.current);
     });
-
     return () => client.disconnect();
   }, []);
+
+  const endTurn = () => {
+    console.log(createClientMessage('action', {
+      action: 'end_turn',
+      expected_revision: state.state_revision
+    }));
+  };
 
   return <main className="overlay">
     <h2>OfficeSpire</h2>
@@ -37,6 +44,6 @@ export default function App() {
     {state.enemies.map(e => <div key={e.id}>{e.name} {e.hp}/{e.maxHp} {e.intent}</div>)}
     <h3>Hand</h3>
     {state.hand.map(c => <button key={c.index}>{c.index} {c.name} ({c.cost})</button>)}
-    <button>END TURN</button>
+    <button onClick={endTurn}>END TURN</button>
   </main>;
 }
