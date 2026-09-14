@@ -6,6 +6,8 @@ namespace OfficeSpire.Protocol;
 public static class ProtocolConstants
 {
     public const int CurrentVersion = 1;
+    public const int MaxInboundMessageBytes = 64 * 1024;
+    public const int MaxOutboundMessageBytes = 1024 * 1024;
 }
 
 public static class PhaseNames
@@ -44,6 +46,18 @@ public sealed record ActionResponse(
     [property: JsonPropertyName("message")] string Message,
     [property: JsonPropertyName("state_revision")] long StateRevision);
 
+public sealed record SessionDescriptor(
+    [property: JsonPropertyName("protocol_version")] int ProtocolVersion,
+    [property: JsonPropertyName("port")] int Port,
+    [property: JsonPropertyName("token")] string Token,
+    [property: JsonPropertyName("process_id")] int ProcessId,
+    [property: JsonPropertyName("created_utc")] DateTimeOffset CreatedUtc);
+
+public sealed record WireEnvelope(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("protocol_version")] int ProtocolVersion,
+    [property: JsonPropertyName("body")] JsonElement Body);
+
 public static class ProtocolJson
 {
     public static JsonSerializerOptions Options { get; } = new()
@@ -56,5 +70,13 @@ public static class ProtocolJson
     {
         using JsonDocument document = JsonDocument.Parse("{}");
         return document.RootElement.Clone();
+    }
+
+    public static WireEnvelope Wrap<T>(string type, T body)
+    {
+        return new WireEnvelope(
+            type,
+            ProtocolConstants.CurrentVersion,
+            JsonSerializer.SerializeToElement(body, Options));
     }
 }

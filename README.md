@@ -4,7 +4,7 @@ OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**
 
 The project target is a compact semi-transparent desktop overlay that reads the authoritative game state and lets the player operate combat, card selections, map routing, rewards, shops, events, rest sites and treasures without relying on the normal animated game UI for ordinary decisions.
 
-> Status: **pre-alpha / M1 skeleton**. Runtime behavior against the user's installed Steam build is not yet validated.
+> Status: **pre-alpha / M2 implemented, runtime-unverified**.
 
 ## Target experience
 
@@ -35,7 +35,7 @@ Slay the Spire 2
    ├─ version-specific game adapter
    ├─ state normalizer
    ├─ action dispatcher
-   └─ localhost transport
+   └─ loopback WebSocket transport
               │
               ▼
 OfficeSpire Overlay
@@ -48,19 +48,42 @@ OfficeSpire Overlay
 
 See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete implementation plan.
 
-## Current milestone: M1
+## Current implementation
 
-The M1 baseline establishes:
+### M1 — repository/mod baseline
 
 - STS2 DLL-only mod manifest;
 - .NET 9 / Godot 4.5.1 project baseline;
 - `[ModInitializer]` entry point and Harmony initialization;
 - versioned protocol envelope and action models;
-- an `IGameAdapter` boundary that isolates unstable STS2 internals;
-- runtime validation tracking;
-- upstream reference and licensing notes.
+- `IGameAdapter` boundary isolating unstable STS2 internals;
+- upstream licensing/reference record.
 
-No combat state/action support should be considered runtime-proven yet.
+### M2 — local transport prototype
+
+- listener binds only to `127.0.0.1`;
+- OS-assigned random port instead of a fixed port;
+- random 256-bit session token;
+- local session discovery file in `%APPDATA%/SlayTheSpire2/OfficeSpire/session.json`;
+- WebSocket upgrade/authentication without an extra Python process;
+- `hello`, `ping/pong`, and `get_state` messages;
+- strict inbound/outbound message-size caps;
+- action messages deliberately rejected until the game-thread dispatcher exists.
+
+**Important:** M1/M2 are implemented in source but have not yet been compiled or runtime-tested against the user's installed Steam build. See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md).
+
+## Next milestone: M3
+
+M3 replaces the `NullGameAdapter` with a **read-only STS2 adapter** for:
+
+- current game phase;
+- player HP/block/energy/gold;
+- current hand and card metadata;
+- enemies, HP/block/intent/powers;
+- pile counts;
+- stable decision-state revisions.
+
+No game mutations are added in M3.
 
 ## Build prerequisites
 

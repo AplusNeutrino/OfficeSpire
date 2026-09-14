@@ -20,6 +20,10 @@ public sealed class ModEntry
         harmony.PatchAll(assembly);
 
         OfficeSpireRuntime.Initialize();
-        Log.Info("[OfficeSpire] v0.6 M1 runtime initialized (adapter: null/unverified).");
+
+        int? port = OfficeSpireRuntime.Session?.Port;
+        Log.Info(port is null
+            ? "[OfficeSpire] v0.6 M2 initialized; transport session unavailable."
+            : $"[OfficeSpire] v0.6 M2 initialized; loopback transport listening on 127.0.0.1:{port}.");
     }
 }
