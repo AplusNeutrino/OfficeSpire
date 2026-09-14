@@ -4,7 +4,7 @@ OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**
 
 The project target is a compact semi-transparent desktop overlay that reads the authoritative game state and lets the player operate combat, card selections, map routing, rewards, shops, events, rest sites and treasures without relying on the normal animated game UI for ordinary decisions.
 
-> Status: **pre-alpha / M3 source implemented, runtime-unverified**.
+> Status: **pre-alpha / M3 runtime-validated; M4 combat-action source implemented, runtime-unverified**.
 
 ## Target experience
 
@@ -32,9 +32,10 @@ The game remains authoritative for rules, RNG, saves and progression. OfficeSpir
 ```text
 Slay the Spire 2
 └─ OfficeSpire C# mod
-   ├─ Sts2GameAdapter (main-thread, version-sensitive)
-   ├─ versioned state protocol
-   ├─ future game-thread action dispatcher
+   ├─ Sts2GameAdapter (runtime-validated M3 state reader)
+   ├─ M4GameAdapter (main-thread action dispatcher)
+   ├─ ActionInbox (revision guard + lifecycle)
+   ├─ versioned protocol/state store
    └─ loopback WebSocket transport
               │
               ▼
@@ -48,53 +49,49 @@ OfficeSpire Overlay
 
 See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete implementation plan.
 
-## Implemented source milestones
+## M1–M3 status
 
-### M1 — repository/mod baseline
+Runtime validation against STS2 `v0.107.1` / game commit `59260271` has confirmed:
 
-- STS2 DLL-only mod manifest;
-- .NET 9 / Godot 4.5.1 project baseline;
-- `[ModInitializer]` entry point and Harmony initialization;
-- `IGameAdapter` boundary;
-- versioned protocol records and licensing notes.
+- native manifest/DLL loading and `[ModInitializer]` execution;
+- authenticated loopback WebSocket session and `get_state`;
+- main-thread 20 Hz state capture;
+- combat phase detection;
+- player HP/block/energy;
+- hand state, current costs, Damage/Block and `CanPlay`;
+- enemy HP/intent;
+- semantic `state_revision` settlement and `action_pending` behavior.
 
-### M2 — local transport
+See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md) for the evidence/status matrix.
 
-- listener binds only to `127.0.0.1`;
-- OS-assigned random port;
-- random 256-bit session token;
-- `%APPDATA%/SlayTheSpire2/OfficeSpire/session.json` discovery file;
-- direct TCP/WebSocket bridge with no Python process;
-- `hello`, `ping/pong`, and `get_state`;
-- bounded message sizes;
-- action requests deliberately rejected until M4.
+## M4 source currently implemented
 
-### M3 — read-only combat adapter
+The first M4 control path is now in source and awaits user-side compile/runtime validation:
 
-- Godot main-thread update node, refreshing at 20 Hz;
-- combat/non-combat detection for the initial adapter;
-- run act/floor/ascension/gold/relics;
-- player HP/max HP/block/energy;
-- hand index, card ID/name/cost/type/rarity;
-- dynamic card Damage/Block values where exposed by STS2;
-- card playability and legal enemy target IDs;
-- draw/discard/exhaust counts;
-- enemy stable ID, HP/max HP/block/intent/powers;
-- potion slot/name/description/target type;
-- monotonic `state_revision` driven by a decision-state fingerprint.
+- WebSocket action requests no longer touch STS2 objects directly;
+- `ActionInbox` serializes one mutating action at a time;
+- stale `expected_revision` is rejected before queueing and rechecked on the game thread;
+- a main-thread `M4GameAdapter` performs final phase/readiness/playability/target checks;
+- `play_card` supports untargeted cards and enemy-targeted cards;
+- `end_turn` enqueues `EndPlayerTurnAction`;
+- `use_potion` uses the current potion slot and target rules;
+- lifecycle status is queryable through `get_action_result` with `queued -> accepted/rejected -> completed`;
+- `action_pending=true` blocks conflicting submissions until the next settled authoritative revision.
 
-**Important:** these milestones are implemented in source but have not yet been compiled or runtime-tested against the user's installed Steam build. See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md).
+Potion discard remains the next M4 subtask; its native path will not be guessed before the current action chain is runtime-validated.
 
-## Next milestone: M4
+A PowerShell probe is included:
 
-M4 adds the game-thread action queue and the first actual controls:
+```powershell
+# Play hand index 0. If exactly one enemy is hittable, target can be omitted.
+powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action play_card -HandIndex 0
 
-- stale-revision rejection;
-- play untargeted card;
-- play targeted card;
-- end turn;
-- potion use/discard;
-- action accepted/pending/completed lifecycle.
+# Explicit enemy combat id; both 12 and enemy-12 are accepted.
+powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action play_card -HandIndex 0 -TargetId enemy-12
+
+powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action end_turn
+powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action use_potion -SlotIndex 0
+```
 
 ## Build prerequisites
 
@@ -138,7 +135,7 @@ OfficeSpire is limited to game state, game actions and presentation. It will not
 
 ## Third-party notices
 
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [docs/UPSTREAM_REFERENCES.md](docs/UPSTREAM_REFERENCES.md).
 
 ## License
 
