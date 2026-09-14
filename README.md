@@ -2,108 +2,93 @@
 
 OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**.
 
-The project target is a compact semi-transparent desktop overlay that reads the authoritative game state and lets the player operate combat, card selections, map routing, rewards, shops, events, rest sites and treasures without relying on the normal animated game UI for ordinary decisions.
+It pairs a C#/.NET game mod with a compact Tauri/React desktop overlay. STS2 remains authoritative for rules, RNG, saves, actions, and progression; OfficeSpire reads state and submits explicit user choices through an authenticated loopback protocol.
 
-> Status: **pre-alpha / M3 runtime-validated; M4 combat-action source implemented, runtime-unverified**.
+> **Current status:** v0.6-alpha.1 “Playable Backend” is runtime-validated. Development is now focused on v0.6-alpha.2 “Overlay Prototype”.
 
-## Target experience
+## Validated baseline
 
-```text
-ACT 2 · F31                         227G
-HP 54/72        Block 8       Energy 3/3
+Runtime validation against STS2 `v0.107.1` / game commit `59260271` has established:
 
-ENEMIES
-[A] Taskmaster        64/64      Attack 14
-[B] Red Slaver        23/48      Attack 7 x2
+| Milestone | Capability | Status |
+|---|---|---|
+| M1 | Mod Runtime | `runtime_pass` |
+| M2 | Local Transport | `runtime_pass` |
+| M3 | State Observation | `runtime_pass` |
+| M4 | Action Control Core | `runtime_pass` |
 
-HAND
-[1] Strike+       0      9 dmg
-[2] Defend        1      5 block
-[3] Neutralize    0      4 dmg · Weak 1
-[4] Backflip      1      5 block · Draw 2
+The validated M4 core includes:
 
-[E] End Turn
-```
+- authenticated WebSocket action transport;
+- serialized `ActionInbox` queueing;
+- Godot main-thread dispatch;
+- cached and second-stage `expected_revision` validation;
+- untargeted and targeted `play_card`;
+- `end_turn`;
+- pending-action lifecycle;
+- semantic revision settlement;
+- stale-action rejection without game mutation.
 
-The game remains authoritative for rules, RNG, saves and progression. OfficeSpire is a control surface, not a replacement simulation and not an automation bot.
+Deferred M4-adjacent work:
+
+- `use_potion`: `implemented_unverified`;
+- `potion_discard`: `not_implemented`;
+- main-thread extreme race-window stress probe: not yet performed.
+
+See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md) for the evidence record.
+
+## Current development milestone
+
+v0.6-alpha.2 targets the first usable **semi-transparent text overlay**:
+
+- transparent/borderless Tauri window;
+- always-on-top, drag, and resize behavior;
+- live STS2 WebSocket snapshots;
+- HP, energy, enemies, intents, and hand rendering;
+- mouse-operated untargeted and targeted card play;
+- End Turn button;
+- pending, stale, reconnect, and error handling.
+
+The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
+
+**[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**
 
 ## Architecture
 
 ```text
 Slay the Spire 2
 └─ OfficeSpire C# mod
-   ├─ Sts2GameAdapter (runtime-validated M3 state reader)
-   ├─ M4GameAdapter (main-thread action dispatcher)
-   ├─ ActionInbox (revision guard + lifecycle)
-   ├─ versioned protocol/state store
-   └─ loopback WebSocket transport
+   ├─ State adapter
+   ├─ Semantic revision guard
+   ├─ Main-thread action dispatcher
+   └─ Authenticated loopback WebSocket
               │
               ▼
 OfficeSpire Overlay
-└─ Tauri + TypeScript
-   ├─ semi-transparent / borderless
-   ├─ resizable / movable
-   ├─ optional always-on-top
-   └─ keyboard-first phase-specific UI
-```
-
-See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete implementation plan.
-
-## M1–M3 status
-
-Runtime validation against STS2 `v0.107.1` / game commit `59260271` has confirmed:
-
-- native manifest/DLL loading and `[ModInitializer]` execution;
-- authenticated loopback WebSocket session and `get_state`;
-- main-thread 20 Hz state capture;
-- combat phase detection;
-- player HP/block/energy;
-- hand state, current costs, Damage/Block and `CanPlay`;
-- enemy HP/intent;
-- semantic `state_revision` settlement and `action_pending` behavior.
-
-See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md) for the evidence/status matrix.
-
-## M4 source currently implemented
-
-The first M4 control path is now in source and awaits user-side compile/runtime validation:
-
-- WebSocket action requests no longer touch STS2 objects directly;
-- `ActionInbox` serializes one mutating action at a time;
-- stale `expected_revision` is rejected before queueing and rechecked on the game thread;
-- a main-thread `M4GameAdapter` performs final phase/readiness/playability/target checks;
-- `play_card` supports untargeted cards and enemy-targeted cards;
-- `end_turn` enqueues `EndPlayerTurnAction`;
-- `use_potion` uses the current potion slot and target rules;
-- lifecycle status is queryable through `get_action_result` with `queued -> accepted/rejected -> completed`;
-- `action_pending=true` blocks conflicting submissions until the next settled authoritative revision.
-
-Potion discard remains the next M4 subtask; its native path will not be guessed before the current action chain is runtime-validated.
-
-A PowerShell probe is included:
-
-```powershell
-# Play hand index 0. If exactly one enemy is hittable, target can be omitted.
-powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action play_card -HandIndex 0
-
-# Explicit enemy combat id; both 12 and enemy-12 are accepted.
-powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action play_card -HandIndex 0 -TargetId enemy-12
-
-powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action end_turn
-powershell -ExecutionPolicy Bypass -File .\scripts\send-action.ps1 -Action use_potion -SlotIndex 0
+└─ Tauri + React + TypeScript
+   ├─ Session discovery and reconnect
+   ├─ Authoritative state renderer
+   ├─ Mouse/keyboard interaction
+   └─ Semi-transparent desktop window
 ```
 
 ## Build prerequisites
 
+Mod:
+
 - .NET 9 SDK
 - Slay the Spire 2 installed locally
-- the game-provided `sts2.dll` and `0Harmony.dll`
+- game-provided `sts2.dll` and `0Harmony.dll`
 
-The mod intentionally has **no BaseLib/RitsuLib dependency** at this stage.
+Overlay:
+
+- Node.js/npm
+- Rust/Cargo
+- Tauri 2 platform prerequisites
 
 ### Configure the game path
 
-Either set the `STS2_DIR` environment variable to the Slay the Spire 2 install directory, or copy:
+Set `STS2_DIR` to the Slay the Spire 2 installation directory, or copy:
 
 ```text
 src/OfficeSpire.Mod/OfficeSpire.Local.props.example
@@ -115,28 +100,42 @@ to:
 src/OfficeSpire.Mod/OfficeSpire.Local.props
 ```
 
-and edit the local path.
+and set the local path.
 
-Then build:
+Build the mod:
 
 ```bash
 dotnet build src/OfficeSpire.Mod/OfficeSpire.Mod.csproj -c Debug
 ```
 
-When `Sts2Dir` is configured, the build target copies the mod files into:
+Build the overlay frontend:
 
-```text
-<Slay the Spire 2>/mods/OfficeSpire/
+```bash
+cd src/OfficeSpire.Overlay
+npm install
+npm run build
 ```
 
-## Scope boundary
+Tauri runtime/build validation remains part of the active M5 milestone; consult the canonical roadmap before treating it as passed.
 
-OfficeSpire is limited to game state, game actions and presentation. It will not implement process-name spoofing, anti-monitoring behavior, endpoint/MDM evasion, log tampering, screenshot-tool countermeasures or similar system-level concealment.
+## Engineering boundaries
 
-## Third-party notices
+- Game state and native actions remain authoritative.
+- The overlay never performs optimistic game-state mutations.
+- Mutating requests carry an expected semantic revision.
+- Transport binds only to loopback.
+- Unsupported states fail safely to the original STS2 UI.
+- OfficeSpire does not implement gameplay automation, monitoring evasion, process spoofing, log tampering, or system-level concealment.
 
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [docs/UPSTREAM_REFERENCES.md](docs/UPSTREAM_REFERENCES.md).
+## Documentation
 
-## License
+- [Development roadmap](docs/DEVELOPMENT_ROADMAP.md) — canonical milestone and execution source
+- [Runtime validation](docs/RUNTIME_VALIDATION.md) — runtime evidence
+- [Architecture](docs/ARCHITECTURE.md)
+- [Protocol](docs/PROTOCOL.md)
+- [Upstream references](docs/UPSTREAM_REFERENCES.md)
+- [Project scope](PROJECT_PLAN.md)
 
-[MIT](LICENSE)
+## Third-party notices and license
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). OfficeSpire is licensed under the [MIT License](LICENSE).
