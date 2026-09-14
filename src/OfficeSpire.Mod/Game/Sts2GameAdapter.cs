@@ -23,9 +23,17 @@ namespace OfficeSpire.Game;
 /// </summary>
 public sealed class Sts2GameAdapter : IGameAdapter
 {
+    // A card play can briefly expose several actionable-looking snapshots while its effects
+    // are still converging. Require a quiet window before promoting a new combat decision
+    // state to a new revision. At the 20 Hz capture rate, 300 ms is roughly six samples.
+    private const long DecisionSettleMilliseconds = 300;
+
     private long _revision;
     private string _lastFingerprint = string.Empty;
     private string _lastPhase = string.Empty;
+    private string _candidateFingerprint = string.Empty;
+    private long _candidateSinceMs;
+    private bool _candidateActive;
 
     public StateEnvelope CaptureState()
     {
@@ -233,22 +241,54 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         bool phaseChanged = !string.Equals(phase, _lastPhase, StringComparison.Ordinal);
         bool stableDecisionState = IsStableDecisionState(phase, screen);
+        bool actionPending = false;
 
         if (phaseChanged)
         {
             _lastPhase = phase;
+            ResetCandidate();
             _lastFingerprint = stableDecisionState
                 ? ComputeFingerprint(phase, run, screen)
                 : string.Empty;
             _revision++;
+            actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
+                && !stableDecisionState;
         }
-        else if (stableDecisionState)
+        else if (!stableDecisionState)
+        {
+            // Any non-actionable combat frame breaks the candidate's quiet window. We still
+            // publish the fresh screen contents, but retain the last committed decision revision.
+            ResetCandidate();
+            actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal);
+        }
+        else
         {
             string fingerprint = ComputeFingerprint(phase, run, screen);
-            if (!string.Equals(fingerprint, _lastFingerprint, StringComparison.Ordinal))
+
+            if (string.Equals(fingerprint, _lastFingerprint, StringComparison.Ordinal))
+            {
+                ResetCandidate();
+            }
+            else if (!_candidateActive ||
+                     !string.Equals(fingerprint, _candidateFingerprint, StringComparison.Ordinal))
+            {
+                // A new actionable-looking state appeared. Do not immediately promote it: card
+                // effects can settle over several successive snapshots even while input briefly
+                // becomes enabled. Restart the quiet timer whenever the candidate changes.
+                _candidateFingerprint = fingerprint;
+                _candidateSinceMs = Environment.TickCount64;
+                _candidateActive = true;
+                actionPending = true;
+            }
+            else if (ElapsedMilliseconds(_candidateSinceMs) >= DecisionSettleMilliseconds)
             {
                 _lastFingerprint = fingerprint;
                 _revision++;
+                ResetCandidate();
+            }
+            else
+            {
+                actionPending = true;
             }
         }
 
@@ -256,7 +296,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             ProtocolConstants.CurrentVersion,
             _revision,
             phase,
-            ActionPending: false,
+            ActionPending: actionPending,
             run,
             screen);
     }
@@ -265,8 +305,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
     /// Combat state is sampled continuously, including animation/action-queue windows where
     /// PlayerActionsDisabled makes waiting_for_input temporarily false. Those transient frames
     /// are still published to the overlay, but they must not advance the decision revision.
-    /// The next actionable snapshot is compared with the previous actionable snapshot and can
-    /// advance the revision once for the completed state transition.
+    /// Actionable-looking snapshots also pass through a short quiet-window debounce before they
+    /// are promoted to a new revision.
     /// </summary>
     private static bool IsStableDecisionState(string phase, JsonElement screen)
     {
@@ -285,6 +325,19 @@ public sealed class Sts2GameAdapter : IGameAdapter
         string fingerprintInput = string.Concat(phase, "\n", run.GetRawText(), "\n", screen.GetRawText());
         return Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintInput)));
+    }
+
+    private void ResetCandidate()
+    {
+        _candidateFingerprint = string.Empty;
+        _candidateSinceMs = 0;
+        _candidateActive = false;
+    }
+
+    private static long ElapsedMilliseconds(long sinceMs)
+    {
+        long now = Environment.TickCount64;
+        return now >= sinceMs ? now - sinceMs : long.MaxValue;
     }
 
     private static bool NeedsExplicitTarget(TargetType targetType)
