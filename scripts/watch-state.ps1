@@ -67,8 +67,9 @@ function Show-State {
         $screen = $State.screen
         $player = $screen.player
         Write-Host (
-            "rev={0} phase=combat HP={1}/{2} Block={3} Energy={4}/{5} Hand={6} Enemies={7}" -f
+            "rev={0} pending={1} phase=combat HP={2}/{3} Block={4} Energy={5}/{6} Hand={7} Enemies={8}" -f
             $State.state_revision,
+            $State.action_pending,
             $player.current_hp,
             $player.max_hp,
             $player.block,
@@ -89,7 +90,18 @@ function Show-State {
         }
 
         foreach ($enemy in @($screen.enemies)) {
-            Write-Host ("  enemy {0}: HP={1}/{2} Block={3} Intent={4}" -f
+            $targetLabel = if ($null -ne $enemy.combat_id -and [int]$enemy.combat_id -ge 0) {
+                "enemy-{0}" -f $enemy.combat_id
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace([string]$enemy.stable_id)) {
+                [string]$enemy.stable_id
+            }
+            else {
+                "enemy-?"
+            }
+
+            Write-Host ("  {0} {1}: HP={2}/{3} Block={4} Intent={5}" -f
+                $targetLabel,
                 $enemy.name,
                 $enemy.current_hp,
                 $enemy.max_hp,
@@ -98,7 +110,10 @@ function Show-State {
         }
     }
     else {
-        Write-Host ("rev={0} phase={1}" -f $State.state_revision, $State.phase)
+        Write-Host ("rev={0} pending={1} phase={2}" -f
+            $State.state_revision,
+            $State.action_pending,
+            $State.phase)
     }
 }
 
@@ -108,6 +123,7 @@ try {
     Write-Host "Connected. Watching OfficeSpire state; Ctrl+C to stop."
 
     $lastRevision = [long]-1
+    $lastPending = $null
 
     # Server sends hello and an initial state immediately after the WebSocket upgrade.
     for ($i = 0; $i -lt 2; $i++) {
@@ -116,6 +132,7 @@ try {
         $message = $text | ConvertFrom-Json
         if ($message.type -eq "state") {
             $lastRevision = [long]$message.body.state_revision
+            $lastPending = [bool]$message.body.action_pending
             Show-State -State $message.body
         }
     }
@@ -134,8 +151,10 @@ try {
         $message = $text | ConvertFrom-Json
         if ($message.type -eq "state") {
             $revision = [long]$message.body.state_revision
-            if ($revision -ne $lastRevision) {
+            $pending = [bool]$message.body.action_pending
+            if ($revision -ne $lastRevision -or $pending -ne $lastPending) {
                 $lastRevision = $revision
+                $lastPending = $pending
                 Show-State -State $message.body
             }
         }
