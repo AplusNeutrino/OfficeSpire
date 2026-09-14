@@ -108,7 +108,13 @@ public sealed class LoopbackWebSocketServer : IAsyncDisposable
                 {
                     server = "OfficeSpire",
                     process_id = Environment.ProcessId,
-                    capabilities = new[] { "state", "heartbeat" }
+                    capabilities = new[]
+                    {
+                        "state",
+                        "heartbeat",
+                        "combat_actions",
+                        "action_status"
+                    }
                 }, cancellationToken).ConfigureAwait(false);
 
                 await SendAsync(socket, "state", _stateStore.Read(), cancellationToken).ConfigureAwait(false);
@@ -169,7 +175,11 @@ public sealed class LoopbackWebSocketServer : IAsyncDisposable
                     break;
 
                 case "action":
-                    await RejectActionAsync(socket, envelope.Body, cancellationToken).ConfigureAwait(false);
+                    await HandleActionAsync(socket, envelope.Body, cancellationToken).ConfigureAwait(false);
+                    break;
+
+                case "get_action_result":
+                    await HandleGetActionResultAsync(socket, envelope.Body, cancellationToken).ConfigureAwait(false);
                     break;
 
                 default:
@@ -179,7 +189,10 @@ public sealed class LoopbackWebSocketServer : IAsyncDisposable
         }
     }
 
-    private async Task RejectActionAsync(WebSocket socket, JsonElement body, CancellationToken cancellationToken)
+    private static async Task HandleActionAsync(
+        WebSocket socket,
+        JsonElement body,
+        CancellationToken cancellationToken)
     {
         ActionRequest? request;
         try
@@ -197,15 +210,46 @@ public sealed class LoopbackWebSocketServer : IAsyncDisposable
             return;
         }
 
-        StateEnvelope current = _stateStore.Read();
-        var response = new ActionResponse(
-            request.RequestId,
-            Accepted: false,
-            Code: "actions_not_enabled",
-            Message: "M2 transport is online, but game actions are not enabled until the game-thread dispatcher milestone.",
-            StateRevision: current.StateRevision);
-
+        OfficeSpireRuntime.TryQueueAction(request, out ActionResponse response);
         await SendAsync(socket, "action_result", response, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task HandleGetActionResultAsync(
+        WebSocket socket,
+        JsonElement body,
+        CancellationToken cancellationToken)
+    {
+        if (body.ValueKind != JsonValueKind.Object ||
+            !body.TryGetProperty("request_id", out JsonElement requestIdElement) ||
+            requestIdElement.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(requestIdElement.GetString()))
+        {
+            await SendErrorAsync(
+                socket,
+                "invalid_action_status_request",
+                "get_action_result requires body.request_id.",
+                cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        string requestId = requestIdElement.GetString()!;
+        if (OfficeSpireRuntime.TryGetActionResult(requestId, out ActionResponse response))
+        {
+            await SendAsync(socket, "action_result", response, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        StateEnvelope current = OfficeSpireRuntime.StateStore.Read();
+        await SendAsync(
+            socket,
+            "action_result",
+            new ActionResponse(
+                requestId,
+                Accepted: false,
+                Code: "unknown_request",
+                Message: "No retained action status exists for this request_id.",
+                StateRevision: current.StateRevision),
+            cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<string> ReadHandshakeAsync(NetworkStream stream, CancellationToken cancellationToken)
