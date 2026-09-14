@@ -25,6 +25,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
 {
     private long _revision;
     private string _lastFingerprint = string.Empty;
+    private string _lastPhase = string.Empty;
 
     public StateEnvelope CaptureState()
     {
@@ -230,14 +231,25 @@ public sealed class Sts2GameAdapter : IGameAdapter
         JsonElement run = JsonSerializer.SerializeToElement(runValue, ProtocolJson.Options);
         JsonElement screen = JsonSerializer.SerializeToElement(screenValue, ProtocolJson.Options);
 
-        string fingerprintInput = string.Concat(phase, "\n", run.GetRawText(), "\n", screen.GetRawText());
-        string fingerprint = Convert.ToHexString(
-            SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintInput)));
+        bool phaseChanged = !string.Equals(phase, _lastPhase, StringComparison.Ordinal);
+        bool stableDecisionState = IsStableDecisionState(phase, screen);
 
-        if (!string.Equals(fingerprint, _lastFingerprint, StringComparison.Ordinal))
+        if (phaseChanged)
         {
-            _lastFingerprint = fingerprint;
+            _lastPhase = phase;
+            _lastFingerprint = stableDecisionState
+                ? ComputeFingerprint(phase, run, screen)
+                : string.Empty;
             _revision++;
+        }
+        else if (stableDecisionState)
+        {
+            string fingerprint = ComputeFingerprint(phase, run, screen);
+            if (!string.Equals(fingerprint, _lastFingerprint, StringComparison.Ordinal))
+            {
+                _lastFingerprint = fingerprint;
+                _revision++;
+            }
         }
 
         return new StateEnvelope(
@@ -247,6 +259,32 @@ public sealed class Sts2GameAdapter : IGameAdapter
             ActionPending: false,
             run,
             screen);
+    }
+
+    /// <summary>
+    /// Combat state is sampled continuously, including animation/action-queue windows where
+    /// PlayerActionsDisabled makes waiting_for_input temporarily false. Those transient frames
+    /// are still published to the overlay, but they must not advance the decision revision.
+    /// The next actionable snapshot is compared with the previous actionable snapshot and can
+    /// advance the revision once for the completed state transition.
+    /// </summary>
+    private static bool IsStableDecisionState(string phase, JsonElement screen)
+    {
+        if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return screen.ValueKind == JsonValueKind.Object
+            && screen.TryGetProperty("waiting_for_input", out JsonElement waiting)
+            && waiting.ValueKind == JsonValueKind.True;
+    }
+
+    private static string ComputeFingerprint(string phase, JsonElement run, JsonElement screen)
+    {
+        string fingerprintInput = string.Concat(phase, "\n", run.GetRawText(), "\n", screen.GetRawText());
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintInput)));
     }
 
     private static bool NeedsExplicitTarget(TargetType targetType)
