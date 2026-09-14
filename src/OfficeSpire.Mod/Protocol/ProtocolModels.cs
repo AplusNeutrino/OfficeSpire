@@ -63,6 +63,8 @@ public static class ProtocolJson
     public static JsonSerializerOptions Options { get; } = new()
     {
         PropertyNameCaseInsensitive = false,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = false
     };
 

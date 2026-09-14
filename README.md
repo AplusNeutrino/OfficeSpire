@@ -4,7 +4,7 @@ OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**
 
 The project target is a compact semi-transparent desktop overlay that reads the authoritative game state and lets the player operate combat, card selections, map routing, rewards, shops, events, rest sites and treasures without relying on the normal animated game UI for ordinary decisions.
 
-> Status: **pre-alpha / M2 implemented, runtime-unverified**.
+> Status: **pre-alpha / M3 source implemented, runtime-unverified**.
 
 ## Target experience
 
@@ -32,9 +32,9 @@ The game remains authoritative for rules, RNG, saves and progression. OfficeSpir
 ```text
 Slay the Spire 2
 └─ OfficeSpire C# mod
-   ├─ version-specific game adapter
-   ├─ state normalizer
-   ├─ action dispatcher
+   ├─ Sts2GameAdapter (main-thread, version-sensitive)
+   ├─ versioned state protocol
+   ├─ future game-thread action dispatcher
    └─ loopback WebSocket transport
               │
               ▼
@@ -48,42 +48,53 @@ OfficeSpire Overlay
 
 See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete implementation plan.
 
-## Current implementation
+## Implemented source milestones
 
 ### M1 — repository/mod baseline
 
 - STS2 DLL-only mod manifest;
 - .NET 9 / Godot 4.5.1 project baseline;
 - `[ModInitializer]` entry point and Harmony initialization;
-- versioned protocol envelope and action models;
-- `IGameAdapter` boundary isolating unstable STS2 internals;
-- upstream licensing/reference record.
+- `IGameAdapter` boundary;
+- versioned protocol records and licensing notes.
 
-### M2 — local transport prototype
+### M2 — local transport
 
 - listener binds only to `127.0.0.1`;
-- OS-assigned random port instead of a fixed port;
+- OS-assigned random port;
 - random 256-bit session token;
-- local session discovery file in `%APPDATA%/SlayTheSpire2/OfficeSpire/session.json`;
-- WebSocket upgrade/authentication without an extra Python process;
-- `hello`, `ping/pong`, and `get_state` messages;
-- strict inbound/outbound message-size caps;
-- action messages deliberately rejected until the game-thread dispatcher exists.
+- `%APPDATA%/SlayTheSpire2/OfficeSpire/session.json` discovery file;
+- direct TCP/WebSocket bridge with no Python process;
+- `hello`, `ping/pong`, and `get_state`;
+- bounded message sizes;
+- action requests deliberately rejected until M4.
 
-**Important:** M1/M2 are implemented in source but have not yet been compiled or runtime-tested against the user's installed Steam build. See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md).
+### M3 — read-only combat adapter
 
-## Next milestone: M3
+- Godot main-thread update node, refreshing at 20 Hz;
+- combat/non-combat detection for the initial adapter;
+- run act/floor/ascension/gold/relics;
+- player HP/max HP/block/energy;
+- hand index, card ID/name/cost/type/rarity;
+- dynamic card Damage/Block values where exposed by STS2;
+- card playability and legal enemy target IDs;
+- draw/discard/exhaust counts;
+- enemy stable ID, HP/max HP/block/intent/powers;
+- potion slot/name/description/target type;
+- monotonic `state_revision` driven by a decision-state fingerprint.
 
-M3 replaces the `NullGameAdapter` with a **read-only STS2 adapter** for:
+**Important:** these milestones are implemented in source but have not yet been compiled or runtime-tested against the user's installed Steam build. See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md).
 
-- current game phase;
-- player HP/block/energy/gold;
-- current hand and card metadata;
-- enemies, HP/block/intent/powers;
-- pile counts;
-- stable decision-state revisions.
+## Next milestone: M4
 
-No game mutations are added in M3.
+M4 adds the game-thread action queue and the first actual controls:
+
+- stale-revision rejection;
+- play untargeted card;
+- play targeted card;
+- end turn;
+- potion use/discard;
+- action accepted/pending/completed lifecycle.
 
 ## Build prerequisites
 
@@ -124,6 +135,10 @@ When `Sts2Dir` is configured, the build target copies the mod files into:
 ## Scope boundary
 
 OfficeSpire is limited to game state, game actions and presentation. It will not implement process-name spoofing, anti-monitoring behavior, endpoint/MDM evasion, log tampering, screenshot-tool countermeasures or similar system-level concealment.
+
+## Third-party notices
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 

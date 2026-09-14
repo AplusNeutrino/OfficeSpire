@@ -8,42 +8,84 @@ OfficeSpire is divided into a stable application/protocol layer and an unstable 
 STS2 runtime types
       │
       ▼
-IGameAdapter implementation   <-- version-sensitive
+Sts2GameAdapter                 <-- version-sensitive, main thread
       │
       ▼
-OfficeSpire protocol models   <-- stable/versioned
+ProtocolStateStore              <-- immutable protocol snapshots
+      │
+      ├─────────────► Loopback WebSocket server
+      │                         │
+      │                         ▼
+      │                  future Tauri overlay
       │
       ▼
-Loopback transport            <-- M2
-      │
-      ▼
-Tauri overlay                 <-- M5
+future game-thread action queue <-- M4
 ```
 
 The overlay must never require direct knowledge of `MegaCrit.Sts2.*` types.
 
-## M1 components
+## Game-thread rule
+
+Godot/STS2 runtime objects are accessed only on the game's main thread.
+
+`OfficeSpireUpdateNode` is attached under `NGame` and runs every 50 ms (`20 Hz`). It asks the active adapter to capture a normalized state snapshot and publishes that immutable snapshot into `ProtocolStateStore`.
+
+The WebSocket server runs independently and reads only from `ProtocolStateStore`. It never touches STS2 objects.
+
+M4 will use the inverse pattern for writes:
+
+```text
+WebSocket action request
+      │
+      ▼
+validate protocol/revision
+      │
+      ▼
+ConcurrentQueue
+      │
+      ▼
+OfficeSpireUpdateNode / game thread
+      │
+      ▼
+STS2 action system
+```
+
+## Components
 
 ### `ModEntry`
 
-The native STS2 mod initializer. It creates a Harmony instance and starts the OfficeSpire runtime host.
+Native STS2 mod initializer. It initializes Harmony, registers the mod assembly with Godot's script manager, starts the OfficeSpire runtime/transport, and attaches the STS2 bridge.
 
 ### `OfficeSpireRuntime`
 
-Owns the active `IGameAdapter`. At M1 it uses `NullGameAdapter`, which exposes a safe unknown snapshot and rejects all mutations. Later milestones replace this adapter with a real STS2 adapter.
+Owns:
+
+- the active `IGameAdapter`;
+- `ProtocolStateStore`;
+- the loopback WebSocket server.
+
+It begins with `NullGameAdapter` so transport can remain alive even if a future STS2 update breaks the real adapter.
 
 ### `IGameAdapter`
 
-The only interface through which higher OfficeSpire layers are allowed to read or mutate STS2 state.
+The only interface through which higher OfficeSpire layers may read or eventually mutate STS2 state.
 
-This containment is important because STS2 Early Access updates may rename or move runtime classes and screens. Those changes should be repaired in adapter code rather than throughout transport/UI code.
+### `Sts2GameAdapter`
+
+M3 read-only implementation. It currently supports combat snapshots and returns `unknown` for unsupported phases. All code in this adapter should be treated as Early-Access-version-sensitive.
+
+### `ProtocolStateStore`
+
+A thread-safe reference to the latest immutable `StateEnvelope`. This is the only live game-state object visible to the transport layer.
+
+### `LoopbackWebSocketServer`
+
+Direct TCP/WebSocket server bound to `127.0.0.1` on an OS-assigned port. It authenticates using a random per-process token from the local session descriptor. M3 supports state reads/heartbeat; game actions remain disabled.
 
 ### Protocol models
 
-`Protocol/*` defines transport-safe state and action records. They use `System.Text.Json` only and must not depend on Godot, Harmony, or STS2 types.
+`Protocol/*` defines transport-safe state and action records using `System.Text.Json`. They do not depend on Godot, Harmony, or STS2 types.
 
-## Threading rule for later milestones
+## Failure behavior
 
-Network callbacks must not mutate STS2 runtime objects directly. External requests will be validated/enqueued, then consumed from the game thread through the adapter/action dispatcher. State snapshots will likewise be captured from a safe game-thread location and published as immutable protocol objects.
-
-This is a design requirement, not yet a runtime-validated implementation.
+If the real adapter cannot attach after a game update, OfficeSpire should remain loaded with the `NullGameAdapter` and expose `phase=unknown` rather than breaking the run. The original STS2 interface always remains the fallback.

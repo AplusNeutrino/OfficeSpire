@@ -21,8 +21,6 @@ public static class OfficeSpireRuntime
             return;
         }
 
-        // M2 deliberately starts with a non-mutating adapter. M3 replaces this
-        // with the first real STS2 state adapter after runtime validation.
         _adapter = new NullGameAdapter();
         _stateStore = new ProtocolStateStore(_adapter.CaptureState());
 
@@ -30,9 +28,20 @@ public static class OfficeSpireRuntime
         _transport.Start();
     }
 
+    public static void AttachGameAdapter(IGameAdapter adapter)
+    {
+        ArgumentNullException.ThrowIfNull(adapter);
+        _adapter = adapter;
+        StateStore.Publish(_adapter.CaptureState());
+    }
+
+    public static void RefreshStateOnGameThread()
+    {
+        StateStore.Publish(_adapter.CaptureState());
+    }
+
     internal static void SetAdapterForTesting(IGameAdapter adapter)
     {
-        _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
-        _stateStore?.Publish(_adapter.CaptureState());
+        AttachGameAdapter(adapter);
     }
 }

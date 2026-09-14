@@ -1,6 +1,6 @@
 # Upstream references
 
-This file records external projects examined during OfficeSpire development. A reference does **not** imply that source code has been copied.
+This file records external projects examined during OfficeSpire development.
 
 ## LightEnding/autoSpire
 
@@ -8,24 +8,34 @@ This file records external projects examined during OfficeSpire development. A r
 - Reference commit: `13c5ed1e567313219061716699e4d0ad318e9d17`
 - Commit date: 2026-08-10
 - Observed version: `0.1.3`
-- License: MIT (`LICENSE` present at the reference commit)
-- Files inspected so far:
-  - `LICENSE`
-  - `autoSpire.json`
-  - `autoSpire.csproj`
-  - `scripts/Entry.cs`
-  - repository tree showing `scripts/core/GameHookServer.cs` and `scripts/core/GameStateSnapshot.cs`
+- License: MIT
 
-Relevant concepts:
+Files inspected:
 
-- DLL-only STS2 mod (`has_pck=false`);
-- `Godot.NET.Sdk/4.5.1` + `net9.0` baseline;
-- native `[ModInitializer]` entry point;
-- embedded localhost service architecture;
-- separation between game-thread state/action work and external control requests;
-- later reference target for combat/map/reward/shop/event state and action patterns.
+- `LICENSE`
+- `autoSpire.json`
+- `autoSpire.csproj`
+- `scripts/Entry.cs`
+- `scripts/core/GameStateSnapshot.cs`
+- `scripts/core/GameHookServer.cs`
 
-Reuse status at M1: **no source copied into OfficeSpire**. The project structure is independently implemented. If later work adapts substantial MIT-licensed source, the required copyright/license notice will be retained.
+### M1/M2 use
+
+M1/M2 independently implemented OfficeSpire's project structure and TCP/WebSocket transport. No autoSpire HTTP/MCP transport code was copied.
+
+### M3 adaptation
+
+M3 adapts STS2 API-access patterns documented in autoSpire for:
+
+- `RunManager.Instance.DebugOnlyGetState()` and `LocalContext.GetMe(...)`;
+- `CombatManager.Instance.DebugOnlyGetState()`;
+- player hand, energy and pile access through `PlayerCombatState`;
+- card `CanPlay`, current cost, dynamic Damage/Block and target discovery;
+- enemy HP/block/intent/power extraction;
+- relic and potion metadata;
+- the Godot main-thread update-node pattern.
+
+OfficeSpire rewrites these into its own `IGameAdapter`/versioned protocol architecture. The autoSpire MIT notice is retained in `THIRD_PARTY_NOTICES.md`.
 
 ## Alchyr/ModTemplate-StS2
 
@@ -38,15 +48,15 @@ Reuse status at M1: **no source copied into OfficeSpire**. The project structure
   - `content/ModTemplate/ModTemplateCode/MainFile.cs`
 - License status: no repository-root `LICENSE` file was observed in the inspected tree at this reference. Treat source as **reference-only unless licensing is clarified**.
 
-Relevant facts/patterns observed:
+Facts/patterns used as compatibility reference:
 
 - `Godot.NET.Sdk/4.5.1`;
 - `net9.0`;
-- references to game-provided `sts2.dll` and `0Harmony.dll`;
-- `[ModInitializer]` plus Harmony `PatchAll(assembly)`;
-- manifest fields including `min_game_version`, `has_pck`, `has_dll`, `dependencies`, and `affects_gameplay`.
+- game-provided `sts2.dll` and `0Harmony.dll` references;
+- `[ModInitializer]` and Harmony initialization;
+- current manifest field names.
 
-Reuse status at M1: **no source copied**. OfficeSpire uses an independently written project file and local path configuration.
+No source from this repository has been copied into OfficeSpire.
 
 ## S0ul3r/BoberInSpire
 
@@ -58,15 +68,15 @@ Reuse status at M1: **no source copied**. OfficeSpire uses an independently writ
   - repository tree containing `overlay-ui/`, `overlay-ui/src-tauri/`, and the STS2 example mod
 - License status: no `LICENSE` file was observed in the repository tree at this reference. Treat source as **concept/reference-only**.
 
-Relevant concepts confirmed by its README:
+Concepts confirmed by its README:
 
 - STS2 C# mod exporting live state;
-- a bridge feeding a React + Tauri overlay;
+- React + Tauri desktop overlay;
 - semi-transparent, always-on-top window;
-- drag, resize and persisted transparency/settings;
-- WebSocket-based overlay updates.
+- drag/resize and persisted display settings;
+- WebSocket updates.
 
-OfficeSpire intentionally does **not** copy BoberInSpire code. It uses the independently common architecture of a local game adapter feeding a desktop overlay, and plans to remove the extra Python bridge from its own design.
+OfficeSpire does not copy BoberInSpire source. Its future overlay is independently implemented and avoids BoberInSpire's Python bridge.
 
 ## Licensing rule
 
