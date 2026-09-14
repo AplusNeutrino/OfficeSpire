@@ -1,11 +1,27 @@
-export const PROTOCOL_VERSION = '0.6-alpha.2';
-
-export type ClientMessage =
-  | { type: 'hello'; version: string }
-  | { type: 'heartbeat' }
-  | { type: 'action'; payload: unknown };
-
-export type ServerMessage =
-  | { type: 'snapshot'; payload: unknown }
-  | { type: 'heartbeat_ack' }
-  | { type: 'error'; message: string };
+import {
+  PROTOCOL_VERSION,
+  type OverlayAction,
+  type WireEnvelope,
+} from "../types";
+export function envelope<T>(type: string, body: T): WireEnvelope<T> {
+  return { type, protocol_version: PROTOCOL_VERSION, body };
+}
+export const getStateMessage = () => envelope("get_state", {});
+export const pingMessage = () => envelope("ping", {});
+export const actionMessage = (action: OverlayAction) =>
+  envelope("action", action);
+export const actionStatusMessage = (requestId: string) =>
+  envelope("get_action_result", { request_id: requestId });
+export function parseEnvelope(data: string): WireEnvelope {
+  const parsed: unknown = JSON.parse(data);
+  if (!parsed || typeof parsed !== "object")
+    throw new Error("Message is not an object.");
+  const m = parsed as Partial<WireEnvelope>;
+  if (
+    typeof m.type !== "string" ||
+    typeof m.protocol_version !== "number" ||
+    !("body" in m)
+  )
+    throw new Error("Message is not an OfficeSpire envelope.");
+  return m as WireEnvelope;
+}

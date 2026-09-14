@@ -124,6 +124,36 @@ Scope discipline:
 - Potion APIs, map navigation, rewards, events, shops, rest sites, and treasures are not M5 blockers.
 - Visual polish must not precede live integration and action correctness.
 
+### Implementation checkpoint — 2026-09-14
+
+The first complete M5 source pass is now present:
+
+- deterministic npm dependency lockfile;
+- corrected protocol-v1 wire envelopes matching the C# backend;
+- native Tauri command for Windows `session.json` discovery;
+- authenticated loopback WebSocket connection;
+- protocol-version guard, state polling, heartbeat, and reconnect;
+- live combat state renderer with no demo snapshot fallback;
+- mouse interaction for untargeted cards, targeted cards, and End Turn;
+- action-result polling with pending/stale/rejection/error presentation;
+- target selection invalidated when the authoritative revision changes;
+- frontend protocol tests and Overlay CI.
+
+Verified in the current development environment:
+
+- `npm test`: PASS (5 tests);
+- `npm run build`: PASS (TypeScript + Vite production build);
+- production dependency audit: 0 vulnerabilities.
+
+Still unverified:
+
+- Rust/Tauri native compilation (Rust and Linux Tauri system libraries are absent from the current environment);
+- Windows desktop launch and window behavior;
+- live connection to STS2;
+- all M5 runtime interaction probes.
+
+The milestone therefore remains `implemented_unverified`.
+
 ### M5.0 Baseline audit and reproducible build
 
 Current status: `implemented_unverified`

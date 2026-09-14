@@ -195,6 +195,21 @@ Source/scaffolding exists for:
 - initial combat components;
 - initial action components;
 - transparent/borderless/always-on-top configuration.
+- native session-file discovery;
+- protocol-v1 WebSocket state polling and reconnect;
+- live combat rendering without demo data;
+- mouse card/target/End Turn requests;
+- action lifecycle and error presentation.
+
+Current non-runtime verification:
+
+| Check | Result |
+|---|---|
+| `npm test` | PASS — 5 protocol tests |
+| `npm run build` | PASS — TypeScript and Vite production build |
+| `npm audit --omit=dev` | PASS — 0 production vulnerabilities |
+| `npm run tauri info` | Diagnostic PASS; Rust/Cargo and Linux WebKit prerequisites absent |
+| Rust/Tauri native compile | Not run; environment blocked |
 
 None of the following is a runtime pass yet:
 

@@ -1,49 +1,190 @@
-import { useEffect, useState } from 'react';
-import type { StateSnapshot } from './types';
-import { OverlayStore } from './state/overlayStore';
-import { WebSocketClient } from './network/WebSocketClient';
-import { createClientMessage } from './network/protocol';
-
-const fallback: StateSnapshot = {
-  state_revision: 1,
-  player: { hp: 54, max_hp: 87, energy: 3, max_energy: 3, block: 0 },
-  enemies: [{ id: 'enemy-1', name: 'Slime', hp: 66, maxHp: 72, intent: 'Attack 8' }],
-  hand: [
-    { index: 0, name: 'Strike', cost: 1, description: '6 dmg' },
-    { index: 1, name: 'Defend', cost: 1, description: '5 block' }
-  ]
-};
-
-const store = new OverlayStore(fallback);
-const client = new WebSocketClient();
-
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  ActionResponse,
+  CardState,
+  ConnectionStatus,
+  EnemyState,
+  OverlayAction,
+  StateSnapshot,
+} from "./types";
+import {
+  createEndTurnAction,
+  createPlayCardAction,
+} from "./actions/actionDispatcher";
+import { CombatPanel } from "./components/CombatPanel";
+import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
+import { discoverSession } from "./network/session";
+const terminalCodes = new Set([
+  "completed",
+  "stale_state",
+  "no_effect",
+  "bad_request",
+  "bad_phase",
+  "bad_index",
+  "bad_target",
+  "not_playable",
+  "not_ready",
+  "action_pending",
+  "dispatch_exception",
+  "unknown_request",
+]);
 export default function App() {
-  const [state, setState] = useState(store.current);
-
-  useEffect(() => {
-    client.onSnapshot((snapshot: StateSnapshot) => {
-      store.update(snapshot);
-      setState(store.current);
-    });
-    return () => client.disconnect();
+  const [status, setStatus] = useState<ConnectionStatus>("discovering");
+  const [snapshot, setSnapshot] = useState<StateSnapshot>();
+  const [message, setMessage] = useState(
+    "Looking for the OfficeSpire session…",
+  );
+  const [actionResult, setActionResult] = useState<ActionResponse>();
+  const [selectedCard, setSelectedCard] = useState<CardState>();
+  const clientRef = useRef<OfficeSpireWebSocketClient | undefined>(undefined);
+  const retryRef = useRef<number | undefined>(undefined);
+  const pollRef = useRef<number | undefined>(undefined);
+  const stoppedRef = useRef(false);
+  const revisionRef = useRef<number | undefined>(undefined);
+  const clearPoll = useCallback(() => {
+    if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
+    pollRef.current = undefined;
   }, []);
-
-  const endTurn = () => {
-    console.log(createClientMessage('action', {
-      action: 'end_turn',
-      expected_revision: state.state_revision
-    }));
+  const handleActionResult = useCallback(
+    (result: ActionResponse) => {
+      setActionResult(result);
+      setMessage(result.message);
+      if (terminalCodes.has(result.code) || !result.accepted) clearPoll();
+      else if (pollRef.current === undefined)
+        pollRef.current = window.setInterval(
+          () => clientRef.current?.requestActionStatus(result.request_id),
+          150,
+        );
+    },
+    [clearPoll],
+  );
+  const connect = useCallback(async () => {
+    if (stoppedRef.current) return;
+    setStatus((s) => (s === "disconnected" ? "reconnecting" : "discovering"));
+    try {
+      const session = await discoverSession();
+      if (stoppedRef.current) return;
+      setStatus("connecting");
+      setMessage(`Connecting to STS2 process ${session.process_id}…`);
+      clientRef.current?.connect(session);
+    } catch (error) {
+      setStatus("disconnected");
+      setMessage(
+        error instanceof Error ? error.message : "Session discovery failed.",
+      );
+      retryRef.current = window.setTimeout(() => void connect(), 2000);
+    }
+  }, []);
+  useEffect(() => {
+    stoppedRef.current = false;
+    clientRef.current = new OfficeSpireWebSocketClient({
+      onOpen: () => {
+        setStatus("connected");
+        setMessage("Live connection established.");
+      },
+      onClose: (reason) => {
+        setStatus("disconnected");
+        setMessage(reason);
+        retryRef.current = window.setTimeout(() => void connect(), 1500);
+      },
+      onSnapshot: (next) => {
+        if (
+          revisionRef.current !== undefined &&
+          revisionRef.current !== next.state_revision
+        )
+          setSelectedCard(undefined);
+        revisionRef.current = next.state_revision;
+        setSnapshot(next);
+      },
+      onActionResult: handleActionResult,
+      onError: setMessage,
+      onIncompatible: (version) => {
+        setStatus("incompatible");
+        setMessage(`Protocol mismatch: overlay=1, backend=${version}.`);
+      },
+    });
+    void connect();
+    return () => {
+      stoppedRef.current = true;
+      if (retryRef.current !== undefined) window.clearTimeout(retryRef.current);
+      clearPoll();
+      clientRef.current?.disconnect();
+    };
+  }, [clearPoll, connect, handleActionResult]);
+  const submit = (action: OverlayAction) => {
+    setSelectedCard(undefined);
+    setActionResult(undefined);
+    setMessage(`Sending ${action.action}…`);
+    if (!clientRef.current?.sendAction(action))
+      setMessage("Action blocked: backend is not connected.");
   };
-
-  return <main className="overlay">
-    <h2>OfficeSpire</h2>
-    <section>Revision {state.state_revision}</section>
-    <section>HP {state.player.hp}/{state.player.max_hp}</section>
-    <section>Energy {state.player.energy}/{state.player.max_energy}</section>
-    <h3>Enemy</h3>
-    {state.enemies.map(e => <div key={e.id}>{e.name} {e.hp}/{e.maxHp} {e.intent}</div>)}
-    <h3>Hand</h3>
-    {state.hand.map(c => <button key={c.index}>{c.index} {c.name} ({c.cost})</button>)}
-    <button onClick={endTurn}>END TURN</button>
-  </main>;
+  const chooseCard = (card: CardState) => {
+    if (!snapshot) return;
+    if (card.needs_target) {
+      setSelectedCard(card);
+      return;
+    }
+    submit(createPlayCardAction(card.hand_index, snapshot.state_revision));
+  };
+  const chooseTarget = (enemy: EnemyState) => {
+    if (snapshot && selectedCard)
+      submit(
+        createPlayCardAction(
+          selectedCard.hand_index,
+          snapshot.state_revision,
+          enemy.combat_id,
+        ),
+      );
+  };
+  const actionInFlight = !!(
+    actionResult &&
+    actionResult.accepted &&
+    !terminalCodes.has(actionResult.code)
+  );
+  const disabled =
+    status !== "connected" ||
+    !snapshot ||
+    snapshot.action_pending ||
+    actionInFlight;
+  return (
+    <main className="overlay" data-tauri-drag-region>
+      <div className="titlebar" data-tauri-drag-region>
+        <strong>OfficeSpire</strong>
+        <span className={`status ${status}`}>{status}</span>
+      </div>
+      {!snapshot ? (
+        <section className="empty">
+          <h1>Waiting for STS2</h1>
+          <p>{message}</p>
+          <button onClick={() => void connect()}>Retry now</button>
+        </section>
+      ) : snapshot.phase === "combat" ? (
+        <CombatPanel
+          snapshot={snapshot}
+          disabled={disabled}
+          selectedCard={selectedCard}
+          onCard={chooseCard}
+          onTarget={chooseTarget}
+          onCancelTarget={() => setSelectedCard(undefined)}
+          onEndTurn={() => submit(createEndTurnAction(snapshot.state_revision))}
+        />
+      ) : (
+        <section className="empty">
+          <h1>{snapshot.phase.replace("_", " ")}</h1>
+          <p>This phase remains available through the original STS2 UI.</p>
+        </section>
+      )}
+      <aside
+        className={`notice ${actionResult && !actionResult.accepted ? "failure" : ""}`}
+      >
+        <span>{message}</span>
+        {snapshot && (
+          <code>
+            rev {snapshot.state_revision}
+            {snapshot.action_pending ? " · pending" : ""}
+          </code>
+        )}
+      </aside>
+    </main>
+  );
 }

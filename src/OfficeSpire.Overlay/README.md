@@ -1,31 +1,44 @@
 # OfficeSpire Overlay
 
-Version: v0.6-alpha.2 Overlay Prototype
+Tauri 2 + React + TypeScript desktop client for the OfficeSpire STS2 mod.
 
-Purpose:
+## Current implementation
 
-Create the first external STS2 control surface:
+- transparent, borderless, resizable, always-on-top window configuration;
+- native Windows session discovery from `%APPDATA%/SlayTheSpire2/OfficeSpire/session.json`;
+- authenticated loopback WebSocket connection;
+- protocol-version validation, heartbeat, state polling, and reconnect;
+- authoritative combat rendering;
+- untargeted and targeted card interaction;
+- End Turn interaction;
+- request/revision IDs and action-result polling;
+- pending, stale, rejected, disconnected, and incompatible states.
 
+All native desktop and live STS2 behavior remains `implemented_unverified` until the Windows runtime checklist in [`docs/DEVELOPMENT_ROADMAP.md`](../../docs/DEVELOPMENT_ROADMAP.md) passes.
+
+## Frontend checks
+
+```bash
+npm ci
+npm test
+npm run build
 ```
-STS2
- |
-OfficeSpire Backend
- |
-WebSocket
- |
-Overlay
+
+## Desktop development
+
+Install the current Tauri 2 Windows prerequisites, Rust, and Node.js. Start STS2 with OfficeSpire Mod loaded so that `session.json` exists, then run:
+
+```bash
+npm ci
+npm run tauri dev
 ```
 
-Current milestone:
+The overlay reads the session descriptor through a native Tauri command. A browser-only Vite session cannot discover the local STS2 session.
 
-- Tauri + React + TypeScript scaffold
-- State snapshot UI model
-- Initial combat panel renderer
+## Production bundle
 
-Not included yet:
+```bash
+npm run tauri build
+```
 
-- map
-- rewards
-- events
-- shops
-- rest sites
+Do not mark the desktop build or live combat loop as runtime-pass solely because the frontend production build succeeds.

@@ -49,6 +49,8 @@ v0.6-alpha.2 targets the first usable **semi-transparent text overlay**:
 - End Turn button;
 - pending, stale, reconnect, and error handling.
 
+The first M5 source implementation is now present and its TypeScript/Vite production build and protocol tests pass. Tauri native compilation, Windows window behavior, live STS2 integration, and combat interaction remain `implemented_unverified` until runtime evidence is recorded.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

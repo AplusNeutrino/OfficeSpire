@@ -1,21 +1,228 @@
-html, body, #root {
+:root {
+  font-family:
+    Inter,
+    Segoe UI,
+    system-ui,
+    sans-serif;
+  color: #f4f1ea;
+  background: transparent;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background: transparent;
 }
-
-.overlay {
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  padding: 16px;
-  color: white;
-  background: rgba(20, 20, 20, 0.75);
-  font-family: system-ui, sans-serif;
-}
-
 button {
-  display: block;
-  margin: 8px 0;
+  font: inherit;
+  color: inherit;
+}
+.overlay {
+  height: 100%;
+  overflow: auto;
+  padding: 12px;
+  background: linear-gradient(
+    145deg,
+    rgba(16, 18, 22, 0.91),
+    rgba(28, 23, 29, 0.84)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.34);
+}
+.titlebar,
+.run-line,
+.stats,
+footer,
+.notice,
+.target-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.titlebar {
+  min-height: 28px;
+  color: #d9c8a4;
+  letter-spacing: 0.04em;
+  cursor: grab;
+}
+.status {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #d6b562;
+}
+.status.connected {
+  color: #85d7a5;
+}
+.status.disconnected,
+.status.error,
+.status.incompatible {
+  color: #f18c8c;
+}
+.run-line {
+  font-size: 18px;
+  margin: 10px 0;
+}
+.stats {
+  padding: 10px 0;
+  border-block: 1px solid rgba(255, 255, 255, 0.11);
+  font-size: 13px;
+}
+.stats strong {
+  font-size: 15px;
+}
+h1 {
+  font-size: 19px;
+}
+h2 {
+  margin: 14px 0 7px;
+  color: #c7b98f;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+.list {
+  display: grid;
+  gap: 6px;
+}
+.enemy,
+.card,
+.end-turn,
+.target-prompt button,
+.empty button {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 8px;
+  text-align: left;
+}
+.enemy {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px;
+  width: 100%;
+}
+.enemy small {
+  grid-column: 1/-1;
+  color: #b8b5ad;
+}
+.enemy.targetable {
+  border-color: #d4a95e;
+  background: rgba(212, 169, 94, 0.14);
+  cursor: pointer;
+}
+.card {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  column-gap: 8px;
+  width: 100%;
+  cursor: pointer;
+}
+.card:hover:not(:disabled) {
+  border-color: #c5a86c;
+  background: rgba(255, 255, 255, 0.1);
+}
+.card:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.card-index {
+  color: #bca66f;
+}
+.card-name {
+  font-weight: 650;
+}
+.card-cost {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #526a94;
+}
+.card-detail {
+  grid-column: 2/-1;
+  margin-top: 2px;
+  color: #bbb7ae;
+  font-size: 11px;
+}
+.target-prompt {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 10px 0;
+  padding: 8px;
+  background: #4b3921;
+  border: 1px solid #d4a95e;
+  border-radius: 7px;
+}
+.target-prompt button {
+  padding: 4px 8px;
+  cursor: pointer;
+}
+footer {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #bbb7ae;
+}
+.end-turn {
+  background: #6f3b35;
+  border-color: #ad6c62;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+}
+.end-turn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.notice {
+  position: sticky;
+  bottom: 0;
+  margin: 12px -4px -4px;
+  padding: 7px 8px;
+  background: rgba(8, 10, 13, 0.94);
+  border-radius: 6px;
+  color: #aaa;
+  font-size: 10px;
+}
+.notice.failure {
+  color: #f3a3a3;
+}
+.notice code {
+  white-space: nowrap;
+}
+.empty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 70%;
+  padding: 28px;
+  text-align: center;
+  color: #c9c5bc;
+}
+.empty p {
+  max-width: 32ch;
+  color: #aaa;
+  line-height: 1.45;
+}
+.empty button {
+  cursor: pointer;
+}
+@media (max-width: 340px) {
+  .stats {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .run-line {
+    font-size: 15px;
+  }
 }

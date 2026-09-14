@@ -1,22 +1,25 @@
-import type { CardState } from '../types';
-
-export interface OverlayAction {
-  action: 'play_card' | 'end_turn';
-  expected_revision: number;
-  card_index?: number;
-}
-
-export function createPlayCardAction(card: CardState, revision: number): OverlayAction {
+import type { OverlayAction } from "../types";
+const requestId = () => crypto.randomUUID();
+export function createPlayCardAction(
+  handIndex: number,
+  revision: number,
+  targetId?: number,
+): OverlayAction {
   return {
-    action: 'play_card',
+    request_id: requestId(),
+    action: "play_card",
     expected_revision: revision,
-    card_index: card.index
+    payload:
+      targetId === undefined
+        ? { hand_index: handIndex }
+        : { hand_index: handIndex, target_id: targetId },
   };
 }
-
 export function createEndTurnAction(revision: number): OverlayAction {
   return {
-    action: 'end_turn',
-    expected_revision: revision
+    request_id: requestId(),
+    action: "end_turn",
+    expected_revision: revision,
+    payload: {},
   };
 }
