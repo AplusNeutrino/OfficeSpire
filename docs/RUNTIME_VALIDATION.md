@@ -44,7 +44,7 @@ Validated installation:
 | Read enemy target IDs | `implemented_unverified` | Target IDs are present in M3 protocol but were not independently validated in this probe. |
 | Read enemy powers | `implemented_unverified` | Power snapshots are implemented but were not independently validated in this probe. |
 | Read relics/potions/pile counts | `implemented_unverified` | Implemented, but not independently validated in this probe. |
-| State revision changes only on stable decision-state changes | `implemented_unverified` | On `c114ab5`, multiple revisions were observed with identical printed summary. `f313f63` changes revision advancement so transient combat frames with `waiting_for_input=false` are published without advancing the decision revision. Requires retest. |
+| State revision changes only on stable decision-state changes | `runtime_fail` | Retest on `11e852a` showed idle stability and enemy-turn stability, but one card play still produced 2-4 revisions with identical compact summaries. `a746dc4` adds a 300 ms quiet-window debounce and marks unsettled snapshots `action_pending=true`; requires another runtime retest before status can change. |
 | Vanilla gameplay remains usable with M3 loaded | `runtime_pass` | User entered a run, played cards, killed enemies and ended turns with OfficeSpire active. |
 | Play untargeted card | `not_implemented` | Planned M4. |
 | Play targeted card | `not_implemented` | Planned M4. |
@@ -59,7 +59,7 @@ Validated installation:
 
 ## M3 live-state probe — 2026-09-14
 
-Validated against OfficeSpire `c114ab5` before the revision-stability patch.
+Validated against OfficeSpire `c114ab5` before the revision-stability patches.
 
 Observed initial combat state:
 
@@ -78,43 +78,53 @@ Enemy:  10/10 -> 3/10
 
 Further plays correctly reflected enemy death, hand changes, and changing card costs/playability.
 
-### Revision finding
+## Revision retest 1 — `11e852a`
 
-Several successive revisions were observed with the same compact printed summary:
+The first revision fix (`f313f63`) stopped 20 Hz idle churn but did not fully collapse one game action into one decision revision.
 
-```text
-rev=12
-rev=13
-rev=14
-```
+Observed:
 
-The compact watcher does not print every protocol field, so this did not prove corruption. The most likely source was transient combat state during animations/action-queue processing, especially `waiting_for_input` toggling while `PlayerActionsDisabled` is true.
+- idle actionable state: **PASS** — revision remained constant;
+- one card play: **FAIL** — example sequence `rev=6 -> 7 -> 8 -> 9` while compact HP/Energy/Hand/Enemy summaries were unchanged;
+- enemy-turn animation: **PASS in this probe** — no continuous revision churn was observed;
+- later card plays: **FAIL** — further duplicate sequences included `17 -> 18 -> 19` and `20 -> 21`.
 
-`f313f63` changes the revision rule:
+Therefore `state_revision` is explicitly `runtime_fail` on `11e852a`.
 
-- all snapshots continue to be published;
-- a phase change still advances the revision;
-- while `phase=combat` and `waiting_for_input=false`, transient snapshots do **not** advance the decision revision;
-- when the game returns to an actionable combat state, the final snapshot is compared with the previous actionable snapshot and advances at most once for that completed transition.
+### Why the first fix was insufficient
 
-This preserves the future stale-action guard while avoiding revision churn during animations.
+`waiting_for_input=false` filtering removed obvious animation frames, but STS2 can expose several short-lived snapshots with `waiting_for_input=true` while a card's effects, piles, powers, targeting legality, or other protocol fields are still converging. Because the fingerprint covers the complete decision snapshot, each of those intermediate actionable-looking states could become a new revision.
 
-## Revision retest
+## Revision fix 2 — `a746dc4`
 
-Run:
+`a746dc4` adds a quiet-window debounce around actionable combat snapshots:
+
+- non-actionable combat snapshots continue to be published but do not advance revision;
+- when a new actionable fingerprint first appears, it becomes a **candidate**, not an immediate revision;
+- whenever that candidate changes, its settle timer restarts;
+- only after the same candidate remains unchanged for at least **300 ms** is it promoted to the next revision;
+- while a candidate is settling, `action_pending=true` is published so the future overlay/M4 dispatcher can suppress user actions until the decision state is committed;
+- phase changes still advance revision immediately.
+
+This is deliberately a decision-state debounce, not a delay in reading game state: raw screen snapshots continue to refresh at 20 Hz.
+
+## Revision retest 2
+
+Build/deploy the latest `main`, restart STS2, then run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\watch-state.ps1
 ```
 
-Then verify:
+Verify:
 
 1. idle at an actionable combat state for several seconds: revision remains constant;
-2. play one card: revision advances once when the next actionable state settles;
-3. end turn: intermediate enemy-animation states may update internally, but revision should not churn; the next player decision state should advance once;
-4. if the phase changes (combat ends), revision may advance for the phase transition.
+2. play one card: after all effects settle, revision advances exactly once;
+3. play several more cards, including a card that changes a power/status if available: each completed decision transition advances once;
+4. end turn: enemy-animation states do not churn revision; the next player decision advances once;
+5. combat-end phase transition may advance revision separately.
 
-After this passes, M3 revision stability can be marked `runtime_pass` and M4 can begin.
+Only after this retest passes should `state_revision` be promoted from `runtime_fail` to `runtime_pass`.
 
 ## M4 runtime probes
 
