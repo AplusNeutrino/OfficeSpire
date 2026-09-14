@@ -1,3 +1,4 @@
+using OfficeSpire.Diagnostics;
 using OfficeSpire.Game;
 using OfficeSpire.Protocol;
 using OfficeSpire.Transport;
@@ -22,7 +23,9 @@ public static class OfficeSpireRuntime
         }
 
         _adapter = new NullGameAdapter();
-        _stateStore = new ProtocolStateStore(_adapter.CaptureState());
+        StateEnvelope initialState = _adapter.CaptureState();
+        _stateStore = new ProtocolStateStore(initialState);
+        RuntimeDiagnostics.Observe(initialState);
 
         _transport = new LoopbackWebSocketServer(_stateStore);
         _transport.Start();
@@ -32,12 +35,17 @@ public static class OfficeSpireRuntime
     {
         ArgumentNullException.ThrowIfNull(adapter);
         _adapter = adapter;
-        StateStore.Publish(_adapter.CaptureState());
+
+        StateEnvelope state = _adapter.CaptureState();
+        StateStore.Publish(state);
+        RuntimeDiagnostics.Observe(state);
     }
 
     public static void RefreshStateOnGameThread()
     {
-        StateStore.Publish(_adapter.CaptureState());
+        StateEnvelope state = _adapter.CaptureState();
+        StateStore.Publish(state);
+        RuntimeDiagnostics.Observe(state);
     }
 
     internal static void SetAdapterForTesting(IGameAdapter adapter)

@@ -12,29 +12,38 @@ Status values:
 
 ## Target build
 
-The user's exact installed Steam build has not yet been recorded/tested. Do not infer runtime compatibility from source inspection alone.
+Validated installation:
+
+- Slay the Spire 2 `v0.107.1`
+- release commit `59260271`
+- Windows x86_64 / MegaDot 4.5.1 custom build
+- OfficeSpire loaded from the native `mods/OfficeSpire` folder
 
 ## Validation matrix
 
 | Capability | Status | Evidence / notes |
 |---|---|---|
-| Native mod manifest discovered by STS2 | `implemented_unverified` | Manifest exists; game has not loaded this build yet. |
-| `[ModInitializer]` executes | `implemented_unverified` | Entry point exists; no runtime log captured yet. |
-| Harmony initialization succeeds | `implemented_unverified` | Uses current community pattern; no runtime evidence yet. |
-| Build against local `sts2.dll` | `implemented_unverified` | Project configured; requires build on a machine with STS2 installed. |
-| Loopback listener starts on random port | `implemented_unverified` | M2 implementation exists; not run inside STS2 yet. |
-| Session descriptor written to AppData | `implemented_unverified` | M2 implementation exists; not runtime-tested. |
-| WebSocket token handshake | `implemented_unverified` | M2 implementation exists; not runtime-tested. |
-| `hello` / `ping` / `get_state` transport | `implemented_unverified` | M2 implementation exists. |
-| Godot update node attaches and ticks | `implemented_unverified` | M3 bridge implemented using a main-thread Node; no runtime evidence yet. |
-| Detect combat vs non-combat | `implemented_unverified` | M3 currently reports `combat` only while `CombatManager.IsInProgress`; other phases remain `unknown`. |
-| Read player HP/block/energy | `implemented_unverified` | M3 adapter implemented from current STS2 API patterns. |
-| Read hand/cost/type/rarity | `implemented_unverified` | M3 adapter implemented. |
+| Build against local `sts2.dll` | `runtime_pass` | User-side `dotnet build` completed successfully against the installed game files. |
+| Native mod manifest discovered by STS2 | `runtime_pass` | Game log reports `Found mod manifest file .../mods/OfficeSpire/OfficeSpire.json`. |
+| OfficeSpire DLL loaded | `runtime_pass` | Game log reports loading `OfficeSpire.dll` and calling `OfficeSpire.ModEntry`. |
+| `[ModInitializer]` executes | `runtime_pass` | Startup diagnostics reached `initializer_enter` and `initializer_complete`. |
+| Harmony initialization succeeds | `runtime_pass` | Startup diagnostics reached `harmony_ready`. |
+| Godot script bridge registration succeeds | `runtime_pass` | Startup diagnostics reached `godot_script_bridge_ready`. |
+| Loopback listener starts on random port | `runtime_pass` | Startup diagnostics reached `runtime_ready` with a `127.0.0.1:<random-port>` endpoint. |
+| M3 adapter attaches | `runtime_pass` | Startup diagnostics reached `m3_adapter_attached`. |
+| Session descriptor written to AppData | `implemented_unverified` | Code path executes during transport startup; file presence has not yet been independently checked. |
+| WebSocket token handshake | `implemented_unverified` | Transport is listening, but an external client handshake has not yet been observed. |
+| `hello` / `ping` / `get_state` transport | `implemented_unverified` | M2 implementation exists; live client probe pending. |
+| Godot update node ticks after attach | `implemented_unverified` | Attach succeeded, but state-change evidence is still required to prove `_Process` refreshes. |
+| Detect combat vs non-combat | `implemented_unverified` | M3 currently reports `combat` while `CombatManager.IsInProgress`; live snapshot comparison pending. |
+| Read player HP/block/energy | `implemented_unverified` | M3 adapter implemented; live values not yet compared with the visible game. |
+| Read hand/cost/type/rarity | `implemented_unverified` | M3 adapter implemented; live values not yet compared. |
 | Read dynamic card Damage/Block | `implemented_unverified` | Uses card DynamicVars keys `Damage`/`Block`; requires runtime validation across cards. |
 | Read `CanPlay` and enemy target IDs | `implemented_unverified` | M3 adapter implemented. |
-| Read enemy HP/block/intent/powers | `implemented_unverified` | M3 adapter implemented. |
+| Read enemy HP/block/intent/powers | `implemented_unverified` | M3 adapter implemented; live comparison pending. |
 | Read relics/potions/pile counts | `implemented_unverified` | M3 adapter implemented. |
-| State revision changes only on decision-state changes | `implemented_unverified` | M3 SHA-256 fingerprint/revision implementation exists. |
+| State revision changes only on decision-state changes | `implemented_unverified` | M3 fingerprint/revision implementation exists; live revision behavior pending. |
+| Vanilla gameplay remains usable with M3 loaded | `runtime_pass` | User entered a run, played cards and ended turns after OfficeSpire initialized without an OfficeSpire failure. |
 | Play untargeted card | `not_implemented` | Planned M4. |
 | Play targeted card | `not_implemented` | Planned M4. |
 | End turn | `not_implemented` | Planned M4. |
@@ -43,25 +52,39 @@ The user's exact installed Steam build has not yet been recorded/tested. Do not 
 | Map selection | `not_implemented` | Planned M6. |
 | Reward/card reward selection | `not_implemented` | Planned M6. |
 | Shop/event/rest/treasure actions | `not_implemented` | Planned M6. |
-| Game continues while STS2 is unfocused | `not_implemented` | Must be runtime tested separately. |
+| Game continues while STS2 is unfocused | `implemented_unverified` | Focus-out/focus-in logs exist, but OfficeSpire state/action processing while unfocused has not yet been directly observed. |
 | Game continues while STS2 is minimized | `not_implemented` | Key product assumption; must not be claimed until tested. |
 
-## First runtime probe
+## M3 live-state probe
 
-Build and run the current source on the user's STS2 installation, then record:
+The current source includes two complementary diagnostics:
 
-1. exact STS2 version/build shown by the game;
-2. whether OfficeSpire appears in Modding and loads;
-3. OfficeSpire initialization log line;
-4. whether `%APPDATA%/SlayTheSpire2/OfficeSpire/session.json` is created;
-5. whether the recorded port listens only on `127.0.0.1`;
-6. WebSocket `hello`, `ping/pong`, and `get_state` behavior;
-7. out-of-combat snapshot (`phase=unknown`) without errors;
-8. in-combat snapshot values compared with visible game values;
-9. one card with Damage, one with Block, and one targeted card;
-10. enemy intent/powers for at least two enemy types;
-11. confirm `action` is still rejected as `actions_not_enabled`;
-12. confirm vanilla gameplay still works normally.
+1. `runtime.log` — OfficeSpire writes a compact line only when `phase` or `state_revision` changes. Combat lines include HP, block, energy, hand count and enemy count.
+2. `scripts/watch-state.ps1` — connects to the authenticated loopback WebSocket using the current `session.json`, polls `get_state`, and prints each new revision. Use `-Raw` to print complete state JSON.
+
+Run from the repository root while STS2 is open:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\watch-state.ps1
+```
+
+Expected progression around a combat decision:
+
+```text
+rev=4 phase=combat HP=80/80 Block=0 Energy=3/3 Hand=5 Enemies=1
+...play a card...
+rev=5 phase=combat HP=80/80 Block=0 Energy=2/3 Hand=4 Enemies=1
+```
+
+Validation goal:
+
+1. confirm `%APPDATA%/SlayTheSpire2/OfficeSpire/session.json` exists;
+2. confirm the diagnostic script completes the WebSocket handshake;
+3. compare HP, block, energy, hand and enemy values against the visible game;
+4. play one card and confirm the revision changes;
+5. end a turn and confirm another revision change;
+6. keep the game idle for several seconds and confirm revision does not increase solely because the 20 Hz refresh loop is running;
+7. inspect `%APPDATA%/SlayTheSpire2/OfficeSpire/runtime.log` for the same state transitions.
 
 After M4 lands, separately test:
 
