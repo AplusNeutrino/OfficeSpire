@@ -1,0 +1,45 @@
+<Project Sdk="Godot.NET.Sdk/4.5.1" InitialTargets="CheckDependencyPaths">
+  <Import Project="OfficeSpire.Local.props" Condition="Exists('OfficeSpire.Local.props')" />
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>13.0</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>OfficeSpire</AssemblyName>
+    <RootNamespace>OfficeSpire</RootNamespace>
+    <Sts2Dir Condition="'$(Sts2Dir)' == ''">$([System.Environment]::GetEnvironmentVariable('STS2_DIR'))</Sts2Dir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(Sts2Dir)' != ''">$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
+    <OfficeSpireModsDir Condition="'$(Sts2Dir)' != ''">$(Sts2Dir)\mods\OfficeSpire</OfficeSpireModsDir>
+    <NoWarn>$(NoWarn);MSB3270</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(Sts2DataDir)')">
+    <Reference Include="sts2">
+      <HintPath>$(Sts2DataDir)\sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="OfficeSpire.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="OfficeSpire.Local.props.example" />
+  </ItemGroup>
+
+  <Target Name="CheckDependencyPaths">
+    <Error Text="Slay the Spire 2 data directory was not found. Set STS2_DIR or create OfficeSpire.Local.props from the example. Resolved path: '$(Sts2DataDir)'"
+           Condition="'$(Sts2DataDir)' == '' or !Exists('$(Sts2DataDir)')" />
+  </Target>
+
+  <Target Name="CopyToModsFolderOnBuild" AfterTargets="Build" Condition="'$(OfficeSpireModsDir)' != ''">
+    <MakeDir Directories="$(OfficeSpireModsDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(OfficeSpireModsDir)" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(OfficeSpireModsDir)" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\OfficeSpire.json" DestinationFolder="$(OfficeSpireModsDir)" />
+  </Target>
+</Project>

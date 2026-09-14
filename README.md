@@ -1,52 +1,106 @@
 # OfficeSpire
 
-A low-profile focus and accessibility mod for the Steam version of **Slay the Spire 2**.
+OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**.
 
-> Status: pre-alpha planning. The first milestone is a lightweight DLL-only mod.
+The project target is a compact semi-transparent desktop overlay that reads the authoritative game state and lets the player operate combat, card selections, map routing, rewards, shops, events, rest sites and treasures without relying on the normal animated game UI for ordinary decisions.
 
-## V0.1 — Focus Mode
+> Status: **pre-alpha / M1 skeleton**. Runtime behavior against the user's installed Steam build is not yet validated.
 
-- Global boss key (default: `F10`)
-- Pause, mute, and minimize in one action
-- Restore the previous volume when returning to the game
-- Automatic windowed mode
-- Configurable window size
-- Configurable FPS cap (default target: 30 FPS)
-- Pause and mute when focus is lost
-- Persistent settings
-- No run or save-data modifications
-
-Planned distribution layout:
+## Target experience
 
 ```text
-OfficeSpire/
-├── OfficeSpire.json
-└── OfficeSpire.dll
+ACT 2 · F31                         227G
+HP 54/72        Block 8       Energy 3/3
+
+ENEMIES
+[A] Taskmaster        64/64      Attack 14
+[B] Red Slaver        23/48      Attack 7 x2
+
+HAND
+[1] Strike+       0      9 dmg
+[2] Defend        1      5 block
+[3] Neutralize    0      4 dmg · Weak 1
+[4] Backflip      1      5 block · Draw 2
+
+[E] End Turn
 ```
 
-The manifest will declare `affects_gameplay = false`.
+The game remains authoritative for rules, RNG, saves and progression. OfficeSpire is a control surface, not a replacement simulation and not an automation bot.
 
-## Roadmap
+## Architecture
 
-- **V0.2 — Low Profile UI:** reduced motion, muted presentation, static visuals, and a discreet office mode.
-- **V0.3 — Compact Combat:** a restrained information-panel combat interface.
-- **V0.4 — Minimal Cards:** compact text-first cards with normal cards available on hover.
-- **V1.0 — Workshop:** stable builds maintained for supported game branches.
+```text
+Slay the Spire 2
+└─ OfficeSpire C# mod
+   ├─ version-specific game adapter
+   ├─ state normalizer
+   ├─ action dispatcher
+   └─ localhost transport
+              │
+              ▼
+OfficeSpire Overlay
+└─ Tauri + TypeScript
+   ├─ semi-transparent / borderless
+   ├─ resizable / movable
+   ├─ optional always-on-top
+   └─ keyboard-first phase-specific UI
+```
 
-## Proposed stack
+See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete implementation plan.
 
-- C# / .NET 9
-- Slay the Spire 2 native mod loader
-- RitsuLib
-- Harmony
-- BaseLib only if later content integration requires it
+## Current milestone: M1
 
-## Design constraints
+The M1 baseline establishes:
 
-- Preserve gameplay information and mechanics.
-- Keep OfficeSpire settings separate from run and profile data.
-- Avoid touching or synchronizing vanilla/modded saves.
-- Prefer reversible presentation changes and graceful fallbacks across game updates.
+- STS2 DLL-only mod manifest;
+- .NET 9 / Godot 4.5.1 project baseline;
+- `[ModInitializer]` entry point and Harmony initialization;
+- versioned protocol envelope and action models;
+- an `IGameAdapter` boundary that isolates unstable STS2 internals;
+- runtime validation tracking;
+- upstream reference and licensing notes.
+
+No combat state/action support should be considered runtime-proven yet.
+
+## Build prerequisites
+
+- .NET 9 SDK
+- Slay the Spire 2 installed locally
+- the game-provided `sts2.dll` and `0Harmony.dll`
+
+The mod intentionally has **no BaseLib/RitsuLib dependency** at this stage.
+
+### Configure the game path
+
+Either set the `STS2_DIR` environment variable to the Slay the Spire 2 install directory, or copy:
+
+```text
+src/OfficeSpire.Mod/OfficeSpire.Local.props.example
+```
+
+to:
+
+```text
+src/OfficeSpire.Mod/OfficeSpire.Local.props
+```
+
+and edit the local path.
+
+Then build:
+
+```bash
+dotnet build src/OfficeSpire.Mod/OfficeSpire.Mod.csproj -c Debug
+```
+
+When `Sts2Dir` is configured, the build target copies the mod files into:
+
+```text
+<Slay the Spire 2>/mods/OfficeSpire/
+```
+
+## Scope boundary
+
+OfficeSpire is limited to game state, game actions and presentation. It will not implement process-name spoofing, anti-monitoring behavior, endpoint/MDM evasion, log tampering, screenshot-tool countermeasures or similar system-level concealment.
 
 ## License
 

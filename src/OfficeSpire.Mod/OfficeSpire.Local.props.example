@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Copy this file to OfficeSpire.Local.props and change the path. Do not commit the local file. -->
+    <Sts2Dir>C:\Program Files (x86)\Steam\steamapps\common\Slay the Spire 2</Sts2Dir>
+  </PropertyGroup>
+</Project>
