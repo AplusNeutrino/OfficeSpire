@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "OfficeSpire Overlay",
+  "version": "0.6.0-alpha.2",
+  "identifier": "com.officespire.overlay",
+  "app": {
+    "windows": [
+      {
+        "title": "OfficeSpire",
+        "width": 420,
+        "height": 640,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true
+      }
+    ]
+  }
+}
