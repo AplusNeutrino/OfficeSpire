@@ -12,25 +12,13 @@ On startup the mod binds a WebSocket listener to **127.0.0.1 on a random ephemer
 %APPDATA%/SlayTheSpire2/OfficeSpire/session.json
 ```
 
-Example:
-
-```json
-{
-  "protocol_version": 1,
-  "port": 49152,
-  "token": "<256-bit random token>",
-  "process_id": 12345,
-  "created_utc": "2026-09-14T03:00:00+00:00"
-}
-```
-
 The overlay connects to:
 
 ```text
 ws://127.0.0.1:<port>/officespire?token=<token>
 ```
 
-The token is intentionally not printed to normal logs. The session file is local-user state and will later be consumed by the overlay launcher.
+The token is intentionally not printed to normal logs.
 
 ## Wire envelope
 
@@ -44,7 +32,7 @@ All WebSocket text messages use:
 }
 ```
 
-M2 server message types:
+Server message types:
 
 - `hello`
 - `state`
@@ -52,17 +40,16 @@ M2 server message types:
 - `action_result`
 - `error`
 
-M2 client message types:
+Client message types:
 
 - `ping`
 - `get_state`
-- `action` (parsed but intentionally rejected until M4)
+- `action`
+- `get_action_result`
 
 Inbound messages are capped at 64 KiB. Outbound messages are capped at 1 MiB.
 
 ## State envelope
-
-The body of a `state` message is:
 
 ```json
 {
@@ -75,7 +62,9 @@ The body of a `state` message is:
 }
 ```
 
-`state_revision` changes whenever the authoritative decision-relevant state changes. The exact revision-generation algorithm will be finalized with the real adapter, but it must be monotonic within a live session.
+`state_revision` is a monotonic **decision revision**, not a rendering revision. Rich/localized presentation text can update without minting a revision. On the validated M3 adapter, combat revision promotion requires an actionable/idle engine state plus a stable semantic snapshot.
+
+`action_pending=true` means conflicting mutation requests should not be sent. It is true while either the game itself is settling or OfficeSpire has a queued/accepted action waiting to reach the next authoritative decision boundary.
 
 Known phase names:
 
@@ -91,8 +80,6 @@ Known phase names:
 - `menu`
 - `run_end`
 
-`run` contains cross-screen run information. `screen` contains phase-specific information.
-
 ## Action request
 
 The body of an `action` message is:
@@ -104,56 +91,130 @@ The body of an `action` message is:
   "expected_revision": 1831,
   "payload": {
     "hand_index": 0,
-    "target_id": "enemy-0"
+    "target_id": "enemy-12"
   }
 }
 ```
 
 Rules:
 
-1. `request_id` uniquely identifies one user action request.
-2. `expected_revision` must match the authoritative revision used to make the decision.
-3. the dispatcher rejects stale requests before they can mutate game state.
-4. payload schemas are action-specific and will be documented as actions are implemented.
-5. network callbacks never mutate STS2 objects directly; M4 will queue accepted requests for the game-thread dispatcher.
+1. `request_id` is unique within the current OfficeSpire process.
+2. `expected_revision` must match the authoritative decision revision used to make the choice.
+3. transport performs a stale/pending check before queueing.
+4. the game thread performs the revision/readiness check again immediately before dispatch.
+5. WebSocket/background threads never touch STS2 runtime objects.
+6. only one OfficeSpire mutation is active at a time during M4.
 
-## Action response
+## M4 combat actions
 
-The body of an `action_result` message is:
+### `play_card`
+
+```json
+{
+  "hand_index": 0,
+  "target_id": "enemy-12"
+}
+```
+
+`target_id` can be an integer combat id or `enemy-<combatId>`. It may be omitted for untargeted/AOE/self actions. For an enemy-targeted action, M4 auto-targets only when exactly one hittable enemy exists; otherwise an explicit target is required.
+
+The game thread rechecks the current hand index, STS2 `CanPlay`, player-turn readiness and target legality before enqueueing `PlayCardAction`.
+
+### `end_turn`
+
+Payload may be `{}`. The game thread enqueues `EndPlayerTurnAction` using the current combat round.
+
+### `use_potion`
+
+```json
+{
+  "slot_index": 0,
+  "target_id": "enemy-12"
+}
+```
+
+`slot` is accepted as an alias for `slot_index`. Enemy targeting follows the same rule as cards. Self/player-targeted potions use the local player creature; untargeted/AOE/random-target potions leave target resolution to STS2.
+
+Potion discard is not yet enabled in the M4 source baseline.
+
+## Action response and status
+
+`action_result` retains the v1 response shape:
 
 ```json
 {
   "request_id": "cdd02d47-8ef8-4ae8-918a-acde5f81e89e",
   "accepted": true,
-  "code": "accepted",
-  "message": "",
+  "code": "queued",
+  "message": "Action accepted by transport and queued for the STS2 main thread.",
   "state_revision": 1831
 }
 ```
 
-Acceptance means the request passed OfficeSpire validation and was accepted for dispatch. It does **not** mean all animations/triggers resulting from the game action have completed. The overlay must wait for a later authoritative state snapshot before issuing a conflicting action.
+The `code` represents lifecycle state or rejection reason.
 
-## Intended action lifecycle
+Normal lifecycle:
 
 ```text
-READY
-  -> REQUEST_SENT
-  -> ACCEPTED / REJECTED
-  -> GAME_ACTION_PENDING
-  -> STATE_CHANGED
-  -> READY
+queued
+  -> accepted
+  -> completed
 ```
 
-## M2 behavior
+- `queued`: passed transport CAS/pending checks and is waiting for the game thread.
+- `accepted`: passed the second main-thread check and the adapter submitted the normal STS2 action.
+- `completed`: a newer settled authoritative revision has been observed.
 
-M2 uses `NullGameAdapter` and a live loopback transport:
+A request can become rejected after `queued` if the state changes before the main thread consumes it. Expected rejection codes include:
 
-- WebSocket handshake/token validation is implemented but runtime-unverified;
-- successful connection receives `hello` then the current `state`;
-- `ping` returns `pong`;
-- `get_state` returns the current state snapshot;
-- state phase is currently `unknown` and revision is `0`;
-- `action` is parsed but rejected with `actions_not_enabled`;
-- no network thread is allowed to mutate game state.
+- `stale_state`
+- `action_pending`
+- `bad_phase`
+- `not_ready`
+- `bad_request`
+- `bad_index`
+- `bad_target`
+- `not_playable`
+- `unsupported_action`
+- `dispatch_exception`
+- `duplicate_request`
 
-This is deliberate. No STS2 state/action behavior is considered implemented until the real adapter and game-thread dispatcher are added and runtime-tested.
+Acceptance/queueing never means that animations/triggers have finished.
+
+## Action-status query
+
+To inspect a queued request without requiring asynchronous server pushes:
+
+```json
+{
+  "type": "get_action_result",
+  "protocol_version": 1,
+  "body": {
+    "request_id": "cdd02d47-8ef8-4ae8-918a-acde5f81e89e"
+  }
+}
+```
+
+The server replies with the latest retained `action_result` for that request. Status history is bounded; old request ids can eventually return `unknown_request`.
+
+## Threading contract
+
+```text
+WebSocket thread
+  parse + protocol/CAS validation
+          │
+          ▼
+      ActionInbox
+          │
+          ▼
+OfficeSpireUpdateNode / STS2 main thread
+  fresh revision/readiness validation
+          │
+          ▼
+     M4GameAdapter
+          │
+          ▼
+STS2 action queue / potion model
+```
+
+The network thread sees only immutable protocol state and thread-safe action-status records.
