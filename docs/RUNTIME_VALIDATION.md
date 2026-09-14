@@ -44,7 +44,7 @@ Validated installation:
 | Read enemy target IDs | `implemented_unverified` | Target IDs are present in M3 protocol but were not independently validated in this probe. |
 | Read enemy powers | `implemented_unverified` | Power snapshots are implemented but were not independently validated in this probe. |
 | Read relics/potions/pile counts | `implemented_unverified` | Implemented, but not independently validated in this probe. |
-| State revision changes only on stable decision-state changes | `runtime_fail` | Retest on `11e852a` showed idle stability and enemy-turn stability, but one card play still produced 2-4 revisions with identical compact summaries. `a746dc4` adds a 300 ms quiet-window debounce and marks unsettled snapshots `action_pending=true`; requires another runtime retest before status can change. |
+| State revision changes only on stable decision-state changes | `runtime_fail` | Retest on `04c5a59` / `a746dc4` still produced a second revision roughly 0.5–1.4 s after some card plays with an identical compact visible state. Revision fix 3 replaces full-JSON/time debounce with semantic decision fingerprints, native executor-idle gating, and three stable frames; runtime retest required. |
 | Vanilla gameplay remains usable with M3 loaded | `runtime_pass` | User entered a run, played cards, killed enemies and ended turns with OfficeSpire active. |
 | Play untargeted card | `not_implemented` | Planned M4. |
 | Play targeted card | `not_implemented` | Planned M4. |
@@ -91,24 +91,45 @@ Observed:
 
 Therefore `state_revision` is explicitly `runtime_fail` on `11e852a`.
 
-### Why the first fix was insufficient
-
-`waiting_for_input=false` filtering removed obvious animation frames, but STS2 can expose several short-lived snapshots with `waiting_for_input=true` while a card's effects, piles, powers, targeting legality, or other protocol fields are still converging. Because the fingerprint covers the complete decision snapshot, each of those intermediate actionable-looking states could become a new revision.
-
 ## Revision fix 2 — `a746dc4`
 
-`a746dc4` adds a quiet-window debounce around actionable combat snapshots:
+The second fix added a 300 ms quiet-window debounce for actionable-looking combat states and set `action_pending=true` while the candidate was settling.
 
-- non-actionable combat snapshots continue to be published but do not advance revision;
-- when a new actionable fingerprint first appears, it becomes a **candidate**, not an immediate revision;
-- whenever that candidate changes, its settle timer restarts;
-- only after the same candidate remains unchanged for at least **300 ms** is it promoted to the next revision;
-- while a candidate is settling, `action_pending=true` is published so the future overlay/M4 dispatcher can suppress user actions until the decision state is committed;
+## Revision retest 2 — `04c5a59`
+
+The second fix reduced churn but did not eliminate duplicate decision revisions.
+
+Observed:
+
+- idle stable state: **PASS**;
+- first card play: **FAIL** — `rev=4 -> rev=5`, then roughly 532 ms later `rev=6`, while the compact visible state remained `Energy=2/3 Hand=4 Enemies=3`;
+- later reproduction: **FAIL** — `rev=13 -> rev=14` roughly 517 ms apart with the same compact visible state;
+- duplicate delays across the probe were approximately 0.5–1.4 seconds;
+- enemy turns: **PASS** — examples `rev=7 -> 8`, `rev=11 -> 12`, and `rev=15 -> 16`, with no continuous animation churn;
+- combat-end phase transition: **PASS** — `rev=19 phase=combat -> rev=20 phase=unknown`.
+
+Therefore `state_revision` remains `runtime_fail` after `a746dc4`.
+
+## Revision fix 3 — semantic decision boundary
+
+The third fix changes the model rather than extending the debounce timeout.
+
+Research into current STS2 automation/mod implementations showed that a reliable settlement boundary should distinguish decision semantics from presentation state and should consult native engine activity rather than infer readiness from elapsed time alone.
+
+OfficeSpire now applies these rules:
+
+- the 20 Hz live state snapshot is still published in full;
+- revision fingerprinting no longer hashes the complete `run + screen` JSON;
+- localized/rich presentation fields such as descriptions, rendered intent prose and other text cannot independently advance revision;
+- the semantic fingerprint contains structured decision fields such as HP/block/energy, hand identity/cost/damage/block/playability/targets, pile counts, enemy HP/block/powers/alive/hittable state, potions and stable run/relic state;
+- combat revision promotion requires `waiting_for_input=true` **and** `RunManager.Instance.ActionExecutor.CurrentlyRunningAction == null`;
+- a changed semantic candidate must be identical for **three consecutive actionable frames** before it is committed;
+- while the executor/input gate is busy or a candidate is settling, the snapshot reports `action_pending=true`;
 - phase changes still advance revision immediately.
 
-This is deliberately a decision-state debounce, not a delay in reading game state: raw screen snapshots continue to refresh at 20 Hz.
+This is intended to make `state_revision` a decision/stale-action guard rather than a presentation-render revision.
 
-## Revision retest 2
+## Revision retest 3
 
 Build/deploy the latest `main`, restart STS2, then run:
 
@@ -116,12 +137,18 @@ Build/deploy the latest `main`, restart STS2, then run:
 powershell -ExecutionPolicy Bypass -File .\scripts\watch-state.ps1
 ```
 
+Also tail the diagnostic log because it now records `pending` transitions even when the revision does not change:
+
+```powershell
+Get-Content "$env:APPDATA\SlayTheSpire2\OfficeSpire\runtime.log" -Wait -Tail 100
+```
+
 Verify:
 
-1. idle at an actionable combat state for several seconds: revision remains constant;
-2. play one card: after all effects settle, revision advances exactly once;
-3. play several more cards, including a card that changes a power/status if available: each completed decision transition advances once;
-4. end turn: enemy-animation states do not churn revision; the next player decision advances once;
+1. idle actionable combat state for several seconds: revision remains constant and `pending=false`;
+2. play one card: `pending` may toggle during execution/settlement, but after the action resolves the committed revision advances exactly once;
+3. repeat with several cards, especially one that changes a power/status if available;
+4. end turn: enemy work does not churn revision and the next player decision advances once;
 5. combat-end phase transition may advance revision separately.
 
 Only after this retest passes should `state_revision` be promoted from `runtime_fail` to `runtime_pass`.

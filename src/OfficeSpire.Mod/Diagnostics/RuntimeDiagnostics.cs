@@ -8,6 +8,7 @@ internal static class RuntimeDiagnostics
     private static readonly object Gate = new();
     private static long _lastRevision = long.MinValue;
     private static string? _lastPhase;
+    private static bool? _lastActionPending;
 
     private static string LogDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -23,17 +24,19 @@ internal static class RuntimeDiagnostics
         lock (Gate)
         {
             if (state.StateRevision == _lastRevision &&
-                string.Equals(state.Phase, _lastPhase, StringComparison.Ordinal))
+                string.Equals(state.Phase, _lastPhase, StringComparison.Ordinal) &&
+                state.ActionPending == _lastActionPending)
             {
                 return;
             }
 
             _lastRevision = state.StateRevision;
             _lastPhase = state.Phase;
+            _lastActionPending = state.ActionPending;
         }
 
         string detail = BuildSummary(state);
-        string line = $"[{DateTimeOffset.Now:O}] [OfficeSpire] state_changed | rev={state.StateRevision} phase={state.Phase}" +
+        string line = $"[{DateTimeOffset.Now:O}] [OfficeSpire] state_changed | rev={state.StateRevision} phase={state.Phase} pending={state.ActionPending}" +
                       (string.IsNullOrEmpty(detail) ? string.Empty : $" {detail}");
 
         try

@@ -37,6 +37,36 @@ M3 adapts STS2 API-access patterns documented in autoSpire for:
 
 OfficeSpire rewrites these into its own `IGameAdapter`/versioned protocol architecture. The autoSpire MIT notice is retained in `THIRD_PARTY_NOTICES.md`.
 
+## leetingo/spirescry
+
+- Repository: https://github.com/leetingo/spirescry
+- Reference commit: `cc1629845d1ed35ea03abc28adf7b35dfa5dcd8d`
+- Commit date: 2026-07-28
+- License: MIT
+
+Files inspected during the M3 revision-stability investigation:
+
+- `LICENSE`
+- `README.md`
+- `src/State/Signals.cs`
+- `src/State/Settlement.cs`
+- `src/State/LiveSettlement.cs`
+- `src/State/DecisionProjection.cs`
+- `src/State/Snapshotter.cs`
+
+### Revision-stability reference
+
+OfficeSpire used spirescry as an architectural reference after two runtime probes showed that hashing the entire rendered protocol snapshot and adding fixed-time debounce was the wrong abstraction for a decision revision.
+
+Concepts used as references:
+
+- separate stable/typed decision semantics from localized rich presentation fields;
+- consult native engine execution state such as `ActionExecutor.CurrentlyRunningAction` when deciding whether a decision boundary has settled;
+- require multiple consecutive identical GUI decision frames rather than relying on an arbitrary millisecond quiet period;
+- keep transport snapshots rich while using a smaller semantic projection for replay/stale-action identity.
+
+OfficeSpire's semantic fingerprint and revision state machine are independently written for its own DTO/protocol model. Spirescry's HTTP/CLI/headless implementation and source code were not copied.
+
 ## Alchyr/ModTemplate-StS2
 
 - Repository: https://github.com/Alchyr/ModTemplate-StS2

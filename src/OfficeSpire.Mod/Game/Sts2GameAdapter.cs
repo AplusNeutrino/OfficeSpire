@@ -23,16 +23,16 @@ namespace OfficeSpire.Game;
 /// </summary>
 public sealed class Sts2GameAdapter : IGameAdapter
 {
-    // A card play can briefly expose several actionable-looking snapshots while its effects
-    // are still converging. Require a quiet window before promoting a new combat decision
-    // state to a new revision. At the 20 Hz capture rate, 300 ms is roughly six samples.
-    private const long DecisionSettleMilliseconds = 300;
+    // GUI callbacks and card-resolution work can expose an actionable-looking state before the
+    // engine is genuinely quiet. Promote a changed semantic decision state only after three
+    // consecutive identical actionable frames. Presentation/localization fields are excluded.
+    private const int RequiredStableDecisionFrames = 3;
 
     private long _revision;
     private string _lastFingerprint = string.Empty;
     private string _lastPhase = string.Empty;
     private string _candidateFingerprint = string.Empty;
-    private long _candidateSinceMs;
+    private int _candidateStableFrames;
     private bool _candidateActive;
 
     public StateEnvelope CaptureState()
@@ -240,7 +240,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         JsonElement screen = JsonSerializer.SerializeToElement(screenValue, ProtocolJson.Options);
 
         bool phaseChanged = !string.Equals(phase, _lastPhase, StringComparison.Ordinal);
-        bool stableDecisionState = IsStableDecisionState(phase, screen);
+        bool stableDecisionState = IsStableDecisionState(phase, screenValue);
         bool actionPending = false;
 
         if (phaseChanged)
@@ -248,7 +248,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             _lastPhase = phase;
             ResetCandidate();
             _lastFingerprint = stableDecisionState
-                ? ComputeFingerprint(phase, run, screen)
+                ? ComputeDecisionFingerprint(phase, runValue, screenValue)
                 : string.Empty;
             _revision++;
             actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
@@ -256,14 +256,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
         else if (!stableDecisionState)
         {
-            // Any non-actionable combat frame breaks the candidate's quiet window. We still
-            // publish the fresh screen contents, but retain the last committed decision revision.
+            // Publish live animation/action-queue state but retain the last committed decision revision.
             ResetCandidate();
             actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal);
         }
         else
         {
-            string fingerprint = ComputeFingerprint(phase, run, screen);
+            string fingerprint = ComputeDecisionFingerprint(phase, runValue, screenValue);
 
             if (string.Equals(fingerprint, _lastFingerprint, StringComparison.Ordinal))
             {
@@ -272,23 +271,24 @@ public sealed class Sts2GameAdapter : IGameAdapter
             else if (!_candidateActive ||
                      !string.Equals(fingerprint, _candidateFingerprint, StringComparison.Ordinal))
             {
-                // A new actionable-looking state appeared. Do not immediately promote it: card
-                // effects can settle over several successive snapshots even while input briefly
-                // becomes enabled. Restart the quiet timer whenever the candidate changes.
                 _candidateFingerprint = fingerprint;
-                _candidateSinceMs = Environment.TickCount64;
+                _candidateStableFrames = 1;
                 _candidateActive = true;
                 actionPending = true;
             }
-            else if (ElapsedMilliseconds(_candidateSinceMs) >= DecisionSettleMilliseconds)
-            {
-                _lastFingerprint = fingerprint;
-                _revision++;
-                ResetCandidate();
-            }
             else
             {
-                actionPending = true;
+                _candidateStableFrames++;
+                if (_candidateStableFrames >= RequiredStableDecisionFrames)
+                {
+                    _lastFingerprint = fingerprint;
+                    _revision++;
+                    ResetCandidate();
+                }
+                else
+                {
+                    actionPending = true;
+                }
             }
         }
 
@@ -302,42 +302,154 @@ public sealed class Sts2GameAdapter : IGameAdapter
     }
 
     /// <summary>
-    /// Combat state is sampled continuously, including animation/action-queue windows where
-    /// PlayerActionsDisabled makes waiting_for_input temporarily false. Those transient frames
-    /// are still published to the overlay, but they must not advance the decision revision.
-    /// Actionable-looking snapshots also pass through a short quiet-window debounce before they
-    /// are promoted to a new revision.
+    /// A combat snapshot is eligible for revision promotion only when the game reports player
+    /// input enabled and the native action executor is idle. Queue/animation frames are still
+    /// published, but are marked pending and cannot mint a decision revision.
     /// </summary>
-    private static bool IsStableDecisionState(string phase, JsonElement screen)
+    private static bool IsStableDecisionState(string phase, object screenValue)
     {
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
         }
 
-        return screen.ValueKind == JsonValueKind.Object
-            && screen.TryGetProperty("waiting_for_input", out JsonElement waiting)
-            && waiting.ValueKind == JsonValueKind.True;
+        if (screenValue is not CombatScreenDto combat || !combat.WaitingForInput)
+        {
+            return false;
+        }
+
+        try
+        {
+            return RunManager.Instance.ActionExecutor?.CurrentlyRunningAction is null;
+        }
+        catch
+        {
+            // Future game API changes should fail closed rather than mint a false stable revision.
+            return false;
+        }
     }
 
-    private static string ComputeFingerprint(string phase, JsonElement run, JsonElement screen)
+    /// <summary>
+    /// Fingerprints only structured decision semantics. Rich/localized presentation fields such
+    /// as card/relic/potion descriptions, power descriptions, enemy names, and rendered intent
+    /// prose remain available in the live snapshot but cannot independently advance revision.
+    /// </summary>
+    private static string ComputeDecisionFingerprint(string phase, object runValue, object screenValue)
     {
-        string fingerprintInput = string.Concat(phase, "\n", run.GetRawText(), "\n", screen.GetRawText());
-        return Convert.ToHexString(
-            SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintInput)));
+        object runProjection;
+        if (runValue is RunSnapshotDto run)
+        {
+            runProjection = new
+            {
+                run.AscensionLevel,
+                run.CurrentAct,
+                run.CurrentFloor,
+                run.Gold,
+                Relics = run.Relics
+                    .OrderBy(relic => relic.Id, StringComparer.Ordinal)
+                    .Select(relic => new
+                    {
+                        relic.Id,
+                        relic.StackCount
+                    })
+                    .ToArray()
+            };
+        }
+        else
+        {
+            runProjection = new { };
+        }
+
+        object projection;
+        if (string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal) &&
+            screenValue is CombatScreenDto combat)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                Combat = new
+                {
+                    combat.RoundNumber,
+                    combat.IsPlayPhase,
+                    combat.Energy,
+                    combat.MaxEnergy,
+                    Player = new
+                    {
+                        combat.Player.CurrentHp,
+                        combat.Player.MaxHp,
+                        combat.Player.Block
+                    },
+                    Piles = new
+                    {
+                        combat.Piles.Draw,
+                        combat.Piles.Discard,
+                        combat.Piles.Exhaust
+                    },
+                    Hand = combat.Hand.Select(card => new
+                    {
+                        card.HandIndex,
+                        card.Id,
+                        card.Cost,
+                        card.Type,
+                        card.Rarity,
+                        card.Damage,
+                        card.Block,
+                        card.CanPlay,
+                        card.NeedsTarget,
+                        ValidTargetIds = card.ValidTargetIds.OrderBy(id => id).ToArray()
+                    }).ToArray(),
+                    Enemies = combat.Enemies
+                        .OrderBy(enemy => enemy.CombatId)
+                        .Select(enemy => new
+                        {
+                            enemy.CombatId,
+                            enemy.CurrentHp,
+                            enemy.MaxHp,
+                            enemy.Block,
+                            Powers = enemy.Powers
+                                .OrderBy(power => power.Name, StringComparer.Ordinal)
+                                .ThenBy(power => power.Amount)
+                                .Select(power => new
+                                {
+                                    power.Name,
+                                    power.Amount
+                                })
+                                .ToArray(),
+                            enemy.IsAlive,
+                            enemy.IsHittable
+                        })
+                        .ToArray(),
+                    Potions = combat.Potions
+                        .OrderBy(potion => potion.SlotIndex)
+                        .Select(potion => new
+                        {
+                            potion.SlotIndex,
+                            potion.Name,
+                            potion.TargetType
+                        })
+                        .ToArray()
+                }
+            };
+        }
+        else
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection
+            };
+        }
+
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(projection, ProtocolJson.Options);
+        return Convert.ToHexString(SHA256.HashData(payload));
     }
 
     private void ResetCandidate()
     {
         _candidateFingerprint = string.Empty;
-        _candidateSinceMs = 0;
+        _candidateStableFrames = 0;
         _candidateActive = false;
-    }
-
-    private static long ElapsedMilliseconds(long sinceMs)
-    {
-        long now = Environment.TickCount64;
-        return now >= sinceMs ? now - sinceMs : long.MaxValue;
     }
 
     private static bool NeedsExplicitTarget(TargetType targetType)
