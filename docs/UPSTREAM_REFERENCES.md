@@ -37,6 +37,20 @@ M3 adapts STS2 API-access patterns documented in autoSpire for:
 
 OfficeSpire rewrites these into its own `IGameAdapter`/versioned protocol architecture. The autoSpire MIT notice is retained in `THIRD_PARTY_NOTICES.md`.
 
+### M4 action reference
+
+Before implementing M4, the same exact reference commit was rechecked for current action and threading patterns in `scripts/core/GameHookServer.cs`.
+
+Observed STS2 API patterns:
+
+- background transport work hands mutation requests to a `ConcurrentQueue`, with Godot/main-thread code executing them;
+- untargeted/targeted card plays create `PlayCardAction(card, target)` and submit it through `RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(...)`;
+- end turn creates `EndPlayerTurnAction(player, combatState.RoundNumber)` and submits it through the same synchronizer;
+- potion use can call the potion model's `EnqueueManualUse(target)` normal game path;
+- target resolution uses current `CombatId` values and current combat state, not stale transport-side object references.
+
+OfficeSpire independently implements its own `ActionInbox`, WebSocket lifecycle, revision CAS checks, target parser and `M4GameAdapter`; it does not copy autoSpire's HTTP server, request/result models, multi-action logic or source layout.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry
@@ -54,6 +68,10 @@ Files inspected during the M3 revision-stability investigation:
 - `src/State/DecisionProjection.cs`
 - `src/State/Snapshotter.cs`
 
+Additional M4 inspection:
+
+- `src/Actions/Dispatcher.cs`
+
 ### Revision-stability reference
 
 OfficeSpire used spirescry as an architectural reference after two runtime probes showed that hashing the entire rendered protocol snapshot and adding fixed-time debounce was the wrong abstraction for a decision revision.
@@ -66,6 +84,20 @@ Concepts used as references:
 - keep transport snapshots rich while using a smaller semantic projection for replay/stale-action identity.
 
 OfficeSpire's semantic fingerprint and revision state machine are independently written for its own DTO/protocol model. Spirescry's HTTP/CLI/headless implementation and source code were not copied.
+
+### M4 dispatcher reference
+
+`src/Actions/Dispatcher.cs` was inspected to cross-check runtime gates and target semantics against another current STS2 implementation.
+
+Observed concepts:
+
+- combat actions re-check current phase/side and `CombatManager.PlayerActionsDisabled` immediately before mutation;
+- card playability is checked from the live card rather than assumed from an earlier snapshot;
+- enemy-targeted actions resolve against current living enemy combat IDs;
+- when exactly one legal enemy exists, an implementation may safely auto-target it; otherwise an explicit target is required;
+- an accepted action should be followed until a later authoritative decision boundary rather than treated as complete when merely enqueued.
+
+Spirescry's `DecisionSurface`, settlement module, headless support and direct potion-discard abstraction were **not copied**. In particular, OfficeSpire intentionally leaves potion discard unimplemented until an appropriate direct STS2 path for its own architecture is verified.
 
 ## Alchyr/ModTemplate-StS2
 
