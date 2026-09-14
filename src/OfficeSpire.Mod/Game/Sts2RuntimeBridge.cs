@@ -19,7 +19,7 @@ public static class Sts2RuntimeBridge
         OfficeSpireRuntime.AttachGameAdapter(new Sts2GameAdapter());
 
         _updateNode = new OfficeSpireUpdateNode();
-        NGame.Instance.AddChildSafely(_updateNode);
+        NGame.Instance.AddChild(_updateNode);
     }
 }
 

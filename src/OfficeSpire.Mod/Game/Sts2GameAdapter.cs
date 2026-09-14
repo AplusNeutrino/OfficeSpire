@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
 
@@ -182,7 +183,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return new CardSnapshotDto(
             HandIndex: handIndex,
             Id: card.Id.ToString(),
-            Name: SafeFormat(card.Title),
+            Name: CleanIcons(card.Title),
             Cost: card.EnergyCost.GetWithModifiers(CostModifiers.All),
             Type: card.Type.ToString(),
             Rarity: card.Rarity.ToString(),
@@ -197,7 +198,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
     private static EnemySnapshotDto BuildEnemySnapshot(Creature enemy, int fallbackIndex)
     {
-        int combatId = (int)(enemy.CombatId ?? -1);
+        int combatId = enemy.CombatId is uint id ? checked((int)id) : -1;
         string stableId = combatId >= 0 ? $"enemy-{combatId}" : $"enemy-index-{fallbackIndex}";
         string intent = enemy.Monster?.NextMove?.Intents
             ?.FirstOrDefault()
