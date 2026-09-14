@@ -1,8 +1,8 @@
 using System.Reflection;
 using Godot.Bridge;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
+using OfficeSpire.Diagnostics;
 using OfficeSpire.Game;
 using OfficeSpire.Runtime;
 
@@ -16,29 +16,70 @@ public sealed class ModEntry
 
     public static void Initialize()
     {
+        StartupDiagnostics.Mark("initializer_enter");
+
         Assembly assembly = Assembly.GetExecutingAssembly();
-
-        var harmony = new Harmony(HarmonyId);
-        harmony.PatchAll(assembly);
-
-        // Required for the runtime-created Godot update node used by the M3 adapter.
-        ScriptManagerBridge.LookupScriptsInAssembly(assembly);
-
-        OfficeSpireRuntime.Initialize();
+        StartupDiagnostics.Mark("assembly_resolved", assembly.FullName);
 
         try
         {
-            Sts2RuntimeBridge.Attach();
+            var harmony = new Harmony(HarmonyId);
+            harmony.PatchAll(assembly);
+            StartupDiagnostics.Mark("harmony_ready");
         }
         catch (Exception ex)
         {
-            // Transport remains usable with the NullGameAdapter if STS2 internals changed.
-            Log.Info($"[OfficeSpire] M3 adapter attach failed: {ex.GetType().Name}: {ex.Message}");
+            StartupDiagnostics.Failure("harmony", ex);
         }
 
-        int? port = OfficeSpireRuntime.Session?.Port;
-        Log.Info(port is null
-            ? "[OfficeSpire] v0.6 M3 initialized; transport session unavailable."
-            : $"[OfficeSpire] v0.6 M3 initialized; loopback transport listening on 127.0.0.1:{port}.");
+        try
+        {
+            ScriptManagerBridge.LookupScriptsInAssembly(assembly);
+            StartupDiagnostics.Mark("godot_script_bridge_ready");
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.Failure("godot_script_bridge", ex);
+        }
+
+        bool runtimeReady = false;
+        try
+        {
+            OfficeSpireRuntime.Initialize();
+            runtimeReady = true;
+            StartupDiagnostics.Mark(
+                "runtime_ready",
+                OfficeSpireRuntime.Session is { } session
+                    ? $"127.0.0.1:{session.Port}"
+                    : "transport_session_unavailable");
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.Failure("runtime", ex);
+        }
+
+        if (runtimeReady)
+        {
+            try
+            {
+                Sts2RuntimeBridge.Attach();
+                StartupDiagnostics.Mark("m3_adapter_attached");
+            }
+            catch (Exception ex)
+            {
+                // Keep the transport available with NullGameAdapter if STS2 internals changed.
+                StartupDiagnostics.Failure("m3_adapter_attach", ex);
+            }
+        }
+        else
+        {
+            StartupDiagnostics.Mark("m3_adapter_skipped", "runtime_not_ready");
+        }
+
+        StartupDiagnostics.Mark(
+            "initializer_complete",
+            OfficeSpireRuntime.Session is { } active
+                ? $"transport=127.0.0.1:{active.Port}"
+                : "transport=unavailable");
     }
 }

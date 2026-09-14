@@ -16,10 +16,16 @@ public static class Sts2RuntimeBridge
             return;
         }
 
+        NGame? game = NGame.Instance;
+        if (game is null)
+        {
+            throw new InvalidOperationException("NGame.Instance was null while attaching OfficeSpireUpdateNode.");
+        }
+
         OfficeSpireRuntime.AttachGameAdapter(new Sts2GameAdapter());
 
         _updateNode = new OfficeSpireUpdateNode();
-        NGame.Instance.AddChild(_updateNode);
+        game.AddChildSafely(_updateNode);
     }
 }
 
