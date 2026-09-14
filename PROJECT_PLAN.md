@@ -1,149 +1,88 @@
-# OfficeSpire — v0.6 Implementation Plan
+# OfficeSpire v0.6 Product Plan
 
-## 1. Project goal
+This document defines stable product scope, architecture boundaries, and engineering principles.
 
-OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**.
+Mutable milestone status, implementation order, versions, and exit criteria are maintained only in **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**. Runtime claims require evidence in **[docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md)**.
 
-The target experience is not a conventional in-game HUD mod. The game remains the authoritative simulation for combat, RNG, saves, rewards, events, shops, map generation, and progression, while OfficeSpire exposes the current run through a compact semi-transparent desktop overlay that can both **read state and issue normal game actions**.
+## Product goal
 
-The end-state should allow a run to be played primarily through the overlay:
+OfficeSpire is a text-first alternative control surface for Slay the Spire 2.
 
-- inspect player HP, block, energy, gold, relics, potions, deck and draw/discard/exhaust piles;
-- inspect enemies, HP, block, intent, powers/buffs/debuffs;
-- inspect the current hand and resolved card values;
-- play cards, choose targets, use/discard potions and end turn;
-- resolve card-selection screens;
-- inspect and choose map nodes/routes;
-- resolve combat rewards and card rewards;
-- use shops, campfires, treasures and events;
-- inspect run/game-over state;
-- switch the overlay automatically according to the current game phase.
+The intended v0.6 experience is a compact semi-transparent desktop overlay that allows a player to inspect and operate the ordinary run loop while STS2 remains the authoritative simulation:
 
-OfficeSpire deliberately stays on the **game/UI side** of the boundary. It will not implement process-name spoofing, anti-monitoring behavior, corporate endpoint/MDM evasion, log tampering, screenshot-tool countermeasures, or other system-level concealment.
+- player, enemy, hand, deck-pile, relic, potion, and turn state;
+- targeted and untargeted card play;
+- potion use and discard;
+- end turn;
+- card-selection prompts;
+- map routes and reachable-node selection;
+- combat and card rewards;
+- events;
+- shops and card removal;
+- rest sites;
+- treasures;
+- run/menu state where practical.
 
-## 2. Product concept
+The overlay presents choices and submits explicit user decisions. It does not select actions automatically.
 
-The primary UI is a small desktop window with:
-
-- semi-transparent background;
-- borderless presentation;
-- optional always-on-top mode;
-- drag and resize support;
-- keyboard-first controls with mouse fallback;
-- compact typography and low visual motion;
-- phase-specific layouts instead of a permanent full HUD.
-
-Example combat view:
-
-```text
-ACT 2 · F31                         227G
-HP 54/72        Block 8       Energy 3/3
-
-ENEMIES
-[A] Taskmaster        64/64      Attack 14
-    Weak 2
-[B] Red Slaver        23/48      Attack 7 x2
-
-HAND
-[1] Strike+       0      9 dmg
-[2] Defend        1      5 block
-[3] Neutralize    0      4 dmg · Weak 1
-[4] Backflip      1      5 block · Draw 2
-
-Draw 18 · Discard 5 · Exhaust 2
-
-[E] End Turn
-```
-
-Example map view:
-
-```text
-ACT 2 · FLOOR 31
-
-NEXT
-[A] Monster
-[B] Unknown
-[C] Elite
-
-ROUTES
-A  Monster -> ? -> Rest -> Elite -> Boss
-B  ? -> Shop -> Monster -> Rest -> Boss
-C  Elite -> ? -> Elite -> Rest -> Boss
-```
-
-## 3. Architecture
-
-OfficeSpire will be split into two processes/components.
+## System architecture
 
 ```text
 Slay the Spire 2
 └─ OfficeSpire Mod (.NET / C#)
-   ├─ State Reader
-   ├─ State Normalizer
-   ├─ Action Dispatcher
-   ├─ Action/Revision Guard
-   └─ Local Transport Server
+   ├─ Runtime adapter
+   ├─ State normalizer
+   ├─ Semantic revision guard
+   ├─ Main-thread action dispatcher
+   └─ Authenticated loopback transport
               │
-              │ localhost only
-              │ WebSocket (preferred)
               ▼
-OfficeSpire Overlay
-└─ Tauri + TypeScript UI
-   ├─ Connection/heartbeat
-   ├─ State store
-   ├─ Phase router
-   ├─ Keyboard command layer
-   └─ Semi-transparent desktop window
+OfficeSpire Overlay (Tauri + React + TypeScript)
+   ├─ Session discovery
+   ├─ Protocol handshake and reconnect
+   ├─ Phase-specific state renderer
+   ├─ Mouse and keyboard interaction
+   └─ Transparent desktop window
 ```
 
-### 3.1 Game mod responsibilities
+### Mod responsibilities
 
-The C# mod is the only component allowed to touch STS2 runtime objects.
+The mod is the only OfficeSpire component allowed to touch STS2 runtime objects. It:
 
-It will:
+1. identifies the current game phase;
+2. reads authoritative state;
+3. normalizes state into a versioned protocol;
+4. publishes snapshots;
+5. validates requests against the current decision revision;
+6. queues validated requests for the Godot main thread;
+7. invokes the normal native action path;
+8. reports accepted, rejected, failed, and completed outcomes.
 
-1. discover the current game phase;
-2. read authoritative game state;
-3. normalize it into a stable OfficeSpire protocol;
-4. publish snapshots/deltas to the overlay;
-5. accept high-level action requests;
-6. validate action requests against the current state revision;
-7. enqueue actions through the game's normal action systems where possible;
-8. report accepted/rejected/completed state transitions.
+### Overlay responsibilities
 
-The mod must not make gameplay decisions automatically. It is a control surface, not a bot.
+The overlay:
 
-### 3.2 Overlay responsibilities
+- consumes protocol data without depending on STS2 implementation types;
+- renders values supplied by the backend rather than reimplementing rules;
+- attaches the current expected revision to mutations;
+- prevents conflicting submissions while an action is pending;
+- surfaces disconnects, stale state, rejection, and recovery;
+- preserves user presentation preferences;
+- remains usable as an independent desktop window.
 
-The overlay must not depend on STS2 implementation types. It consumes a versioned JSON protocol.
+### Transport requirements
 
-It will:
-
-- render the appropriate view for `phase`;
-- convert keyboard/mouse input into protocol actions;
-- prevent duplicate submissions while an action is pending;
-- surface connection/action errors clearly but unobtrusively;
-- persist visual preferences such as opacity, window size and always-on-top.
-
-### 3.3 Transport
-
-Initial transport target: **localhost WebSocket**.
-
-Requirements:
-
-- bind only to loopback;
-- no internet exposure;
-- random/session token generated by the mod and supplied locally to the overlay;
-- protocol version handshake;
+- loopback-only binding;
+- per-session authentication token;
+- protocol-version handshake;
 - heartbeat and reconnect;
 - bounded message sizes;
-- action request IDs for acknowledgement.
+- unique action request IDs;
+- no remote-control surface in v0.6.
 
-If the STS2 runtime environment makes an embedded WebSocket server unnecessarily fragile, fallback is localhost HTTP + Server-Sent Events. The protocol models must remain transport-independent.
+## Protocol invariants
 
-## 4. Protocol model
-
-Every state snapshot will contain at minimum:
+A state snapshot contains at least:
 
 ```json
 {
@@ -156,13 +95,11 @@ Every state snapshot will contain at minimum:
 }
 ```
 
-### 4.1 Revision guard
-
-Every mutating request must include the state revision on which the user made the decision:
+A mutating request contains its decision revision:
 
 ```json
 {
-  "request_id": "...",
+  "request_id": "unique-id",
   "action": "play_card",
   "expected_revision": 1831,
   "payload": {
@@ -172,356 +109,108 @@ Every mutating request must include the state revision on which the user made th
 }
 ```
 
-If the game has advanced to another revision, the action is rejected as stale and the overlay refreshes before accepting another decision.
-
-This prevents card-index and target mismatches after animations, automatic triggers, draw/discard effects, or scene transitions.
-
-### 4.2 Action lifecycle
-
-```text
-READY
-  -> REQUEST_SENT
-  -> ACCEPTED / REJECTED
-  -> GAME_ACTION_PENDING
-  -> STATE_CHANGED
-  -> READY
-```
-
-The overlay should normally disable conflicting actions between `ACCEPTED` and the next authoritative state change.
-
-## 5. Supported phases and actions
-
-### Combat
-
-State:
-- player HP/max HP, block, energy;
-- gold;
-- hand;
-- draw/discard/exhaust counts and inspectable lists where available;
-- relics and counters;
-- potions;
-- enemies, stable IDs, HP, block, intent, powers;
-- turn information.
-
-Actions:
-- play card;
-- choose card target;
-- use potion;
-- discard potion;
-- choose potion target;
-- end turn.
-
-### Card selection
-
-State:
-- prompt/context;
-- candidate cards;
-- min/max selection count;
-- confirm/cancel capability.
-
-Actions:
-- select/unselect card;
-- confirm;
-- cancel where game permits.
-
-### Map
-
-State:
-- current node;
-- reachable next nodes;
-- map graph sufficient to render route previews;
-- node types and coordinates.
-
-Actions:
-- choose reachable node.
-
-### Rewards
-
-State:
-- gold/relic/potion/card rewards;
-- skip availability.
-
-Actions:
-- take reward;
-- select card reward;
-- skip.
-
-### Shop
-
-State:
-- gold;
-- purchasable cards/relics/potions;
-- prices;
-- sold state;
-- card-removal service and price.
-
-Actions:
-- buy item;
-- request card removal;
-- choose card to remove;
-- leave.
-
-### Event
-
-State:
-- event title/body where accessible;
-- options;
-- option availability/cost/result preview where the game already exposes it.
-
-Actions:
-- choose option.
-
-### Rest site
-
-State:
-- available rest-site options.
-
-Actions:
-- choose option;
-- resolve follow-up selections.
-
-### Treasure
-
-State:
-- chest/reward state.
-
-Actions:
-- open/take/continue as applicable.
-
-### Menu / run end
-
-Later in v0.6 scope after core run interaction is stable:
-- continue/new run;
-- character/ascension selection;
-- run result summary;
-- return to menu.
-
-## 6. Implementation stages
-
-The public product target remains **v0.6**, but implementation is divided into internal milestones so every stage is testable.
-
-### M0 — Repository and evidence baseline
-
-Deliverables:
-- `PROJECT_PLAN.md`;
-- source/research notes with exact upstream references and licenses;
-- minimal repository structure;
-- explicit assumptions and runtime unknowns.
-
-Exit criteria:
-- upstream code used as reference is documented;
-- no copied code without compatible licensing/attribution.
-
-### M1 — Buildable STS2 mod skeleton
-
-Deliverables:
-- .NET project;
-- STS2 mod manifest;
-- mod entry point/lifecycle logging;
-- build instructions;
-- no runtime state reading yet.
-
-Exit criteria:
-- project compiles against a documented local STS2 setup;
-- game can load the mod without changing gameplay.
-
-### M2 — Protocol + transport prototype
-
-Deliverables:
-- versioned protocol DTOs;
-- local transport abstraction;
-- WebSocket server prototype;
-- heartbeat/handshake;
-- mock state endpoint for overlay development.
-
-Exit criteria:
-- a local client can connect and receive mock snapshots;
-- malformed/oversized requests are rejected;
-- server binds to loopback only.
-
-### M3 — Read-only combat state
-
-Deliverables:
-- phase detector;
-- combat state reader;
-- hand/player/enemy/intent/power normalization;
-- state revision generation.
-
-Exit criteria:
-- snapshots match the visible game state during real combat;
-- transitions after draw, damage, powers and turn changes are observed correctly.
-
-### M4 — Combat actions
-
-Deliverables:
-- play-card action;
-- target validation;
-- end-turn action;
-- potion actions;
-- revision guard and action acknowledgements.
-
-Exit criteria:
-- a combat can be completed using protocol actions without clicking the original combat UI;
-- stale requests cannot play the wrong card/target.
-
-### M5 — Overlay shell
-
-Deliverables:
-- Tauri project;
-- transparent/borderless/resizable window;
-- optional always-on-top;
-- reconnect/heartbeat UI;
-- combat text layout;
-- keyboard navigation.
-
-Exit criteria:
-- overlay can display live M3 state;
-- overlay can complete an M4 combat.
-
-### M6 — Non-combat run loop
-
-Deliverables:
-- map state/actions;
-- rewards/card rewards;
-- card-selection screens;
-- events;
-- shops;
-- rest sites;
-- treasures.
-
-Exit criteria:
-- a normal act can be traversed using the overlay for all supported screens.
-
-### M7 — Full-run hardening
-
-Deliverables:
-- menu/run-end support where practical;
-- reconnect after scene transitions;
-- robust stable IDs;
-- action timeout/recovery;
-- protocol compatibility tests;
-- settings persistence;
-- packaging.
-
-Exit criteria:
-- repeated full runs can be performed without needing the original UI for ordinary supported decisions;
-- failure modes fall back safely to the original game rather than corrupting a run.
-
-## 7. Initial repository layout
-
-```text
-OfficeSpire/
-├─ PROJECT_PLAN.md
-├─ README.md
-├─ docs/
-│  ├─ ARCHITECTURE.md
-│  ├─ PROTOCOL.md
-│  ├─ UPSTREAM_REFERENCES.md
-│  └─ RUNTIME_VALIDATION.md
-├─ src/
-│  ├─ OfficeSpire.Mod/
-│  │  ├─ OfficeSpire.Mod.csproj
-│  │  ├─ OfficeSpire.json
-│  │  ├─ ModEntry.cs
-│  │  ├─ State/
-│  │  ├─ Actions/
-│  │  ├─ Protocol/
-│  │  └─ Transport/
-│  └─ OfficeSpire.Overlay/
-│     └─ ... Tauri/TypeScript application ...
-└─ tests/
-   └─ OfficeSpire.Protocol.Tests/
-```
-
-## 8. Upstream research targets
-
-The implementation should study, but not blindly clone, these existing projects/patterns:
-
-- `LightEnding/autoSpire` — STS2 state extraction and action dispatch patterns;
-- `S0ul3r/BoberInSpire` — external transparent overlay / STS2 bridge pattern;
-- `Alchyr/ModTemplate-StS2` — current STS2 mod project/manifest baseline;
-- `Alchyr/BaseLib-StS2` and/or current lightweight community libraries only where they materially reduce brittle reflection/patching.
-
-Before code reuse, record:
-- exact repository URL;
-- commit/reference examined;
-- license;
-- files/concepts reused;
-- whether code is copied, adapted, or independently reimplemented.
-
-## 9. Engineering rules
-
-1. **Game remains authoritative.** Never duplicate combat rules in the overlay when the runtime can provide the resolved value.
-2. **Stable protocol, unstable adapter.** STS2 internals may change; contain version-sensitive code behind adapters.
-3. **No optimistic mutations.** Overlay waits for authoritative state after actions.
-4. **No gameplay automation by default.** OfficeSpire executes explicit user choices only.
-5. **Fail open to vanilla UI.** If OfficeSpire disconnects or an adapter breaks, the run should remain playable in STS2.
-6. **Loopback-only transport.** No remote-control surface in v0.6.
-7. **Runtime evidence over assumptions.** Code existence or successful compilation is not proof that an STS2 action works. Mark runtime features unverified until tested in game.
-8. **Version everything.** Protocol version, tested STS2 build, and upstream references must be recorded.
-
-## 10. Testing strategy
+Actions are rejected when their expected revision is stale. Accepted actions are not considered complete until the backend observes the required authoritative state transition.
+
+## Engineering principles
+
+1. **The game is authoritative.** Do not duplicate combat rules, legality, costs, targets, RNG, or progression in the overlay when the runtime can supply them.
+2. **Stable protocol, isolated adapter.** Version-sensitive STS2 access stays behind the runtime adapter.
+3. **No optimistic mutation.** The overlay waits for authoritative state.
+4. **Explicit actions only.** OfficeSpire is a control surface, not a gameplay bot.
+5. **Fail open to vanilla UI.** Disconnects and unsupported states must leave the run playable.
+6. **Loopback only.** No internet or LAN control surface.
+7. **Evidence controls status.** Source, compilation, mocks, integration, and live runtime proof are distinct.
+8. **Fail closed on unsafe mutations.** Ambiguous, malformed, stale, or unsupported requests do not touch game state.
+9. **Version runtime dependencies.** Record the tested STS2 version/build, OfficeSpire commit, protocol version, and upstream references.
+10. **Accessibility before decoration.** Prefer readable text, predictable focus, low motion, scalable layout, and keyboard reachability.
+
+## Testing model
 
 ### Unit tests
-- protocol serialization/deserialization;
-- state revision logic;
+
+- protocol serialization and rejection;
+- semantic revision behavior;
 - action validation;
 - stable-ID mapping;
-- route graph formatting;
-- malformed message rejection.
+- phase-specific state formatting;
+- target-selection state;
+- malformed message handling.
 
 ### Integration tests without STS2
-- mock state server;
-- overlay reconnect;
-- action request/ack lifecycle;
-- phase routing;
-- stale revision behavior.
 
-### Runtime validation with STS2
-Every runtime feature is tracked as one of:
+- mock snapshot flow;
+- session handshake;
+- heartbeat/reconnect;
+- request/result lifecycle;
+- pending-action lock;
+- stale revision recovery;
+- phase routing;
+- frontend action construction.
+
+### Live STS2 validation
+
+Every runtime feature uses one of:
+
+- `not_implemented`;
 - `implemented_unverified`;
 - `runtime_pass`;
 - `runtime_fail`;
 - `blocked`.
 
-Required first runtime probes:
-1. mod loads on the target Steam build;
-2. current room/phase can be identified;
-3. hand and enemy state can be read;
-4. one targeted and one untargeted card can be played through the dispatcher;
-5. end turn works;
-6. game continues processing actions while the original main window is unfocused;
-7. separately test whether it continues processing while the original main window is minimized.
+Live evidence must identify the environment and distinguish:
 
-The last two are deliberately separate: minimized-window operation is a key product assumption but is not considered proven until runtime-tested.
+- original STS2 window focused;
+- original STS2 window unfocused;
+- original STS2 window minimized.
 
-## 11. v0.6 definition of done
+Success in one condition does not prove another.
 
-v0.6 is complete when all of the following are true on at least one explicitly documented STS2 Steam version:
+## v0.6 definition of done
 
-- OfficeSpire mod loads reliably;
-- overlay connects locally and reconnects after ordinary scene transitions;
-- combat is fully operable through the overlay for normal card/target/potion/end-turn interactions;
-- card-selection prompts are operable;
-- map path choice is operable;
-- rewards and card rewards are operable;
-- ordinary events are operable;
-- shops are operable, including card removal;
-- rest sites are operable;
-- treasures are operable;
-- overlay is semi-transparent, resizable, movable and keyboard-operable;
-- stale actions are rejected safely;
-- unsupported states never corrupt or silently advance a run;
-- runtime validation results and known unsupported cases are documented.
+v0.6 is complete when, on at least one explicitly documented STS2 build:
 
-## 12. Immediate next work
+- the mod loads reliably;
+- the overlay launches and connects locally;
+- scene transitions and ordinary reconnects recover;
+- live state accurately represents supported decisions;
+- combat works through normal card, target, potion, and end-turn interactions;
+- map, rewards, card selections, events, shops, rest sites, and treasures work for documented supported cases;
+- the overlay is translucent, movable, resizable, always-on-top capable, mouse-operable, and keyboard-operable;
+- stale and conflicting actions are rejected safely;
+- unsupported states never silently advance or corrupt a run;
+- installation, packaging, limitations, and runtime results are documented;
+- a distributable artifact is traceable to the validated commit.
 
-After this plan is committed, implementation begins with **M0/M1**:
+## Scope boundary
 
-1. inspect the current upstream STS2 mod template and action/state projects;
-2. document licenses and exact references in `docs/UPSTREAM_REFERENCES.md`;
-3. create the repository skeleton;
-4. create the buildable C# mod entry project and manifest;
-5. add protocol models that do not depend on STS2 internals;
-6. add a minimal test project for protocol serialization;
-7. mark all STS2 runtime behavior as unverified until tested against the user's installed Steam build.
+OfficeSpire stays on the game state/action/presentation side of the boundary. It will not implement:
+
+- process-name spoofing;
+- anti-monitoring or screenshot-tool countermeasures;
+- corporate endpoint or MDM evasion;
+- log tampering;
+- system-level concealment;
+- unattended gameplay automation.
+
+## Source and licensing discipline
+
+Before reusing external code, record:
+
+- repository URL;
+- exact commit/reference;
+- license;
+- files or concepts examined;
+- whether the result is copied, adapted, or independently reimplemented.
+
+See [docs/UPSTREAM_REFERENCES.md](docs/UPSTREAM_REFERENCES.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Documentation authority
+
+| Document | Responsibility |
+|---|---|
+| [docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md) | Current milestone, detailed route, status, execution order, exit criteria |
+| [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md) | Runtime environment, probes, observations, evidence |
+| [docs/PROTOCOL.md](docs/PROTOCOL.md) | Wire schema and protocol behavior |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Component design and boundaries |
+| [docs/UPSTREAM_REFERENCES.md](docs/UPSTREAM_REFERENCES.md) | External research and licensing |
+| [README.md](README.md) | Concise public project summary |
