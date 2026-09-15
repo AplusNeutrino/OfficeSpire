@@ -75,6 +75,8 @@ Versioned local settings now persist background opacity, interface scale, high c
 
 Protocol ingestion now fails closed on ambiguous actionable identities, including duplicate hand/slot/choice indexes, duplicate or negative combat IDs, duplicate map coordinates, and empty/duplicate enemy stable IDs. Malformed snapshots cannot replace the last accepted state or enable mutations.
 
+Protocol compatibility checks now distinguish a structurally valid future envelope from an exactly compatible protocol-v1 connection. A release preflight verifies npm lockfile, Cargo, Tauri, Mod compatibility line, application identity, and bundle activation before packaging.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**
@@ -139,7 +141,7 @@ Build the overlay frontend:
 ```bash
 cd src/OfficeSpire.Overlay
 npm install
-npm run build
+npm run check
 ```
 
 Tauri runtime/build validation remains part of the active M5 milestone; consult the canonical roadmap before treating it as passed.

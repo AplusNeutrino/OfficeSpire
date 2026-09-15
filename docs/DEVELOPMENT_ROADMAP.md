@@ -467,6 +467,9 @@ Implementation checkpoint — 2026-09-15:
 - protocol ingestion validates non-negative, unique action indexes and stable identities for combat, map, reward, selection, event, rest, treasure, and shop snapshots;
 - ambiguous snapshots fail closed before replacing the last accepted state, so duplicate identities cannot become actionable UI;
 - malformed-identity regression tests and the frontend production build pass; live version-drift behavior remains `implemented_unverified`.
+- protocol parsing now rejects malformed version numbers while preserving future-version envelopes long enough to report an explicit incompatibility;
+- `npm run check` provides a single formatting, test, frontend-build, and release-metadata preflight, and Overlay CI runs it plus production dependency audit;
+- release metadata synchronization is source-validated; native Windows bundle creation, install, upgrade, and signing remain `implemented_unverified`.
 
 Scope:
 

@@ -4,6 +4,7 @@ import {
   actionStatusMessage,
   getStateMessage,
   parseEnvelope,
+  isCompatibleProtocolVersion,
 } from "./protocol";
 import {
   createChooseMapNodeAction,
@@ -59,6 +60,25 @@ describe("OfficeSpire wire protocol", () => {
     expect(
       parseEnvelope('{"type":"pong","protocol_version":1,"body":{}}').type,
     ).toBe("pong");
+  });
+  it("defines exact protocol-v1 compatibility while parsing future envelopes", () => {
+    expect(isCompatibleProtocolVersion(1)).toBe(true);
+    expect(isCompatibleProtocolVersion(2)).toBe(false);
+    expect(isCompatibleProtocolVersion(1.5)).toBe(false);
+    expect(
+      parseEnvelope('{"type":"future","protocol_version":2,"body":{}}'),
+    ).toMatchObject({ type: "future", protocol_version: 2 });
+  });
+  it("rejects malformed protocol versions and empty message types", () => {
+    expect(() =>
+      parseEnvelope('{"type":"state","protocol_version":1.5,"body":{}}'),
+    ).toThrow(/envelope/);
+    expect(() =>
+      parseEnvelope('{"type":"","protocol_version":1,"body":{}}'),
+    ).toThrow(/envelope/);
+    expect(() =>
+      parseEnvelope('{"type":"state","protocol_version":0,"body":{}}'),
+    ).toThrow(/envelope/);
   });
   it("creates a revision-guarded map choice", () => {
     const action = createChooseMapNodeAction(2, 7, 41);

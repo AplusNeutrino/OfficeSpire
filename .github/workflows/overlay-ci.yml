@@ -20,5 +20,5 @@ jobs:
           cache: npm
           cache-dependency-path: src/OfficeSpire.Overlay/package-lock.json
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - run: npm run check
+      - run: npm audit --omit=dev

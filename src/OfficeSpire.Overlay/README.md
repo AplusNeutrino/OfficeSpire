@@ -20,8 +20,8 @@ All native desktop and live STS2 behavior remains `implemented_unverified` until
 
 ```bash
 npm ci
-npm test
-npm run build
+npm run check
+npm audit --omit=dev
 ```
 
 ## Desktop development
@@ -42,3 +42,5 @@ npm run tauri build
 ```
 
 Do not mark the desktop build or live combat loop as runtime-pass solely because the frontend production build succeeds.
+
+`npm run check` verifies formatting, protocol tests, the production frontend build, and synchronized release metadata across package-lock, Cargo, Tauri, and the Mod compatibility line.

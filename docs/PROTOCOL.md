@@ -66,6 +66,8 @@ Inbound messages are capped at 64 KiB. Outbound messages are capped at 1 MiB.
 
 Clients must reject an entire snapshot when actionable identities are ambiguous. Protocol-v1 Overlay validation requires non-negative unique combat IDs, hand/potion indexes and choice indexes; unique map coordinates and stable IDs within each route collection; unique shop category/index pairs; and non-empty unique enemy stable IDs. A rejected snapshot must not replace the last accepted state or enable a mutation.
 
+Envelope parsing and compatibility negotiation are separate. A positive-integer future protocol version is structurally parseable so the client can present an explicit incompatibility state, but only exact version `1` is accepted for session connection or message processing. Fractional, zero, negative, missing, or otherwise malformed versions are rejected as invalid envelopes.
+
 `action_pending=true` means conflicting mutation requests should not be sent. It is true while either the game itself is settling or OfficeSpire has a queued/accepted action waiting to reach the next authoritative decision boundary.
 
 Known phase names:

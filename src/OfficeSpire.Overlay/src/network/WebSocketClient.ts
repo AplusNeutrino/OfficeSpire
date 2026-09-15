@@ -1,5 +1,4 @@
 import {
-  PROTOCOL_VERSION,
   isStateSnapshot,
   type ActionResponse,
   type OverlayAction,
@@ -13,6 +12,7 @@ import {
   getStateMessage,
   parseEnvelope,
   pingMessage,
+  isCompatibleProtocolVersion,
 } from "./protocol";
 export interface ClientCallbacks {
   onOpen: () => void;
@@ -29,7 +29,7 @@ export class OfficeSpireWebSocketClient {
   constructor(private readonly callbacks: ClientCallbacks) {}
   connect(session: SessionDescriptor): void {
     this.disconnect();
-    if (session.protocol_version !== PROTOCOL_VERSION) {
+    if (!isCompatibleProtocolVersion(session.protocol_version)) {
       this.callbacks.onIncompatible(session.protocol_version);
       return;
     }
@@ -81,7 +81,7 @@ export class OfficeSpireWebSocketClient {
   private handleMessage(data: string): void {
     try {
       const message = parseEnvelope(data);
-      if (message.protocol_version !== PROTOCOL_VERSION) {
+      if (!isCompatibleProtocolVersion(message.protocol_version)) {
         this.callbacks.onIncompatible(message.protocol_version);
         this.disconnect();
         return;

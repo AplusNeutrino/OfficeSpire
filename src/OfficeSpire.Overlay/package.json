@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
+    "check": "prettier --check src && npm test && npm run build && node scripts/verify-release.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
