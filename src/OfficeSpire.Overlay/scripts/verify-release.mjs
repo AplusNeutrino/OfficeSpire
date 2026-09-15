@@ -37,5 +37,24 @@ if (overlayLine !== modLine)
 if (tauriJson.identifier !== "com.officespire.overlay")
   fail("unexpected Tauri application identifier");
 if (tauriJson.bundle?.active !== true) fail("Tauri bundling is disabled");
+if (modJson.id !== "OfficeSpire") fail("unexpected Mod ID");
+if (modJson.has_dll !== true || modJson.has_pck !== false)
+  fail("OfficeSpire must remain a DLL-only Mod payload");
+if (!Array.isArray(modJson.dependencies))
+  fail("Mod dependencies must be an array");
+const dependencyIds = new Set();
+for (const dependency of modJson.dependencies) {
+  if (
+    !dependency ||
+    typeof dependency.id !== "string" ||
+    dependency.id.length === 0 ||
+    typeof dependency.min_version !== "string" ||
+    dependency.min_version.length === 0
+  )
+    fail("each Mod dependency must contain id and min_version");
+  if (dependencyIds.has(dependency.id))
+    fail(`duplicate Mod dependency ${dependency.id}`);
+  dependencyIds.add(dependency.id);
+}
 
 console.log(`Release preflight passed for OfficeSpire ${overlayVersion}.`);

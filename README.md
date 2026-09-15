@@ -163,6 +163,7 @@ Tauri runtime/build validation remains part of the active M5 milestone; consult 
 - [Protocol](docs/PROTOCOL.md)
 - [Upstream references](docs/UPSTREAM_REFERENCES.md)
 - [Project scope](PROJECT_PLAN.md)
+- [Steam Workshop release preparation](docs/STEAM_WORKSHOP_RELEASE.md)
 
 ## Third-party notices and license
 

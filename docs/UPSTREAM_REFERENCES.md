@@ -145,6 +145,7 @@ Facts/patterns used as compatibility reference:
 - game-provided `sts2.dll` and `0Harmony.dll` references;
 - `[ModInitializer]` and Harmony initialization;
 - current manifest field names.
+- dependency entries containing a stable `id` and `min_version`; OfficeSpire currently uses no external Mod framework and therefore retains an empty dependency list.
 
 No source from this repository has been copied into OfficeSpire.
 

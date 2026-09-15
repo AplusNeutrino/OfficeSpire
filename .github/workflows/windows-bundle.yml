@@ -1,0 +1,36 @@
+name: Windows Bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-windows-bundle:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src/OfficeSpire.Overlay
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/OfficeSpire.Overlay/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src/OfficeSpire.Overlay/src-tauri -> target
+      - run: npm ci
+      - run: npm run check
+      - uses: tauri-apps/tauri-action@v1
+        with:
+          projectPath: src/OfficeSpire.Overlay
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OfficeSpire-Overlay-unsigned-windows
+          path: src/OfficeSpire.Overlay/src-tauri/target/release/bundle/**
+          if-no-files-found: error
+          retention-days: 14

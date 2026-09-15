@@ -29,7 +29,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 | M5 | Overlay Prototype | `implemented_unverified` |
 | M6 | Map Controller | `implemented_unverified` |
 | M7 | Run Decisions | `implemented_unverified` |
-| M8 | Advanced Combat / Hardening | `not_implemented` (potion slice `implemented_unverified`) |
+| M8 | Advanced Combat / Hardening | partial; completed slices `implemented_unverified` |
 
 M4 passes as a core control-chain milestone. Potion use/discard and the extreme main-thread race probe remain separately tracked and do not invalidate that core milestone.
 
@@ -42,6 +42,8 @@ Settings/accessibility source checkpoint: versioned local persistence, bounded o
 Stable-identity source checkpoint: the protocol boundary rejects negative or duplicate combat IDs, hand/potion indexes, route coordinates, phase choice indexes, shop category/index pairs, and empty/duplicate enemy stable IDs. Regression/build evidence exists; malformed live snapshots and game-version drift remain `implemented_unverified`.
 
 Compatibility/release source checkpoint: exact protocol-v1 negotiation, malformed-version rejection, forward envelope parsing, and synchronized npm/Cargo/Tauri/Mod release metadata checks are implemented. Automated tests and frontend preflight pass; native Windows bundling, signing, install, and upgrade remain `implemented_unverified`.
+
+Workshop-preparation source checkpoint: a manual-only Windows bundle workflow, DLL-only manifest/dependency checks, a non-publishing PowerShell candidate packager, checksum generation, and a clean-install checklist are implemented. Current declared third-party Mod dependencies remain empty because no external framework API is used. The workflow and PowerShell script were not run in this Linux environment; Windows artifact creation, Workshop executable/content-root policy, clean subscription, dependency coexistence, signing, install, upgrade, and uninstall behavior remain `implemented_unverified`.
 
 ## M1 — Mod Runtime
 

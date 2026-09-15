@@ -444,7 +444,7 @@ M7 exit criteria:
 
 Planned after the ordinary run-decision loop is established.
 
-Status: `not_implemented` overall; potion controls are the first `implemented_unverified` slice.
+Status: partial source development; completed slices are `implemented_unverified`, while remaining scope is `not_implemented`.
 
 Implementation checkpoint — 2026-09-15:
 
@@ -470,6 +470,10 @@ Implementation checkpoint — 2026-09-15:
 - protocol parsing now rejects malformed version numbers while preserving future-version envelopes long enough to report an explicit incompatibility;
 - `npm run check` provides a single formatting, test, frontend-build, and release-metadata preflight, and Overlay CI runs it plus production dependency audit;
 - release metadata synchronization is source-validated; native Windows bundle creation, install, upgrade, and signing remain `implemented_unverified`.
+- a manual-only Windows bundle workflow produces an unsigned downloadable artifact without creating a GitHub release or publishing to Steam;
+- a local PowerShell packager validates the DLL-only Mod manifest and declared dependency shape, stages a traceable Workshop candidate, and writes a SHA-256 checksum without invoking SteamCMD or a Workshop API;
+- OfficeSpire currently has no third-party Mod-framework dependency, so the manifest retains `dependencies: []`; any future required framework must be declared by stable ID and minimum version rather than bundled;
+- Windows workflow execution, PowerShell packaging, Workshop content-root/executable policy, clean subscription, install, upgrade, and signing remain `implemented_unverified`.
 
 Scope:
 
@@ -503,7 +507,7 @@ Exit criteria:
 | v0.6-alpha.2 | Overlay Prototype | Live translucent mouse-operated combat overlay | `implemented_unverified` |
 | v0.6-alpha.3 | Map Controller | Map display and native route selection | `implemented_unverified` |
 | v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `implemented_unverified` |
-| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `not_implemented` (potion slice `implemented_unverified`) |
+| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | partial; completed slices `implemented_unverified` |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
 
 Version numbers may be adjusted before release, but milestone scope and evidence gates must be updated here first.
