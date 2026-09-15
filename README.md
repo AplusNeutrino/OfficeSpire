@@ -71,6 +71,8 @@ Keyboard controls now cover every currently supported overlay screen. Number key
 
 Action recovery now includes a 15-second client observation deadline, stale request-result filtering, continued authoritative state polling after timeout, and reconnect backoff from 1 to 10 seconds. Timed-out mutations are never automatically replayed.
 
+Versioned local settings now persist background opacity, interface scale, high contrast, and reduced motion. The keyboard-contained settings dialog disables underlying game actions while open; native Tauri rendering remains `implemented_unverified`.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

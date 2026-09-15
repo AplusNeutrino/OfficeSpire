@@ -461,6 +461,9 @@ Implementation checkpoint — 2026-09-15:
 - late results from superseded request IDs are ignored while state polling continues as the recovery authority;
 - reconnect discovery uses bounded 1–10 second backoff and resets after a successful connection;
 - timeout/reconnect source tests pass, while scene-transition and process-restart behavior remain `implemented_unverified`.
+- versioned, fail-safe local settings persist opacity, 85–140% interface scaling, high contrast, and reduced motion;
+- the modal settings surface traps focus, supports Escape close, and disables underlying mutation controls while open;
+- settings parsing/clamping tests and the frontend production build pass; Windows/Tauri visual behavior remains `implemented_unverified`.
 
 Scope:
 

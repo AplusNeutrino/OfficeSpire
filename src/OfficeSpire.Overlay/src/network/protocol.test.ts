@@ -26,6 +26,7 @@ import { resolveCombatShortcut } from "../actions/combatKeyboard";
 import { resolveRunShortcut } from "../actions/runKeyboard";
 import { ACTION_TIMEOUT_MS, clientTimeoutResult } from "./actionLifecycle";
 import { ReconnectController } from "./reconnect";
+import { DEFAULT_SETTINGS, parseSettings } from "../settings";
 describe("OfficeSpire wire protocol", () => {
   it("wraps state requests with protocol version 1", () => {
     expect(getStateMessage()).toEqual({
@@ -307,5 +308,26 @@ describe("OfficeSpire wire protocol", () => {
     expect(reconnect.nextDelay()).toBe(10_000);
     reconnect.reset();
     expect(reconnect.nextDelay()).toBe(1_000);
+  });
+  it("loads versioned settings and clamps unsafe display values", () => {
+    expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings("not json")).toEqual(DEFAULT_SETTINGS);
+    expect(
+      parseSettings(
+        JSON.stringify({
+          version: 1,
+          opacity: 2,
+          scale: 0.1,
+          highContrast: true,
+          reduceMotion: true,
+        }),
+      ),
+    ).toEqual({
+      version: 1,
+      opacity: 0.98,
+      scale: 0.85,
+      highContrast: true,
+      reduceMotion: true,
+    });
   });
 });

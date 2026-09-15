@@ -37,6 +37,8 @@ M8 source checkpoint: keyboard shortcuts and pure key-mapping tests cover every 
 
 Recovery source checkpoint: the overlay has a 15-second non-replaying action timeout, request-ID filtering, continued state polling, and bounded reconnect backoff. Unit/build evidence exists; STS2 scene-transition, backend-restart, and delayed-action behavior remain `implemented_unverified`.
 
+Settings/accessibility source checkpoint: versioned local persistence, bounded opacity/scale values, high contrast, reduced motion, modal focus containment, and action suppression while settings are open are implemented. Parser tests and frontend build evidence exist; Windows/Tauri rendering and assistive-technology behavior remain `implemented_unverified`.
+
 ## M1 — Mod Runtime
 
 Status: `runtime_pass`

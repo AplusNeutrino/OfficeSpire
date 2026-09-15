@@ -25,17 +25,87 @@ button {
   color: inherit;
 }
 .overlay {
+  --overlay-opacity: 0.91;
+  --ui-scale: 1;
   height: 100%;
+  position: relative;
   overflow: auto;
   padding: 12px;
   background: linear-gradient(
     145deg,
-    rgba(16, 18, 22, 0.91),
-    rgba(28, 23, 29, 0.84)
+    rgba(16, 18, 22, var(--overlay-opacity)),
+    rgba(28, 23, 29, calc(var(--overlay-opacity) - 0.07))
   );
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.34);
+  transform-origin: top left;
+}
+.title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-toggle,
+.settings-panel button {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+}
+.settings-toggle {
+  width: 28px;
+  height: 26px;
+}
+.settings-panel {
+  position: absolute;
+  z-index: 10;
+  inset: 48px 12px auto;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(212, 169, 94, 0.55);
+  border-radius: 10px;
+  background: rgba(18, 19, 23, 0.98);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+}
+.settings-panel header,
+.settings-panel label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.settings-panel h1 {
+  margin: 0;
+}
+.settings-panel label:not(.setting-check) {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+.settings-panel input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.settings-panel .setting-check {
+  justify-content: flex-start;
+}
+.settings-reset {
+  padding: 8px;
+}
+.overlay.high-contrast {
+  color: #fff;
+  border-color: #fff;
+}
+.overlay.high-contrast button:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.62);
+}
+.overlay.reduce-motion *,
+.overlay.reduce-motion *::before,
+.overlay.reduce-motion *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
 }
 .titlebar,
 .run-line,

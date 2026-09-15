@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type {
   ActionResponse,
   CardState,
@@ -51,6 +57,7 @@ import { EventPanel } from "./components/EventPanel";
 import { RestPanel } from "./components/RestPanel";
 import { TreasurePanel } from "./components/TreasurePanel";
 import { ShopPanel } from "./components/ShopPanel";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 import { ReconnectController } from "./network/reconnect";
@@ -58,6 +65,7 @@ import {
   ACTION_TIMEOUT_MS,
   clientTimeoutResult,
 } from "./network/actionLifecycle";
+import { loadSettings, saveSettings, type OverlaySettings } from "./settings";
 const terminalCodes = new Set([
   "completed",
   "stale_state",
@@ -88,6 +96,8 @@ export default function App() {
   const [actionResult, setActionResult] = useState<ActionResponse>();
   const [selectedCard, setSelectedCard] = useState<CardState>();
   const [selectedPotion, setSelectedPotion] = useState<PotionState>();
+  const [settings, setSettings] = useState(loadSettings);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const clientRef = useRef<OfficeSpireWebSocketClient | undefined>(undefined);
   const retryRef = useRef<number | undefined>(undefined);
   const pollRef = useRef<number | undefined>(undefined);
@@ -333,10 +343,16 @@ export default function App() {
     !terminalCodes.has(actionResult.code)
   );
   const disabled =
+    settingsOpen ||
     status !== "connected" ||
     !snapshot ||
     snapshot.action_pending ||
     actionInFlight;
+  const updateSettings = (next: OverlaySettings) => {
+    setSettings(next);
+    saveSettings(next);
+  };
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
@@ -530,11 +546,40 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [disabled, snapshot]);
   return (
-    <main className="overlay" data-tauri-drag-region>
+    <main
+      className={`overlay${settings.highContrast ? " high-contrast" : ""}${settings.reduceMotion ? " reduce-motion" : ""}`}
+      style={
+        {
+          "--overlay-opacity": settings.opacity,
+          "--ui-scale": settings.scale,
+          width: `${100 / settings.scale}%`,
+          height: `${100 / settings.scale}%`,
+          transform: `scale(${settings.scale})`,
+        } as CSSProperties
+      }
+      data-tauri-drag-region
+    >
       <div className="titlebar" data-tauri-drag-region>
         <strong>OfficeSpire</strong>
-        <span className={`status ${status}`}>{status}</span>
+        <span className="title-actions">
+          <span className={`status ${status}`}>{status}</span>
+          <button
+            className="settings-toggle"
+            onClick={() => setSettingsOpen((open) => !open)}
+            aria-label="Overlay settings"
+            aria-expanded={settingsOpen}
+          >
+            ⚙
+          </button>
+        </span>
       </div>
+      {settingsOpen && (
+        <SettingsPanel
+          settings={settings}
+          onChange={updateSettings}
+          onClose={closeSettings}
+        />
+      )}
       {!snapshot ? (
         <section className="empty">
           <h1>Waiting for STS2</h1>
