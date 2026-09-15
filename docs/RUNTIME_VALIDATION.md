@@ -29,7 +29,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 | M5 | Overlay Prototype | `implemented_unverified` |
 | M6 | Map Controller | `implemented_unverified` |
 | M7 | Run Decisions | `implemented_unverified` |
-| M8 | Advanced Combat / Hardening | partial; completed slices `implemented_unverified` |
+| M8 | Advanced Combat / Hardening | `implemented_unverified` (source complete) |
 
 M4 passes as a core control-chain milestone. Potion use/discard and the extreme main-thread race probe remain separately tracked and do not invalidate that core milestone.
 
@@ -50,6 +50,8 @@ Menu-lifecycle source checkpoint: a missing native run state is represented as a
 Run-end source checkpoint: the native visible `NGameOverScreen` gates a read-only `run_end` snapshot, and outcome classification uses the engine's abandonment flag, current victory-room flag, and win time. Protocol validation accepts only `victory`, `defeat`, or `abandoned`; no post-run write action exists. Unit/build evidence exists, but Mod compilation against current game assemblies, victory/defeat/abandon observations, death-prevention edges, and return-to-menu transitions remain `implemented_unverified`.
 
 Race-evidence source checkpoint: `npm run analyze:runtime` passively parses OfficeSpire runtime logs and reports revision regressions, same-revision phase changes, pending cycles, unresolved pending state, and represented phases. Its schema permanently requires manual runtime judgment and it sends no game action. Synthetic parser tests exist; no STS2 stress observation has been performed, so the extreme main-thread race capability remains `implemented_unverified`.
+
+M8 final source audit: every planned development slice has an implementation, fail-closed boundary, test/preflight path, documentation, or an explicit product decision not to expose automation. No M8 capability is promoted by this audit. Potion/race/full-run behavior, native Mod and Tauri builds, Windows interaction, lifecycle edges, packaging/install/upgrade/uninstall, signing, and Workshop compatibility all remain `implemented_unverified` pending external runtime evidence.
 
 ## M1 — Mod Runtime
 

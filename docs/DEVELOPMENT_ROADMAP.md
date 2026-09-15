@@ -8,7 +8,7 @@
 Last updated: 2026-09-15
 Product target: OfficeSpire v0.6
 Current development version: v0.6-beta.1 — Full Run Hardening
-Current milestone: M8 (partial source development; live runtime validation remains deferred)
+Current milestone: M8 (source complete; live runtime validation remains deferred)
 Previous validated milestone: v0.6-alpha.1 — Playable Backend
 
 ## 1. Product objective
@@ -444,7 +444,7 @@ M7 exit criteria:
 
 Planned after the ordinary run-decision loop is established.
 
-Status: partial source development; completed slices are `implemented_unverified`, while remaining scope is `not_implemented`.
+Status: `implemented_unverified` — all planned source deliverables are complete; mandatory runtime exit criteria have not passed.
 
 Implementation checkpoint — 2026-09-15:
 
@@ -500,6 +500,21 @@ Scope:
 - protocol compatibility tests;
 - repeated full-run validation.
 
+Final source-delivery audit — 2026-09-15:
+
+| M8 area | Source status | Remaining evidence gate |
+|---|---|---|
+| Potion use/discard | `implemented_unverified` | Live targeted/untargeted use, discard, settlement, and stale rejection |
+| Main-thread race safety | `implemented_unverified` | One-shot stale-window probe and passive analyzer evidence in STS2 |
+| Keyboard/accessibility/settings | `implemented_unverified` | Windows/Tauri focus, scaling, contrast, reduced-motion, and assistive-technology checks |
+| Timeout/reconnect/recovery | `implemented_unverified` | Backend restart, scene transition, delayed result, and no-replay observations |
+| Stable identity/protocol compatibility | `implemented_unverified` | Live malformed/version-drift behavior against supported game builds |
+| Menu/run end | `implemented_unverified` | Startup, resume, victory, defeat, abandon, revival edge, and return-to-menu observations |
+| Windows/Workshop packaging | `implemented_unverified` | Native bundle, signing decision, candidate script, clean install/upgrade/uninstall, and Workshop policy check |
+| Repeated supported full run | `implemented_unverified` | Recorded full-run matrix with exact commits and artifacts |
+
+Run-start automation is intentionally not exposed: OfficeSpire remains an explicit control surface, and starting/resuming a run stays in the original STS2 UI. This is a product safety boundary, not an unfinished mutation path.
+
 Exit criteria:
 
 - normal supported runs can be operated primarily through OfficeSpire;
@@ -516,26 +531,23 @@ Exit criteria:
 | v0.6-alpha.2 | Overlay Prototype | Live translucent mouse-operated combat overlay | `implemented_unverified` |
 | v0.6-alpha.3 | Map Controller | Map display and native route selection | `implemented_unverified` |
 | v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `implemented_unverified` |
-| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | partial; completed slices `implemented_unverified` |
+| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `implemented_unverified` (source complete) |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
 
 Version numbers may be adjusted before release, but milestone scope and evidence gates must be updated here first.
 
 ## 10. Immediate execution order
 
-The next implementation cycle follows this order:
+No further unattended source-development cycle is scheduled for M8. Resume only when the external runtime is available, in this order:
 
-1. audit the current Overlay source against M5.0–M5.4;
-2. make the frontend/Tauri build reproducible;
-3. launch and validate the real desktop shell;
-4. finish session discovery, handshake, heartbeat, and reconnect;
-5. replace every demo combat dependency with live snapshots;
-6. complete safe mouse card and target interaction;
-7. complete End Turn interaction;
-8. add action lifecycle and error presentation;
-9. run the M5 validation matrix when its external runtime becomes available;
-10. continue isolated M6 source work without claiming runtime completion;
-11. run the M6 validation matrix against STS2 and record evidence.
+1. build the Mod against the installed supported STS2 assemblies;
+2. run the manual Windows bundle workflow and PowerShell candidate packager;
+3. validate the Tauri shell, session discovery, focus, settings, and reconnect behavior;
+4. execute potion and one-shot main-thread stale-window probes without replay;
+5. validate menu/run-end and death-prevention edges;
+6. complete repeated supported full runs and clean install/upgrade/uninstall checks;
+7. confirm current STS2 Workshop content policy and test a private candidate manually;
+8. promote only individually evidenced capabilities to `runtime_pass`.
 
 ## 11. Documentation ownership
 

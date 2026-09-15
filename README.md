@@ -4,7 +4,7 @@ OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**
 
 It pairs a C#/.NET game mod with a compact Tauri/React desktop overlay. STS2 remains authoritative for rules, RNG, saves, actions, and progression; OfficeSpire reads state and submits explicit user choices through an authenticated loopback protocol.
 
-> **Current status:** v0.6-alpha.1 “Playable Backend” is runtime-validated. The M5 overlay and M6 map controller source are implemented but still require live runtime validation.
+> **Current status:** v0.6-alpha.1 “Playable Backend” is runtime-validated. M5–M8 source deliverables are complete at `implemented_unverified`; Windows/Tauri, live STS2, full-run, and Workshop validation remain outstanding.
 
 ## Validated baseline
 
@@ -53,7 +53,7 @@ The first M5 source implementation is now present and its TypeScript/Vite produc
 
 The v0.6-alpha.3 source adds authoritative map snapshots, reachable-node display, and revision-guarded native route selection. It remains `implemented_unverified`; code presence and frontend builds are not live STS2 proof.
 
-Development has entered the partial v0.6-alpha.4 source phase. Combat reward collection plus card reward selection/skip are implemented but unverified; the remaining M7 decision families are still absent.
+The v0.6-alpha.4 source covers combat rewards, card rewards, card-selection families, events, rest sites, treasures, and shops. These paths remain runtime-unverified.
 
 The same development branch now includes generic choose-a-card, deck/grid selection, upgrade confirmation, and combat-hand multi-selection paths. These remain runtime-unverified; selection skipping is not enabled without an authoritative native control.
 
@@ -82,6 +82,8 @@ When STS2 exposes no active run, the backend now reports an explicit read-only m
 A visible native game-over screen now produces a read-only `run_end` snapshot classified as victory, defeat, or abandoned from engine-owned signals. The Overlay presents the result but offers no automatic return-to-menu or new-run action. This source path remains `implemented_unverified` until observed in STS2.
 
 M8 runtime evidence preparation includes a passive log analyzer for revision monotonicity, phase/revision conflicts, and pending-action cycles. It never submits a game action and never labels its own report as a runtime pass; see [docs/M8_RUNTIME_PROBES.md](docs/M8_RUNTIME_PROBES.md).
+
+All currently planned M8 source deliverables are complete. M8 remains `implemented_unverified`, not released or runtime-passed, until the documented Windows/Tauri, STS2 full-run, race, potion, install/upgrade, and Workshop checks are performed.
 
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
