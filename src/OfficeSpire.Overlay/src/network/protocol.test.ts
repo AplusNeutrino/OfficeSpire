@@ -127,6 +127,28 @@ describe("OfficeSpire wire protocol", () => {
       }),
     ).toBe(false);
   });
+  it("accepts only known read-only run-end outcomes", () => {
+    const runEnd = {
+      protocol_version: 1,
+      state_revision: 18,
+      phase: "run_end",
+      action_pending: false,
+      run: {},
+      screen: {
+        waiting_for_input: false,
+        status: "victory",
+        message: "The game reports that this run ended in victory.",
+        can_start_run: false,
+      },
+    };
+    expect(isStateSnapshot(runEnd)).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...runEnd,
+        screen: { ...runEnd.screen, status: "unknown" },
+      }),
+    ).toBe(false);
+  });
   it("rejects snapshots with ambiguous actionable identities", () => {
     expect(
       isStateSnapshot({

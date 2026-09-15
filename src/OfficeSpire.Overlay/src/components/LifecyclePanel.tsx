@@ -5,7 +5,14 @@ export function LifecyclePanel({
 }: {
   snapshot: LifecycleStateSnapshot;
 }) {
-  const title = snapshot.phase === "run_end" ? "Run complete" : "Main menu";
+  const title =
+    snapshot.phase === "menu"
+      ? "Main menu"
+      : snapshot.screen.status === "victory"
+        ? "Victory"
+        : snapshot.screen.status === "abandoned"
+          ? "Run abandoned"
+          : "Defeat";
 
   return (
     <section className="empty lifecycle-panel" aria-live="polite">

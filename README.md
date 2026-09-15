@@ -79,6 +79,8 @@ Protocol compatibility checks now distinguish a structurally valid future envelo
 
 When STS2 exposes no active run, the backend now reports an explicit read-only menu lifecycle state. The overlay directs the user back to the original game UI and never starts, resumes, or replays a run automatically. Authoritative run-end detection remains unverified and is not inferred.
 
+A visible native game-over screen now produces a read-only `run_end` snapshot classified as victory, defeat, or abandoned from engine-owned signals. The Overlay presents the result but offers no automatic return-to-menu or new-run action. This source path remains `implemented_unverified` until observed in STS2.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

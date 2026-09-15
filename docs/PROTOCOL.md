@@ -84,7 +84,9 @@ Known phase names:
 - `menu`
 - `run_end`
 
-When no authoritative run state exists, the backend reports `phase="menu"` with a read-only lifecycle screen. Protocol v1 sets `waiting_for_input=false` and `can_start_run=false`: clients must direct the user to the original STS2 UI and must not synthesize a run-start action. `run_end` is reserved for a future authoritative end-state adapter and follows the same fail-closed lifecycle shape until its native state is verified.
+When no authoritative run state exists, the backend reports `phase="menu"` with a read-only lifecycle screen and `status="no_active_run"`. Protocol v1 sets `waiting_for_input=false` and `can_start_run=false`: clients must direct the user to the original STS2 UI and must not synthesize a run-start action.
+
+`phase="run_end"` is emitted only while the native `NGameOverScreen` is the visible overlay. Its read-only `status` is `victory`, `defeat`, or `abandoned`; the client rejects other values and exposes no automatic post-run action. The Mod uses the engine's abandonment flag, victory-room signal, and recorded win time to classify the outcome. A missing or transient run state alone never establishes `run_end`.
 
 ## Action request
 

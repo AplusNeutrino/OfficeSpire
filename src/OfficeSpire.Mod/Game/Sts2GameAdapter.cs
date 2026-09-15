@@ -23,6 +23,7 @@ using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
@@ -56,6 +57,20 @@ public sealed class Sts2GameAdapter : IGameAdapter
         try
         {
             IRunState? runState = RunManager.Instance.DebugOnlyGetState();
+            if (NOverlayStack.Instance?.Peek() is NGameOverScreen)
+            {
+                string outcome = GetRunOutcome(runState);
+                return CreateEnvelope(
+                    PhaseNames.RunEnd,
+                    runState is null
+                        ? new RunSnapshotDto(0, 0, 0, 0, [])
+                        : BuildRunSnapshot(runState, LocalContext.GetMe(runState)),
+                    new LifecycleScreenDto(
+                        false,
+                        outcome,
+                        GetRunOutcomeMessage(outcome),
+                        false));
+            }
             if (runState is null)
             {
                 return CreateEnvelope(
@@ -183,6 +198,25 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 });
         }
     }
+
+    private static string GetRunOutcome(IRunState? runState)
+    {
+        if (RunManager.Instance.IsAbandoned)
+        {
+            return "abandoned";
+        }
+
+        return runState?.CurrentRoom?.IsVictoryRoom is true || RunManager.Instance.WinTime > 0
+            ? "victory"
+            : "defeat";
+    }
+
+    private static string GetRunOutcomeMessage(string outcome) => outcome switch
+    {
+        "victory" => "The game reports that this run ended in victory.",
+        "abandoned" => "The game reports that this run was abandoned.",
+        _ => "The game reports that this run ended in defeat."
+    };
 
     private static RewardsScreenDto? BuildRewardsSnapshot()
     {

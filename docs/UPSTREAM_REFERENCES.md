@@ -127,6 +127,8 @@ Observed concepts:
 
 Spirescry's `DecisionSurface`, settlement module, and headless support were **not copied**. For the M8 potion pass, commit `cc1629845d1ed35ea03abc28adf7b35dfa5dcd8d` was inspected to verify the native `DiscardPotionGameAction(run.Player, slot, inCombat)` plus `ActionQueueSynchronizer` path. OfficeSpire independently integrates that API behind its existing revision, main-thread, and settlement guards.
 
+For M8 run-end observation, the same commit was inspected for its `PhaseDetector`, `Snapshotter`, and `RunOutcomeRules`. It confirmed that a visible native game-over surface should gate the public terminal phase, and that abandonment, the current room's victory signal, and recorded win time distinguish outcomes. OfficeSpire independently implements a smaller read-only lifecycle snapshot and deliberately exposes no post-run action.
+
 ## Alchyr/ModTemplate-StS2
 
 - Repository: https://github.com/Alchyr/ModTemplate-StS2

@@ -477,6 +477,9 @@ Implementation checkpoint — 2026-09-15:
 - absence of an authoritative run now produces a typed, read-only `menu` snapshot instead of the ambiguous `unknown` phase;
 - the overlay presents explicit original-UI guidance and exposes no run-start/resume action, preventing accidental automation or replay;
 - menu classification and rendering are source-tested; authoritative victory/defeat detection and all live menu/run-end behavior remain `implemented_unverified` or `not_implemented` as applicable.
+- a visible native game-over overlay now gates a typed, read-only `run_end` snapshot; engine abandonment, victory-room, and recorded-win signals classify `abandoned`, `victory`, or `defeat`;
+- the client accepts only those terminal outcomes and provides no automatic return-to-menu or new-run mutation;
+- run-end classification, outcome accuracy, revival edge cases, and menu transition behavior remain `implemented_unverified` pending live STS2 evidence.
 
 Scope:
 

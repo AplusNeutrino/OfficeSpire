@@ -187,6 +187,7 @@ export interface LifecycleScreen {
   message: string;
   can_start_run: false;
 }
+const runEndStatuses = new Set(["victory", "defeat", "abandoned"]);
 interface BaseStateSnapshot {
   protocol_version: number;
   state_revision: number;
@@ -309,12 +310,12 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
     (c.phase !== "menu" ||
       ((c.screen as LifecycleScreen).waiting_for_input === false &&
-        typeof (c.screen as LifecycleScreen).status === "string" &&
+        (c.screen as LifecycleScreen).status === "no_active_run" &&
         typeof (c.screen as LifecycleScreen).message === "string" &&
         (c.screen as LifecycleScreen).can_start_run === false)) &&
     (c.phase !== "run_end" ||
       ((c.screen as LifecycleScreen).waiting_for_input === false &&
-        typeof (c.screen as LifecycleScreen).status === "string" &&
+        runEndStatuses.has((c.screen as LifecycleScreen).status) &&
         typeof (c.screen as LifecycleScreen).message === "string" &&
         (c.screen as LifecycleScreen).can_start_run === false)) &&
     hasStableSnapshotIdentities(c as StateSnapshot)
