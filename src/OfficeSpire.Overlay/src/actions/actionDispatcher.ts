@@ -53,13 +53,20 @@ export function createDiscardPotionAction(
 export function createChooseMapNodeAction(
   column: number,
   row: number,
+  stableId: string,
+  mapGeneration: number,
   revision: number,
 ): OverlayAction {
   return {
     request_id: requestId(),
     action: "choose_map_node",
     expected_revision: revision,
-    payload: { column, row },
+    payload: {
+      column,
+      row,
+      stable_id: stableId,
+      map_generation: mapGeneration,
+    },
   };
 }
 

@@ -86,6 +86,7 @@ internal sealed record PotionSnapshotDto(
 
 internal sealed record MapScreenDto(
     bool WaitingForInput,
+    int MapGeneration,
     MapNodeSnapshotDto? CurrentNode,
     IReadOnlyList<MapNodeSnapshotDto> ReachableNodes,
     IReadOnlyList<MapNodeSnapshotDto> AllNodes);

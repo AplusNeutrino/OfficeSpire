@@ -148,29 +148,48 @@ describe("OfficeSpire wire protocol", () => {
     ).toThrow(/envelope/);
   });
   it("creates a revision-guarded map choice", () => {
-    const action = createChooseMapNodeAction(2, 7, 41);
+    const action = createChooseMapNodeAction(2, 7, "map-3-2-7", 3, 41);
     expect(action).toMatchObject({
       action: "choose_map_node",
       expected_revision: 41,
-      payload: { column: 2, row: 7 },
+      payload: {
+        column: 2,
+        row: 7,
+        stable_id: "map-3-2-7",
+        map_generation: 3,
+      },
     });
   });
   it("accepts map snapshots without combat-only arrays", () => {
+    const map = {
+      protocol_version: 1,
+      state_revision: 9,
+      phase: "map",
+      action_pending: false,
+      run: {},
+      screen: {
+        waiting_for_input: true,
+        map_generation: 3,
+        current_node: null,
+        reachable_nodes: [
+          {
+            stable_id: "map-3-2-7",
+            column: 2,
+            row: 7,
+            node_type: "Monster",
+            reachable: true,
+          },
+        ],
+        all_nodes: [],
+      },
+    };
+    expect(isStateSnapshot(map)).toBe(true);
     expect(
       isStateSnapshot({
-        protocol_version: 1,
-        state_revision: 9,
-        phase: "map",
-        action_pending: false,
-        run: {},
-        screen: {
-          waiting_for_input: true,
-          current_node: null,
-          reachable_nodes: [],
-          all_nodes: [],
-        },
+        ...map,
+        screen: { ...map.screen, map_generation: 4 },
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
   it("accepts read-only menu lifecycle snapshots", () => {
     const menu = {

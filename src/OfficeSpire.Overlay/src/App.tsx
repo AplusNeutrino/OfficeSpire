@@ -276,14 +276,18 @@ export default function App() {
       );
   };
   const chooseMapNode = (node: MapNodeState) => {
-    if (snapshot?.phase === "map")
+    if (snapshot?.phase === "map") {
+      const state = snapshot as MapStateSnapshot;
       submit(
         createChooseMapNodeAction(
           node.column,
           node.row,
-          snapshot.state_revision,
+          node.stable_id,
+          state.screen.map_generation,
+          state.state_revision,
         ),
       );
+    }
   };
   const chooseReward = (reward: RewardItemState) => {
     if (snapshot?.phase === "rewards")

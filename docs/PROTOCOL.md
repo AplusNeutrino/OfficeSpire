@@ -164,11 +164,13 @@ Combat potion snapshots include `id`, `can_use`, `can_discard`, `needs_target`, 
 ```json
 {
   "column": 2,
-  "row": 7
+  "row": 7,
+  "stable_id": "map-3-2-7",
+  "map_generation": 3
 }
 ```
 
-When `phase="map"`, `screen.reachable_nodes` contains the authoritative choices. Each node has `stable_id`, `column`, `row`, `node_type`, and `reachable`. The backend validates the coordinate against the current native map immediately before submitting `VoteForMapCoordAction`; stale or unreachable choices fail without mutation.
+When `phase="map"`, `screen.map_generation` identifies the native generated map and `screen.reachable_nodes` contains the authoritative choices. Each node has a generation-scoped `stable_id`, `column`, `row`, `node_type`, and `reachable`. The backend validates generation, stable ID, coordinate, and live reachability immediately before submitting `VoteForMapCoordAction`; stale or unreachable choices fail without mutation.
 
 ## M7 reward actions
 

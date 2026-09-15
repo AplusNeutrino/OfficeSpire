@@ -55,6 +55,8 @@ Rich-text source checkpoint: the Mod now normalizes formatted and raw fallback s
 
 Rest-identity source checkpoint: `choose_rest_option` now carries the native option ID as well as its displayed index. Main-thread dispatch reloads the native options and rejects changed identities or mismatched native control counts before clicking. Unit/build evidence exists; live ordinary, smith/remove, version-specific, and multiplayer rest flows remain `implemented_unverified` or `not_implemented` as listed in the roadmap.
 
+Map-generation source checkpoint: map snapshots now expose the native map-generation counter and scope node stable IDs to it. Route requests carry generation, stable ID, and coordinates; main-thread dispatch rejects a generation/identity mismatch before its existing live reachability check and native vote enqueue. Unit/build evidence exists; first-floor, boss, act-transition, and multiplayer voting behavior remains `implemented_unverified`.
+
 M8 coverage correction: the earlier “source complete” label was too broad. Ordinary rest-site choices/leave and smith/remove card-selection follow-ups exist, but multiplayer rest targeting is `not_implemented`; menu and run-end states are read-only by design; map/rest lifecycle variants still need live enumeration. No capability is promoted by this correction.
 
 ## M1 — Mod Runtime

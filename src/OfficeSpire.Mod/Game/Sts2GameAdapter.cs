@@ -471,6 +471,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
     private static MapScreenDto BuildMapSnapshot(IRunState runState)
     {
+        int mapGeneration = RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
         MapPoint? current = runState.CurrentMapPoint;
         IEnumerable<MapPoint> reachable = current is null
             ? runState.Map?.startMapPoints ?? []
@@ -490,7 +491,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         MapNodeSnapshotDto Convert(MapPoint point) => new(
-            StableId: $"map-{point.coord.col}-{point.coord.row}",
+            StableId: $"map-{mapGeneration}-{point.coord.col}-{point.coord.row}",
             Column: point.coord.col,
             Row: point.coord.row,
             NodeType: point.PointType.ToString(),
@@ -498,6 +499,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         return new MapScreenDto(
             WaitingForInput: reachable.Any(),
+            MapGeneration: mapGeneration,
             CurrentNode: current is null ? null : Convert(current),
             ReachableNodes: reachable.Select(Convert).OrderBy(p => p.Column).ToList(),
             AllNodes: allPoints.Select(Convert).OrderBy(p => p.Row).ThenBy(p => p.Column).ToList());

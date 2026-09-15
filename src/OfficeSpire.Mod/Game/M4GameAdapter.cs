@@ -458,6 +458,19 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return Reject(request, "bad_request", "choose_map_node requires integer payload.column and payload.row.");
         }
+        if (!TryReadRequiredInt(request.Payload, "map_generation", out int expectedGeneration) ||
+            !TryReadRequiredString(request.Payload, "stable_id", out string? stableId))
+        {
+            return Reject(request, "bad_request", "choose_map_node requires payload.map_generation and payload.stable_id.");
+        }
+
+        int currentGeneration = RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
+        string expectedStableId = $"map-{currentGeneration}-{column}-{row}";
+        if (expectedGeneration != currentGeneration ||
+            !string.Equals(stableId, expectedStableId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected map generation or node identity changed before dispatch.");
+        }
 
         IEnumerable<MapPoint> legalTargets = runState.CurrentMapPoint is null
             ? runState.Map.startMapPoints
@@ -472,7 +485,7 @@ public sealed class M4GameAdapter : IGameAdapter
         var coordinate = new MapCoord(column, row);
         var vote = new MapVote
         {
-            mapGenerationCount = RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount,
+            mapGenerationCount = currentGeneration,
             coord = coordinate
         };
         var action = new VoteForMapCoordAction(player, runState.MapLocation, vote);

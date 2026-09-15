@@ -79,6 +79,7 @@ export interface MapNodeState {
 }
 export interface MapScreen {
   waiting_for_input: boolean;
+  map_generation: number;
   current_node: MapNodeState | null;
   reachable_nodes: MapNodeState[];
   all_nodes: MapNodeState[];
@@ -296,7 +297,9 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         Array.isArray((c.screen as CombatScreen).enemies) &&
         Array.isArray((c.screen as CombatScreen).potions))) &&
     (c.phase !== "map" ||
-      (Array.isArray((c.screen as MapScreen).reachable_nodes) &&
+      (Number.isInteger((c.screen as MapScreen).map_generation) &&
+        (c.screen as MapScreen).map_generation >= 0 &&
+        Array.isArray((c.screen as MapScreen).reachable_nodes) &&
         Array.isArray((c.screen as MapScreen).all_nodes))) &&
     (c.phase !== "rewards" ||
       (Array.isArray((c.screen as RewardsScreen).items) &&

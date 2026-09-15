@@ -44,7 +44,8 @@ export function hasStableSnapshotIdentities(
             Number.isInteger(node.row) &&
             node.row >= 0 &&
             typeof node.stable_id === "string" &&
-            node.stable_id.length > 0,
+            node.stable_id ===
+              `map-${screen.map_generation}-${node.column}-${node.row}`,
         ) &&
         unique(screen.reachable_nodes.map((node) => node.stable_id)) &&
         unique(screen.all_nodes.map((node) => node.stable_id)) &&

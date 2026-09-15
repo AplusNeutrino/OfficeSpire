@@ -467,6 +467,9 @@ Implementation checkpoint — 2026-09-15:
 - protocol ingestion validates non-negative, unique action indexes and stable identities for combat, map, reward, selection, event, rest, treasure, and shop snapshots;
 - ambiguous snapshots fail closed before replacing the last accepted state, so duplicate identities cannot become actionable UI;
 - malformed-identity regression tests and the frontend production build pass; live version-drift behavior remains `implemented_unverified`.
+- map snapshots expose the native map-generation counter and scope every node identity to that generation;
+- route requests bind generation, stable ID, and coordinates, then main-thread dispatch rechecks all three plus live reachability before enqueueing a native vote;
+- first-floor, boss, cross-act regeneration, and multiplayer voting remain `implemented_unverified`.
 - protocol parsing now rejects malformed version numbers while preserving future-version envelopes long enough to report an explicit incompatibility;
 - `npm run check` provides a single formatting, test, frontend-build, and release-metadata preflight, and Overlay CI runs it plus production dependency audit;
 - release metadata synchronization is source-validated; native Windows bundle creation, install, upgrade, and signing remain `implemented_unverified`.
@@ -549,7 +552,7 @@ Run-decision coverage must not be described as uniformly complete. The current s
 
 | Surface | Source behavior | Known gap |
 |---|---|---|
-| Map | Shows the current node, reachable choices, and route graph; submits a revision-checked native route vote | All live route variants and multiplayer behavior are `implemented_unverified` |
+| Map | Shows the current node, reachable choices, and route graph; submits a revision-, generation-, identity-, and reachability-checked native route vote | First-floor, boss, cross-act regeneration, and multiplayer voting are `implemented_unverified` |
 | Rest/campfire | Shows native options, chooses ordinary options, leaves, and hands smith/remove follow-ups to card selection | Multiplayer player-target selection is `not_implemented`; version-specific option families need live enumeration |
 | Menu | Reports a read-only no-active-run state and directs the user to STS2 | Menu navigation and start/resume mutations are intentionally not exposed |
 | Run end | Reports a visible native game-over screen as victory, defeat, or abandonment | Revival/death-prevention edges and transitions are `implemented_unverified`; no post-run mutation is exposed |
