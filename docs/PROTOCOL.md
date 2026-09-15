@@ -88,6 +88,8 @@ When no authoritative run state exists, the backend reports `phase="menu"` with 
 
 `phase="run_end"` is emitted only while the native `NGameOverScreen` is the visible overlay. Its read-only `status` is `victory`, `defeat`, or `abandoned`; the client rejects other values and exposes no automatic post-run action. The Mod uses the engine's abandonment flag, victory-room signal, and recorded win time to classify the outcome. A missing or transient run state alone never establishes `run_end`.
 
+All user-facing presentation strings are plain text. The Mod removes game rich-text/color tags, converts explicit breaks and icon markup to readable text, and suppresses unresolved template variables. Clients must repeat this normalization defensively only for presentation fields; they must never normalize action names, IDs, stable identities, phase values, or other protocol semantics.
+
 ## Action request
 
 The body of an `action` message is:

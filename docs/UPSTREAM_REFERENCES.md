@@ -88,6 +88,8 @@ The same exact reference commit was inspected for merchant inventory entries, ca
 
 Files inspected during the M3 revision-stability investigation:
 
+For the M8 presentation-text pass, `src/State/RichText.cs` at this exact commit was inspected to confirm STS2's Godot `[img]res://...[/img]` icon form and the value of readable icon substitutions. OfficeSpire independently implements a narrower plain-text protocol boundary plus a defensive client pass; no upstream code was copied.
+
 - `LICENSE`
 - `README.md`
 - `src/State/Signals.cs`

@@ -448,7 +448,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return new RewardCardSnapshotDto(
             index,
             card.Id.ToString(),
-            CleanIcons(card.Title.ToString() ?? string.Empty),
+            NormalizeRichText(card.Title.ToString() ?? string.Empty),
             card.EnergyCost.GetWithModifiers(CostModifiers.All),
             card.Type.ToString(),
             card.Rarity.ToString(),
@@ -622,7 +622,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return new CardSnapshotDto(
             HandIndex: handIndex,
             Id: card.Id.ToString(),
-            Name: CleanIcons(card.Title),
+            Name: NormalizeRichText(card.Title),
             Cost: card.EnergyCost.GetWithModifiers(CostModifiers.All),
             Type: card.Type.ToString(),
             Rarity: card.Rarity.ToString(),
@@ -658,7 +658,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             CurrentHp: enemy.CurrentHp,
             MaxHp: enemy.MaxHp,
             Block: enemy.Block,
-            Intent: intent,
+            Intent: NormalizeRichText(intent),
             Powers: powers,
             IsAlive: enemy.IsAlive,
             IsHittable: enemy.IsHittable);
@@ -1057,13 +1057,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         try
         {
-            return CleanIcons(value.GetFormattedText() ?? string.Empty);
+            return NormalizeRichText(value.GetFormattedText() ?? string.Empty);
         }
         catch
         {
             try
             {
-                return CleanIcons(value.GetRawText());
+                return NormalizeRichText(value.GetRawText());
             }
             catch
             {
@@ -1085,16 +1085,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
             description.Add("IsTargeting", false);
             description.Add("energyPrefix", EnergyIconHelper.GetPrefix(card));
 
-            string result = CleanIcons(description.GetFormattedText());
-            return result.Contains('{')
-                ? Regex.Replace(result, @"\{[^}]+\}", string.Empty).Trim()
-                : result;
+            return NormalizeRichText(description.GetFormattedText());
         }
         catch
         {
             try
             {
-                return Regex.Replace(card.Description.GetRawText(), @"\{[^}]+\}", string.Empty).Trim();
+                return NormalizeRichText(card.Description.GetRawText());
             }
             catch
             {
@@ -1103,8 +1100,32 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
     }
 
-    private static string CleanIcons(string text)
+    private static string NormalizeRichText(string? text)
     {
-        return Regex.Replace(text ?? string.Empty, @"\[img\][^]]*\[/img\]", string.Empty).Trim();
+        string normalized = text ?? string.Empty;
+        normalized = Regex.Replace(normalized, @"\[br\s*/?\]", "\n", RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"\[img[^\]]*\](?<path>[^\[]*)\[/img\]",
+            match =>
+            {
+                string filename = Path.GetFileNameWithoutExtension(match.Groups["path"].Value);
+                filename = Regex.Replace(filename, @"_icon$", string.Empty, RegexOptions.IgnoreCase);
+                filename = Regex.Replace(filename, @".*_energy$", "energy", RegexOptions.IgnoreCase);
+                return string.IsNullOrWhiteSpace(filename)
+                    ? " "
+                    : $" {filename.Replace('_', ' ').Replace('-', ' ')} ";
+            },
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"\[/?[a-z][a-z0-9_-]*(?:[=\s][^\]]*)?\]",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized, @"\{[^{}]+\}", string.Empty);
+        normalized = Regex.Replace(normalized, @"[ \t]+", " ");
+        normalized = Regex.Replace(normalized, @" *\r?\n *", "\n");
+        normalized = Regex.Replace(normalized, @"\n{3,}", "\n\n");
+        return normalized.Trim();
     }
 }

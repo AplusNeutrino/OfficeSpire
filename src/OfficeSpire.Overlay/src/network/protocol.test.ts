@@ -22,14 +22,56 @@ import {
   createUsePotionAction,
   createDiscardPotionAction,
 } from "../actions/actionDispatcher";
-import { isStateSnapshot } from "../types";
+import { isStateSnapshot, type StateSnapshot } from "../types";
 import { resolveCombatShortcut } from "../actions/combatKeyboard";
 import { resolveRunShortcut } from "../actions/runKeyboard";
 import { ACTION_TIMEOUT_MS, clientTimeoutResult } from "./actionLifecycle";
 import { ReconnectController } from "./reconnect";
 import { DEFAULT_SETTINGS, parseSettings } from "../settings";
 import { analyzeRuntimeLog } from "../../scripts/analyze-runtime-log.mjs";
+import { normalizeGameText, normalizeSnapshotText } from "./richText";
 describe("OfficeSpire wire protocol", () => {
+  it("normalizes STS2 color, icon, line-break, and dynamic-variable markup", () => {
+    expect(
+      normalizeGameText(
+        "[gold]Gain[/gold] [color=#ffd700]25 Gold[/color][br][img]res://ui/ironclad_energy.png[/img] {MissingVar}",
+      ),
+    ).toBe("Gain 25 Gold\nenergy");
+  });
+
+  it("normalizes presentation fields without changing stable identities", () => {
+    const snapshot = {
+      protocol_version: 1,
+      state_revision: 3,
+      phase: "event",
+      action_pending: false,
+      run: {},
+      screen: {
+        waiting_for_input: true,
+        name: "[gold]Golden Idol[/gold]",
+        description: "[color=red]Danger[/color]",
+        is_finished: false,
+        options: [
+          {
+            option_index: 0,
+            title: "[green]Take it[/green]",
+            description: "Gain {Amount} [gold]Gold[/gold]",
+            is_locked: false,
+            is_proceed: false,
+            stable_id: "event-[gold]-0",
+          },
+        ],
+      },
+    } as unknown as StateSnapshot;
+    const normalized = normalizeSnapshotText(snapshot);
+    const screen = normalized.screen as {
+      name: string;
+      options: Array<{ description: string; stable_id: string }>;
+    };
+    expect(screen.name).toBe("Golden Idol");
+    expect(screen.options[0].description).toBe("Gain Gold");
+    expect(screen.options[0].stable_id).toBe("event-[gold]-0");
+  });
   it("analyzes runtime state transitions without declaring a runtime pass", () => {
     const report = analyzeRuntimeLog(`
 [2026-09-15T01:00:00Z] [OfficeSpire] state_changed | rev=8 phase=combat pending=False

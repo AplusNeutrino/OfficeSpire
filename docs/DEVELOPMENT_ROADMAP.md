@@ -8,7 +8,7 @@
 Last updated: 2026-09-15
 Product target: OfficeSpire v0.6
 Current development version: v0.6-beta.1 — Full Run Hardening
-Current milestone: M8 (source complete; live runtime validation remains deferred)
+Current milestone: M8 (source hardening resumed; live runtime validation remains deferred)
 Previous validated milestone: v0.6-alpha.1 — Playable Backend
 
 ## 1. Product objective
@@ -444,7 +444,7 @@ M7 exit criteria:
 
 Planned after the ordinary run-decision loop is established.
 
-Status: `implemented_unverified` — all planned source deliverables are complete; mandatory runtime exit criteria have not passed.
+Status: `implemented_unverified` — the main hardening slices exist, but source coverage is still being audited and mandatory runtime exit criteria have not passed.
 
 Implementation checkpoint — 2026-09-15:
 
@@ -480,6 +480,8 @@ Implementation checkpoint — 2026-09-15:
 - a visible native game-over overlay now gates a typed, read-only `run_end` snapshot; engine abandonment, victory-room, and recorded-win signals classify `abandoned`, `victory`, or `defeat`;
 - the client accepts only those terminal outcomes and provides no automatic return-to-menu or new-run mutation;
 - run-end classification, outcome accuracy, revival edge cases, and menu transition behavior remain `implemented_unverified` pending live STS2 evidence.
+- game-originated presentation strings are normalized to plain text in both the Mod and Overlay boundaries: color/BBCode tags are removed, `[br]` becomes a line break, image tags become readable icon names, and unresolved template variables are suppressed;
+- normalization is deliberately limited to presentation fields, so protocol values and stable identities are never rewritten; unit/build evidence exists, while live localized STS2 strings remain `implemented_unverified`.
 - a passive, cross-platform runtime-log analyzer reports revision regressions, same-revision phase changes, pending cycles, unresolved pending state, and observed phases without sending game actions;
 - the documented extreme-race procedure uses exactly one deliberately stale request after a manual native state change and explicitly forbids retrying ambiguous/timed-out requests;
 - analyzer tests pass, but the main-thread race/stress criterion remains `implemented_unverified` until the procedure is performed against STS2 and manually judged.
@@ -500,7 +502,7 @@ Scope:
 - protocol compatibility tests;
 - repeated full-run validation.
 
-Final source-delivery audit — 2026-09-15:
+M8 source-coverage audit — corrected 2026-09-15:
 
 | M8 area | Source status | Remaining evidence gate |
 |---|---|---|
@@ -510,10 +512,20 @@ Final source-delivery audit — 2026-09-15:
 | Timeout/reconnect/recovery | `implemented_unverified` | Backend restart, scene transition, delayed result, and no-replay observations |
 | Stable identity/protocol compatibility | `implemented_unverified` | Live malformed/version-drift behavior against supported game builds |
 | Menu/run end | `implemented_unverified` | Startup, resume, victory, defeat, abandon, revival edge, and return-to-menu observations |
+| Rich/localized text display | `implemented_unverified` | Live cards, powers, intents, events, rest sites, rewards, relics, potions, and non-English strings |
 | Windows/Workshop packaging | `implemented_unverified` | Native bundle, signing decision, candidate script, clean install/upgrade/uninstall, and Workshop policy check |
 | Repeated supported full run | `implemented_unverified` | Recorded full-run matrix with exact commits and artifacts |
 
 Run-start automation is intentionally not exposed: OfficeSpire remains an explicit control surface, and starting/resuming a run stays in the original STS2 UI. This is a product safety boundary, not an unfinished mutation path.
+
+Run-decision coverage must not be described as uniformly complete. The current source boundary is:
+
+| Surface | Source behavior | Known gap |
+|---|---|---|
+| Map | Shows the current node, reachable choices, and route graph; submits a revision-checked native route vote | All live route variants and multiplayer behavior are `implemented_unverified` |
+| Rest/campfire | Shows native options, chooses ordinary options, leaves, and hands smith/remove follow-ups to card selection | Multiplayer player-target selection is `not_implemented`; version-specific option families need live enumeration |
+| Menu | Reports a read-only no-active-run state and directs the user to STS2 | Menu navigation and start/resume mutations are intentionally not exposed |
+| Run end | Reports a visible native game-over screen as victory, defeat, or abandonment | Revival/death-prevention edges and transitions are `implemented_unverified`; no post-run mutation is exposed |
 
 Exit criteria:
 
@@ -531,23 +543,24 @@ Exit criteria:
 | v0.6-alpha.2 | Overlay Prototype | Live translucent mouse-operated combat overlay | `implemented_unverified` |
 | v0.6-alpha.3 | Map Controller | Map display and native route selection | `implemented_unverified` |
 | v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `implemented_unverified` |
-| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `implemented_unverified` (source complete) |
+| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `implemented_unverified` (source audit active) |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
 
 Version numbers may be adjusted before release, but milestone scope and evidence gates must be updated here first.
 
 ## 10. Immediate execution order
 
-No further unattended source-development cycle is scheduled for M8. Resume only when the external runtime is available, in this order:
+Continue the remaining safe source audit, then use the external runtime in this order:
 
-1. build the Mod against the installed supported STS2 assemblies;
-2. run the manual Windows bundle workflow and PowerShell candidate packager;
-3. validate the Tauri shell, session discovery, focus, settings, and reconnect behavior;
-4. execute potion and one-shot main-thread stale-window probes without replay;
-5. validate menu/run-end and death-prevention edges;
-6. complete repeated supported full runs and clean install/upgrade/uninstall checks;
-7. confirm current STS2 Workshop content policy and test a private candidate manually;
-8. promote only individually evidenced capabilities to `runtime_pass`.
+1. finish the source-level run-decision coverage audit, including rest-site variants and plain-text presentation coverage;
+2. build the Mod against the installed supported STS2 assemblies;
+3. run the manual Windows bundle workflow and PowerShell candidate packager;
+4. validate the Tauri shell, session discovery, focus, settings, and reconnect behavior;
+5. execute potion and one-shot main-thread stale-window probes without replay;
+6. validate map/rest/menu/run-end and death-prevention edges;
+7. complete repeated supported full runs and clean install/upgrade/uninstall checks;
+8. confirm current STS2 Workshop content policy and test a private candidate manually;
+9. promote only individually evidenced capabilities to `runtime_pass`.
 
 ## 11. Documentation ownership
 

@@ -14,6 +14,7 @@ import {
   pingMessage,
   isCompatibleProtocolVersion,
 } from "./protocol";
+import { normalizeSnapshotText } from "./richText";
 export interface ClientCallbacks {
   onOpen: () => void;
   onClose: (reason: string) => void;
@@ -87,7 +88,7 @@ export class OfficeSpireWebSocketClient {
         return;
       }
       if (message.type === "state" && isStateSnapshot(message.body))
-        this.callbacks.onSnapshot(message.body);
+        this.callbacks.onSnapshot(normalizeSnapshotText(message.body));
       else if (message.type === "action_result")
         this.callbacks.onActionResult(message.body as ActionResponse);
       else if (message.type === "error") {

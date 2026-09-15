@@ -29,7 +29,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 | M5 | Overlay Prototype | `implemented_unverified` |
 | M6 | Map Controller | `implemented_unverified` |
 | M7 | Run Decisions | `implemented_unverified` |
-| M8 | Advanced Combat / Hardening | `implemented_unverified` (source complete) |
+| M8 | Advanced Combat / Hardening | `implemented_unverified` (source audit active) |
 
 M4 passes as a core control-chain milestone. Potion use/discard and the extreme main-thread race probe remain separately tracked and do not invalidate that core milestone.
 
@@ -51,7 +51,9 @@ Run-end source checkpoint: the native visible `NGameOverScreen` gates a read-onl
 
 Race-evidence source checkpoint: `npm run analyze:runtime` passively parses OfficeSpire runtime logs and reports revision regressions, same-revision phase changes, pending cycles, unresolved pending state, and represented phases. Its schema permanently requires manual runtime judgment and it sends no game action. Synthetic parser tests exist; no STS2 stress observation has been performed, so the extreme main-thread race capability remains `implemented_unverified`.
 
-M8 final source audit: every planned development slice has an implementation, fail-closed boundary, test/preflight path, documentation, or an explicit product decision not to expose automation. No M8 capability is promoted by this audit. Potion/race/full-run behavior, native Mod and Tauri builds, Windows interaction, lifecycle edges, packaging/install/upgrade/uninstall, signing, and Workshop compatibility all remain `implemented_unverified` pending external runtime evidence.
+Rich-text source checkpoint: the Mod now normalizes formatted and raw fallback strings, and the Overlay independently normalizes presentation fields received over the wire. Color/BBCode tags are stripped, explicit breaks are preserved, image tags become readable labels, and unresolved variables are suppressed without changing stable IDs. Unit and production-build evidence exists; live localized card, power, intent, event, rest, reward, relic, and potion strings remain `implemented_unverified`.
+
+M8 coverage correction: the earlier “source complete” label was too broad. Ordinary rest-site choices/leave and smith/remove card-selection follow-ups exist, but multiplayer rest targeting is `not_implemented`; menu and run-end states are read-only by design; map/rest lifecycle variants still need live enumeration. No capability is promoted by this correction.
 
 ## M1 — Mod Runtime
 
