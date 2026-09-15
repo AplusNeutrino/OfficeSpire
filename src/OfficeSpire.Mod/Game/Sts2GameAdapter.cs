@@ -70,6 +70,21 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     rewards ?? new RewardsScreenDto(false, "unavailable", [], [], false));
             }
 
+            if (NOverlayStack.Instance?.Peek() is NChooseACardSelectionScreen chooseScreen)
+            {
+                var options = FindNodesRecursive<NGridCardHolder>((Node)chooseScreen)
+                    .Select((holder, index) => holder.CardModel is null
+                        ? null
+                        : BuildRewardCard(holder.CardModel, index))
+                    .Where(card => card is not null)
+                    .Cast<RewardCardSnapshotDto>()
+                    .ToList();
+                return CreateEnvelope(
+                    PhaseNames.CardSelection,
+                    run,
+                    new CardSelectionScreenDto(options.Count > 0, "choose_a_card", options, false));
+            }
+
             if (NMapScreen.Instance?.IsOpen == true)
             {
                 return CreateEnvelope(PhaseNames.Map, run, BuildMapSnapshot(runState));
@@ -454,6 +469,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is RewardsScreenDto rewards && rewards.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal))
+        {
+            return screenValue is CardSelectionScreenDto selection && selection.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -507,7 +527,19 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal) &&
+            screenValue is CardSelectionScreenDto selection)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                selection.SelectionType,
+                Options = selection.Options.Select(card => new { card.ChoiceIndex, card.Id }).ToArray(),
+                selection.CanSkip
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal) &&
             screenValue is RewardsScreenDto rewards)
         {
             projection = new

@@ -9,6 +9,7 @@ import {
   createChooseMapNodeAction,
   createRewardAction,
   createSkipRewardsAction,
+  createCardOptionAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
@@ -95,6 +96,28 @@ describe("OfficeSpire wire protocol", () => {
           items: [],
           card_choices: [],
           can_skip: true,
+        },
+      }),
+    ).toBe(true);
+  });
+  it("creates and parses generic card-selection decisions", () => {
+    expect(createCardOptionAction(2, 61)).toMatchObject({
+      action: "choose_card_option",
+      expected_revision: 61,
+      payload: { choice_index: 2 },
+    });
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 61,
+        phase: "card_selection",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          selection_type: "choose_a_card",
+          options: [],
+          can_skip: false,
         },
       }),
     ).toBe(true);

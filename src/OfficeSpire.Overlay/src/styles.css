@@ -125,6 +125,18 @@ footer,
   text-align: left;
   cursor: pointer;
 }
+.selection-panel {
+  padding-top: 8px;
+}
+.selection-panel h1 {
+  margin-bottom: 2px;
+}
+.selection-kind {
+  margin-top: 0;
+  color: #a99d83;
+  text-transform: capitalize;
+  font-size: 11px;
+}
 .reward-item,
 .reward-card {
   display: grid;

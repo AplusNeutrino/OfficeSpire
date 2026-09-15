@@ -48,6 +48,7 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_reward" => ExecuteChooseReward(request),
                 "choose_reward_card" => ExecuteChooseRewardCard(request),
                 "skip_rewards" => ExecuteSkipRewards(request),
+                "choose_card_option" => ExecuteChooseCardOption(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -61,6 +62,25 @@ public sealed class M4GameAdapter : IGameAdapter
                 "dispatch_exception",
                 $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static ActionResponse ExecuteChooseCardOption(ActionRequest request)
+    {
+        if (NOverlayStack.Instance?.Peek() is not NChooseACardSelectionScreen screen)
+        {
+            return Reject(request, "bad_phase", "A supported choose-a-card screen is not active.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        {
+            return Reject(request, "bad_request", "choose_card_option requires integer payload.choice_index.");
+        }
+        var holders = FindNodesRecursive<NGridCardHolder>((Node)screen);
+        if (index < 0 || index >= holders.Count)
+        {
+            return Reject(request, "bad_index", $"Card option {index} is unavailable.");
+        }
+        holders[index].EmitSignal(NCardHolder.SignalName.Pressed, holders[index]);
+        return Accept(request, "accepted", $"Selected card option {index}.");
     }
 
     private static ActionResponse ExecuteChooseReward(ActionRequest request)

@@ -108,3 +108,9 @@ internal sealed record RewardCardSnapshotDto(
     string Type,
     string Rarity,
     string Description);
+
+internal sealed record CardSelectionScreenDto(
+    bool WaitingForInput,
+    string SelectionType,
+    IReadOnlyList<RewardCardSnapshotDto> Options,
+    bool CanSkip);

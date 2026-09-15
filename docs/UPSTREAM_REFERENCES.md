@@ -59,6 +59,8 @@ The same exact reference commit was inspected for map-state and native-selection
 
 The same exact reference commit was inspected for reward overlay API shapes. Confirmed interfaces include `NOverlayStack`, `NRewardsScreen`, `NRewardButton`, `NCardRewardSelectionScreen`, `NCardHolder`, and `NProceedButton`. OfficeSpire independently implements versioned reward DTOs, revision gates, and a limited reward-only dispatcher; generic selection and later room actions were not copied or enabled.
 
+The M7.3 inspection additionally confirmed the `NChooseACardSelectionScreen` + `NGridCardHolder` selection signal shape. OfficeSpire enables only that single-click prompt family in this pass; other grid/hand selectors remain separated because their confirmation semantics differ.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

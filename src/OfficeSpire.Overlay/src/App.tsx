@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ActionResponse,
   CardState,
+  CardSelectionStateSnapshot,
   CombatStateSnapshot,
   ConnectionStatus,
   EnemyState,
@@ -19,10 +20,12 @@ import {
   createChooseMapNodeAction,
   createRewardAction,
   createSkipRewardsAction,
+  createCardOptionAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
 import { RewardsPanel } from "./components/RewardsPanel";
+import { CardSelectionPanel } from "./components/CardSelectionPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 const terminalCodes = new Set([
@@ -178,6 +181,12 @@ export default function App() {
         ),
       );
   };
+  const chooseCardOption = (card: RewardCardState) => {
+    if (snapshot?.phase === "card_selection")
+      submit(
+        createCardOptionAction(card.choice_index, snapshot.state_revision),
+      );
+  };
   const actionInFlight = !!(
     actionResult &&
     actionResult.accepted &&
@@ -225,6 +234,12 @@ export default function App() {
           onSkip={() =>
             submit(createSkipRewardsAction(snapshot.state_revision))
           }
+        />
+      ) : snapshot.phase === "card_selection" ? (
+        <CardSelectionPanel
+          snapshot={snapshot as CardSelectionStateSnapshot}
+          disabled={disabled}
+          onCard={chooseCardOption}
         />
       ) : (
         <section className="empty">

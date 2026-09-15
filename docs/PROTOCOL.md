@@ -160,6 +160,14 @@ When `phase="rewards"`, the screen uses either `mode="rewards"` with `items`, or
 
 Every choice is resolved again from the current native overlay on the game thread. Indexes are never retained as STS2 object references across threads.
 
+## M7 card-selection action
+
+For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="card_selection"` and exposes authoritative `screen.options`.
+
+- `choose_card_option`: `{ "choice_index": 2 }`
+
+Deck/grid mutation, upgrade confirmation, hand multi-selection, and skip behavior are not part of this first generic-selection slice.
+
 ## Action response and status
 
 `action_result` retains the v1 response shape:

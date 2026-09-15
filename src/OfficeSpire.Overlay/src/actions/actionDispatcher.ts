@@ -57,3 +57,15 @@ export function createSkipRewardsAction(revision: number): OverlayAction {
     payload: {},
   };
 }
+
+export function createCardOptionAction(
+  choiceIndex: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "choose_card_option",
+    expected_revision: revision,
+    payload: { choice_index: choiceIndex },
+  };
+}

@@ -94,6 +94,12 @@ export interface RewardsScreen {
   card_choices: RewardCardState[];
   can_skip: boolean;
 }
+export interface CardSelectionScreen {
+  waiting_for_input: boolean;
+  selection_type: string;
+  options: RewardCardState[];
+  can_skip: boolean;
+}
 export interface RunState {
   ascension_level: number;
   current_act: number;
@@ -120,10 +126,15 @@ export interface RewardsStateSnapshot extends BaseStateSnapshot {
   phase: "rewards";
   screen: RewardsScreen;
 }
+export interface CardSelectionStateSnapshot extends BaseStateSnapshot {
+  phase: "card_selection";
+  screen: CardSelectionScreen;
+}
 export type StateSnapshot =
   | CombatStateSnapshot
   | MapStateSnapshot
   | RewardsStateSnapshot
+  | CardSelectionStateSnapshot
   | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
   type: string;
@@ -145,7 +156,8 @@ export interface OverlayAction {
     | "choose_map_node"
     | "choose_reward"
     | "choose_reward_card"
-    | "skip_rewards";
+    | "skip_rewards"
+    | "choose_card_option";
   expected_revision: number;
   payload: Record<string, unknown>;
 }
@@ -167,6 +179,8 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         Array.isArray((c.screen as MapScreen).all_nodes))) &&
     (c.phase !== "rewards" ||
       (Array.isArray((c.screen as RewardsScreen).items) &&
-        Array.isArray((c.screen as RewardsScreen).card_choices)))
+        Array.isArray((c.screen as RewardsScreen).card_choices))) &&
+    (c.phase !== "card_selection" ||
+      Array.isArray((c.screen as CardSelectionScreen).options))
   );
 }
