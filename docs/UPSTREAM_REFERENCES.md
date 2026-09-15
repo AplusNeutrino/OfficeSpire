@@ -63,6 +63,10 @@ The M7.3 inspection additionally confirmed the `NChooseACardSelectionScreen` + `
 
 A subsequent M7.3 pass confirmed the distinct `NDeckUpgradeSelectScreen` confirm control, `NDeckCardSelectScreen` preview confirmation, and `NPlayerHand` selection fields/control used by the exact reference commit. These version-sensitive fields remain runtime-unverified and fail closed when unavailable.
 
+### M7 event reference
+
+The same exact reference commit was inspected for `NEventRoom`, its current `EventModel`, `CurrentOptions`, `OptionButtonClicked`, and `Proceed` API shapes. OfficeSpire independently implements a smaller event DTO and dispatcher with its existing revision/inbox lifecycle; hover previews are deferred rather than inferred.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

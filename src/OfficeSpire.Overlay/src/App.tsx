@@ -3,6 +3,8 @@ import type {
   ActionResponse,
   CardState,
   CardSelectionStateSnapshot,
+  EventOptionState,
+  EventStateSnapshot,
   CombatStateSnapshot,
   ConnectionStatus,
   EnemyState,
@@ -22,11 +24,13 @@ import {
   createSkipRewardsAction,
   createCardOptionAction,
   createConfirmCardSelectionAction,
+  createEventOptionAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
 import { RewardsPanel } from "./components/RewardsPanel";
 import { CardSelectionPanel } from "./components/CardSelectionPanel";
+import { EventPanel } from "./components/EventPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 const terminalCodes = new Set([
@@ -38,6 +42,7 @@ const terminalCodes = new Set([
   "bad_index",
   "bad_target",
   "unreachable_node",
+  "option_locked",
   "not_playable",
   "not_ready",
   "action_pending",
@@ -188,6 +193,12 @@ export default function App() {
         createCardOptionAction(card.choice_index, snapshot.state_revision),
       );
   };
+  const chooseEventOption = (option: EventOptionState) => {
+    if (snapshot?.phase === "event")
+      submit(
+        createEventOptionAction(option.option_index, snapshot.state_revision),
+      );
+  };
   const actionInFlight = !!(
     actionResult &&
     actionResult.accepted &&
@@ -244,6 +255,12 @@ export default function App() {
           onConfirm={() =>
             submit(createConfirmCardSelectionAction(snapshot.state_revision))
           }
+        />
+      ) : snapshot.phase === "event" ? (
+        <EventPanel
+          snapshot={snapshot as EventStateSnapshot}
+          disabled={disabled}
+          onOption={chooseEventOption}
         />
       ) : (
         <section className="empty">

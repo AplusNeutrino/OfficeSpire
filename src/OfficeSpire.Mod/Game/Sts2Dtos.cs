@@ -118,3 +118,17 @@ internal sealed record CardSelectionScreenDto(
     int MaxSelect = 1,
     int CurrentSelectCount = 0,
     bool CanConfirm = false);
+
+internal sealed record EventScreenDto(
+    bool WaitingForInput,
+    string Name,
+    string Description,
+    bool IsFinished,
+    IReadOnlyList<EventOptionSnapshotDto> Options);
+
+internal sealed record EventOptionSnapshotDto(
+    int OptionIndex,
+    string Title,
+    string Description,
+    bool IsLocked,
+    bool IsProceed);

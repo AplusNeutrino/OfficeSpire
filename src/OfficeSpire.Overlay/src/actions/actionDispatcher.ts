@@ -80,3 +80,15 @@ export function createConfirmCardSelectionAction(
     payload: {},
   };
 }
+
+export function createEventOptionAction(
+  optionIndex: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "choose_event_option",
+    expected_revision: revision,
+    payload: { option_index: optionIndex },
+  };
+}

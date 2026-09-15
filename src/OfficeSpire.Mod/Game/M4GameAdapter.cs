@@ -13,6 +13,8 @@ using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Events;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
@@ -51,6 +53,7 @@ public sealed class M4GameAdapter : IGameAdapter
                 "skip_rewards" => ExecuteSkipRewards(request),
                 "choose_card_option" => ExecuteChooseCardOption(request),
                 "confirm_card_selection" => ExecuteConfirmCardSelection(request),
+                "choose_event_option" => ExecuteChooseEventOption(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -64,6 +67,40 @@ public sealed class M4GameAdapter : IGameAdapter
                 "dispatch_exception",
                 $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static ActionResponse ExecuteChooseEventOption(ActionRequest request)
+    {
+        NEventRoom? room = NRun.Instance?.EventRoom;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "An event room is not active.");
+        }
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        if (typeof(NEventRoom).GetField("_event", flags)?.GetValue(room) is not EventModel model)
+        {
+            return Reject(request, "not_ready", "Authoritative event data is unavailable.");
+        }
+        if (model.IsFinished)
+        {
+            NEventRoom.Proceed();
+            return Accept(request, "accepted", "Left the completed event.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "option_index", out int index))
+        {
+            return Reject(request, "bad_request", "choose_event_option requires integer payload.option_index.");
+        }
+        if (index < 0 || index >= model.CurrentOptions.Count)
+        {
+            return Reject(request, "bad_index", $"Event option {index} is unavailable.");
+        }
+        var option = model.CurrentOptions[index];
+        if (option.IsLocked)
+        {
+            return Reject(request, "option_locked", $"Event option {index} is locked.");
+        }
+        room.OptionButtonClicked(option, index);
+        return Accept(request, "accepted", $"Selected event option {index}.");
     }
 
     private static ActionResponse ExecuteChooseCardOption(ActionRequest request)

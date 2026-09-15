@@ -400,7 +400,7 @@ Current capability status:
 | Card reward choice and skip | `implemented_unverified` |
 | Generic choose-a-card prompts | `implemented_unverified` |
 | Deck/grid and hand multi-selection prompts | `implemented_unverified` |
-| Events | `not_implemented` |
+| Events | `implemented_unverified` |
 | Rest sites | `not_implemented` |
 | Treasures | `not_implemented` |
 | Shops, purchases, and card removal | `not_implemented` |
@@ -410,6 +410,8 @@ The first M7 source pass adds authoritative reward/button snapshots, distinct re
 The next source pass adds `NChooseACardSelectionScreen` observation and revision-guarded `choose_card_option`. Deck/grid mutation, upgrade confirmation, hand multi-selection, and optional skipping remain deliberately unsupported until their distinct confirmation rules are modeled.
 
 The following source pass models those distinct confirmation paths: generic grid single-click, deck selection preview confirmation, upgrade confirmation, and combat-hand multi-selection with authoritative min/max/current counts plus explicit `confirm_card_selection`. Optional skipping remains unsupported unless a native screen exposes a separately validated path.
+
+The M7.4 source pass adds authoritative event title, description, completion state, and option snapshots; locked/proceed metadata; revision-guarded `choose_event_option`; fresh main-thread option validation; native `OptionButtonClicked`; and completed-event `Proceed` handling. Event-triggered card overlays reuse the card-selection phase.
 
 Each phase follows the same delivery gate:
 

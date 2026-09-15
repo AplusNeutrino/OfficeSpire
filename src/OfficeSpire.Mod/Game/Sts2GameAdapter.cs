@@ -24,6 +24,8 @@ using MegaCrit.Sts2.Core.Nodes.Rewards;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Rewards;
+using MegaCrit.Sts2.Core.Events;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
 
@@ -116,6 +118,15 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 return CreateEnvelope(PhaseNames.Map, run, BuildMapSnapshot(runState));
             }
 
+            if (NRun.Instance?.EventRoom is not null)
+            {
+                EventScreenDto? eventScreen = BuildEventSnapshot();
+                return CreateEnvelope(
+                    PhaseNames.Event,
+                    run,
+                    eventScreen ?? new EventScreenDto(false, string.Empty, "Event is loading.", false, []));
+            }
+
             if (!CombatManager.Instance.IsInProgress || player?.PlayerCombatState is null)
             {
                 return CreateEnvelope(
@@ -198,6 +209,42 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         bool canSkip = FindNodesRecursive<NProceedButton>((Node)rewardsScreen).Any(button => button.IsEnabled);
         return new RewardsScreenDto(items.Count > 0 || canSkip, "rewards", items, [], canSkip);
+    }
+
+    private static EventScreenDto? BuildEventSnapshot()
+    {
+        NEventRoom? room = NRun.Instance?.EventRoom;
+        if (room is null)
+        {
+            return null;
+        }
+
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        if (typeof(NEventRoom).GetField("_event", flags)?.GetValue(room) is not EventModel model)
+        {
+            return null;
+        }
+
+        var options = model.CurrentOptions
+            .Select((option, index) => new EventOptionSnapshotDto(
+                index,
+                SafeFormat(option.Title),
+                SafeFormat(option.Description),
+                option.IsLocked,
+                option.IsProceed))
+            .ToList();
+        if (model.IsFinished && options.Count == 0)
+        {
+            options.Add(new EventOptionSnapshotDto(0, "Leave", "Leave the event.", false, true));
+        }
+
+        bool actionable = model.IsFinished || options.Any(option => !option.IsLocked);
+        return new EventScreenDto(
+            actionable,
+            SafeFormat(model.Title),
+            SafeFormat(model.Description),
+            model.IsFinished,
+            options);
     }
 
     private static CardSelectionScreenDto BuildHandSelectionSnapshot(NPlayerHand playerHand)
@@ -544,6 +591,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is CardSelectionScreenDto selection && selection.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal))
+        {
+            return screenValue is EventScreenDto eventScreen && eventScreen.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -597,7 +649,23 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal) &&
+            screenValue is EventScreenDto eventScreen)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                eventScreen.IsFinished,
+                Options = eventScreen.Options.Select(option => new
+                {
+                    option.OptionIndex,
+                    option.IsLocked,
+                    option.IsProceed
+                }).ToArray()
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal) &&
             screenValue is CardSelectionScreenDto selection)
         {
             projection = new

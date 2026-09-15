@@ -169,6 +169,14 @@ For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="ca
 
 `screen.selection_type` distinguishes single-click, grid/deck, and `hand_multi_select` states. Hand selection also exposes `min_select`, `max_select`, `current_select_count`, and `can_confirm`. Skip behavior is not enabled without a separately identified native control.
 
+## M7 event action
+
+When `phase="event"`, `screen` contains `name`, `description`, `is_finished`, and authoritative `options`. Each option exposes `option_index`, title/description, `is_locked`, and `is_proceed`.
+
+- `choose_event_option`: `{ "option_index": 1 }`
+
+The game thread reloads the current native event model and rejects missing, stale, out-of-range, or locked choices. A completed event uses the native event-room proceed path.
+
 ## Action response and status
 
 `action_result` retains the v1 response shape:
@@ -207,6 +215,7 @@ A request can become rejected after `queued` if the state changes before the mai
 - `bad_index`
 - `bad_target`
 - `unreachable_node`
+- `option_locked`
 - `not_playable`
 - `unsupported_action`
 - `dispatch_exception`

@@ -57,6 +57,8 @@ Development has entered the partial v0.6-alpha.4 source phase. Combat reward col
 
 The same development branch now includes generic choose-a-card, deck/grid selection, upgrade confirmation, and combat-hand multi-selection paths. These remain runtime-unverified; selection skipping is not enabled without an authoritative native control.
 
+Event reading and choice/leave control are also present in the alpha.4 source, including locked-option handling and reuse of the card-selection layer for event follow-up prompts.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

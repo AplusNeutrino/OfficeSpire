@@ -11,6 +11,7 @@ import {
   createSkipRewardsAction,
   createCardOptionAction,
   createConfirmCardSelectionAction,
+  createEventOptionAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
@@ -133,5 +134,28 @@ describe("OfficeSpire wire protocol", () => {
       expected_revision: 62,
       payload: {},
     });
+  });
+  it("creates and parses event decisions", () => {
+    expect(createEventOptionAction(1, 70)).toMatchObject({
+      action: "choose_event_option",
+      expected_revision: 70,
+      payload: { option_index: 1 },
+    });
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 70,
+        phase: "event",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          name: "Event",
+          description: "",
+          is_finished: false,
+          options: [],
+        },
+      }),
+    ).toBe(true);
   });
 });
