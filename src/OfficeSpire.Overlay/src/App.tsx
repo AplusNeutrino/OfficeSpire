@@ -320,7 +320,11 @@ export default function App() {
   const chooseRestOption = (option: RestOptionState) => {
     if (snapshot?.phase === "rest")
       submit(
-        createRestOptionAction(option.option_index, snapshot.state_revision),
+        createRestOptionAction(
+          option.option_index,
+          option.id,
+          snapshot.state_revision,
+        ),
       );
   };
   const chooseTreasureRelic = (relic: TreasureRelicState) => {

@@ -53,6 +53,8 @@ Race-evidence source checkpoint: `npm run analyze:runtime` passively parses Offi
 
 Rich-text source checkpoint: the Mod now normalizes formatted and raw fallback strings, and the Overlay independently normalizes presentation fields received over the wire. Color/BBCode tags are stripped, explicit breaks are preserved, image tags become readable labels, and unresolved variables are suppressed without changing stable IDs. Unit and production-build evidence exists; live localized card, power, intent, event, rest, reward, relic, and potion strings remain `implemented_unverified`.
 
+Rest-identity source checkpoint: `choose_rest_option` now carries the native option ID as well as its displayed index. Main-thread dispatch reloads the native options and rejects changed identities or mismatched native control counts before clicking. Unit/build evidence exists; live ordinary, smith/remove, version-specific, and multiplayer rest flows remain `implemented_unverified` or `not_implemented` as listed in the roadmap.
+
 M8 coverage correction: the earlier “source complete” label was too broad. Ordinary rest-site choices/leave and smith/remove card-selection follow-ups exist, but multiplayer rest targeting is `not_implemented`; menu and run-end states are read-only by design; map/rest lifecycle variants still need live enumeration. No capability is promoted by this correction.
 
 ## M1 — Mod Runtime

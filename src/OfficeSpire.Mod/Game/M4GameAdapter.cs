@@ -231,10 +231,20 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return Reject(request, "bad_request", "choose_rest_option requires integer payload.option_index.");
         }
-        var buttons = FindNodesRecursive<NRestSiteButton>((Node)room);
-        if (index < 0 || index >= buttons.Count)
+        if (!TryReadRequiredString(request.Payload, "option_id", out string? optionId))
         {
-            return Reject(request, "bad_index", $"Rest option {index} is unavailable.");
+            return Reject(request, "bad_request", "choose_rest_option requires non-empty payload.option_id.");
+        }
+        var options = room.Options.ToList();
+        if (index < 0 || index >= options.Count ||
+            !string.Equals(options[index].OptionId, optionId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected rest option changed before dispatch.");
+        }
+        var buttons = FindNodesRecursive<NRestSiteButton>((Node)room);
+        if (buttons.Count != options.Count || index >= buttons.Count)
+        {
+            return Reject(request, "unsupported_state", "Rest-site controls do not match the authoritative option list.");
         }
         buttons[index].ForceClick();
         return Accept(request, "accepted", $"Selected rest option {index}.");

@@ -502,6 +502,33 @@ Scope:
 - protocol compatibility tests;
 - repeated full-run validation.
 
+### 8.1 Complete delivery plan
+
+The following work packages are the authoritative path from the current branch to the v0.6 product target. A package is complete only when its source tasks are finished and each runtime requirement has its own evidence status; compilation, mocks, or the presence of UI controls never count as `runtime_pass`.
+
+| ID | Work package | Source tasks | Required evidence / exit condition | Current status |
+|---|---|---|---|---|
+| M8.1 | Run-decision inventory | Audit map, rewards, selections, events, rest sites, treasure, and shop against authoritative native controls; document every unsupported variant | A version-stamped surface matrix and at least one observed transition per supported family | `in_progress` |
+| M8.2 | Rest/campfire hardening | Bind actions to both option index and stable option ID; reject reordered/replaced options; retain fail-closed multiplayer target handling; enumerate option families | Ordinary choice, leave, smith/remove follow-up, unavailable option, stale option, and multiplayer-target evidence | `in_progress` |
+| M8.3 | Map hardening | Revalidate stable coordinate/ID/reachability on the game thread; audit first-floor, boss, act transition, and multiplayer vote states | Recorded legal, stale, unreachable, transition, and voting observations | `implemented_unverified` |
+| M8.4 | Menu and run start | Keep no-run detection read-only; provide clear original-UI handoff; do not synthesize start/resume actions unless a later explicitly reviewed design proves idempotent | Startup and resume handoff observations; no automatic write or replay | `implemented_unverified` (read-only design) |
+| M8.5 | Run end | Gate terminal state on the native game-over surface; classify victory/defeat/abandonment; expose no automatic post-run mutation | Victory, defeat, abandon, revival prevention, and return-to-menu observations | `implemented_unverified` |
+| M8.6 | Presentation text | Normalize color/BBCode, icons, breaks, and unresolved variables without touching protocol identities; cover localized text and malformed markup | Unit corpus plus live cards, powers, intents, events, campfires, rewards, relics, potions, and non-English samples | `implemented_unverified` |
+| M8.7 | Combat/action safety | Validate potion targeting/discard, pending settlement, revision races, timeouts, reconnect, and never-replay semantics | Recorded targeted/untargeted potion and one-shot stale-window probes with manual judgment | `implemented_unverified` |
+| M8.8 | Keyboard/accessibility | Complete keyboard paths, focus management, readable scaling, contrast, reduced motion, and screen-reader labels | Windows/Tauri keyboard-only and assistive-technology checklist | `implemented_unverified` |
+| M8.9 | Compatibility and diagnostics | Maintain protocol/release metadata checks, passive runtime analyzer, actionable logs, and fail-closed version drift | Supported and incompatible-version observations with traceable logs | `implemented_unverified` |
+| M8.10 | Workshop candidate | Keep manifest/dependencies explicit, build an unsigned traceable candidate, document framework coexistence, install/upgrade/uninstall, and policy checks; never publish automatically | Windows artifact/checksum plus private manual subscription lifecycle and current Steam policy review | `implemented_unverified` |
+| M8.11 | Full-run qualification | Execute repeated supported runs spanning all implemented surfaces and collect exact game/mod/app versions | Completed evidence matrix with no silent unsupported transitions or replayed writes | `implemented_unverified` |
+
+Execution rules:
+
+1. Prefer source tasks that improve stable identity, fail-closed behavior, or observability without requiring speculative native calls.
+2. Never add an action solely because a similarly named native control exists; determine its settlement and replay semantics first.
+3. Keep multiplayer or version-specific states visible and non-actionable until stable player/control identities are available.
+4. Record unavailable STS2, .NET, Windows, Tauri, and Steam checks as `implemented_unverified`, never as passes.
+5. Commit each independently reviewable slice to `codex/m6-map-controller`; do not modify `main` and do not publish a Workshop item.
+6. Finish M8 only after all safe source work above is complete and every remaining external gate is explicitly recorded. Then runtime validation may promote capabilities individually.
+
 M8 source-coverage audit — corrected 2026-09-15:
 
 | M8 area | Source status | Remaining evidence gate |

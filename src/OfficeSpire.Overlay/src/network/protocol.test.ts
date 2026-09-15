@@ -337,10 +337,10 @@ describe("OfficeSpire wire protocol", () => {
     ).toBe(true);
   });
   it("creates and parses rest-site decisions", () => {
-    expect(createRestOptionAction(0, 80)).toMatchObject({
+    expect(createRestOptionAction(0, "rest", 80)).toMatchObject({
       action: "choose_rest_option",
       expected_revision: 80,
-      payload: { option_index: 0 },
+      payload: { option_index: 0, option_id: "rest" },
     });
     expect(createLeaveRestSiteAction(81).action).toBe("leave_rest_site");
     expect(

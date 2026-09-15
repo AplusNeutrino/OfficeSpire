@@ -122,13 +122,14 @@ export function createEventOptionAction(
 
 export function createRestOptionAction(
   optionIndex: number,
+  optionId: string,
   revision: number,
 ): OverlayAction {
   return {
     request_id: requestId(),
     action: "choose_rest_option",
     expected_revision: revision,
-    payload: { option_index: optionIndex },
+    payload: { option_index: optionIndex, option_id: optionId },
   };
 }
 

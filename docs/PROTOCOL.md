@@ -201,10 +201,12 @@ The game thread reloads the current native event model and rejects missing, stal
 
 When `phase="rest"`, `screen.options` contains authoritative rest choices and `can_proceed` exposes the native leave control.
 
-- `choose_rest_option`: `{ "option_index": 0 }`
+- `choose_rest_option`: `{ "option_index": 0, "option_id": "rest" }`
 - `leave_rest_site`: `{}`
 
 `target_selection_pending=true` indicates a multiplayer target decision that this version does not model. Mutations then fail closed with `unsupported_state`; the user must complete that target in STS2.
+
+`choose_rest_option` carries both the snapshot index and native option ID. Dispatch reloads the current native option list and rejects the request as stale if either identity changed; it also fails closed if the rendered control count no longer matches that authoritative list.
 
 ## M7 treasure actions
 
