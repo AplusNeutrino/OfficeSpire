@@ -132,3 +132,15 @@ internal sealed record EventOptionSnapshotDto(
     string Description,
     bool IsLocked,
     bool IsProceed);
+
+internal sealed record RestScreenDto(
+    bool WaitingForInput,
+    IReadOnlyList<RestOptionSnapshotDto> Options,
+    bool CanProceed,
+    bool TargetSelectionPending);
+
+internal sealed record RestOptionSnapshotDto(
+    int OptionIndex,
+    string Id,
+    string Name,
+    string Description);

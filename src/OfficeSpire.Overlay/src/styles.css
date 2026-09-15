@@ -194,6 +194,44 @@ footer,
   opacity: 0.45;
   cursor: not-allowed;
 }
+.rest-options {
+  display: grid;
+  gap: 8px;
+}
+.rest-option,
+.rest-proceed {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid rgba(118, 155, 127, 0.5);
+  border-radius: 8px;
+  padding: 10px;
+  color: inherit;
+  background: rgba(86, 139, 99, 0.14);
+  text-align: left;
+  cursor: pointer;
+}
+.rest-option span {
+  color: #aaa;
+  font-size: 11px;
+}
+.rest-proceed {
+  margin-top: 10px;
+  text-align: center;
+}
+.rest-option:disabled,
+.rest-proceed:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.unsupported-warning {
+  padding: 8px;
+  border: 1px solid #ad6c62;
+  border-radius: 7px;
+  color: #f0b0a7;
+  background: rgba(111, 59, 53, 0.3);
+  font-size: 11px;
+}
 .reward-item,
 .reward-card {
   display: grid;

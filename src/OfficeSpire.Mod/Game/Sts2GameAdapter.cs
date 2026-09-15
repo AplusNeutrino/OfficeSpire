@@ -26,6 +26,8 @@ using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Entities.RestSite;
+using MegaCrit.Sts2.Core.Nodes.RestSite;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
 
@@ -125,6 +127,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     PhaseNames.Event,
                     run,
                     eventScreen ?? new EventScreenDto(false, string.Empty, "Event is loading.", false, []));
+            }
+
+            if (NRestSiteRoom.Instance is not null)
+            {
+                return CreateEnvelope(PhaseNames.Rest, run, BuildRestSnapshot());
             }
 
             if (!CombatManager.Instance.IsInProgress || player?.PlayerCombatState is null)
@@ -245,6 +252,25 @@ public sealed class Sts2GameAdapter : IGameAdapter
             SafeFormat(model.Description),
             model.IsFinished,
             options);
+    }
+
+    private static RestScreenDto BuildRestSnapshot()
+    {
+        NRestSiteRoom room = NRestSiteRoom.Instance!;
+        var options = room.Options
+            .Select((option, index) => new RestOptionSnapshotDto(
+                index,
+                option.OptionId,
+                SafeFormat(option.Title),
+                SafeFormat(option.Description)))
+            .ToList();
+        bool canProceed = options.Count == 0 && room.ProceedButton is { IsEnabled: true };
+        bool targetSelectionPending = NTargetManager.Instance is { IsInSelection: true };
+        return new RestScreenDto(
+            !targetSelectionPending && (options.Count > 0 || canProceed),
+            options,
+            canProceed,
+            targetSelectionPending);
     }
 
     private static CardSelectionScreenDto BuildHandSelectionSnapshot(NPlayerHand playerHand)
@@ -596,6 +622,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is EventScreenDto eventScreen && eventScreen.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal))
+        {
+            return screenValue is RestScreenDto rest && rest.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -649,7 +680,19 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal) &&
+            screenValue is RestScreenDto rest)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                Options = rest.Options.Select(option => new { option.OptionIndex, option.Id }).ToArray(),
+                rest.CanProceed,
+                rest.TargetSelectionPending
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal) &&
             screenValue is EventScreenDto eventScreen)
         {
             projection = new

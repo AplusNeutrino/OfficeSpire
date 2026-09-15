@@ -12,6 +12,8 @@ import {
   createCardOptionAction,
   createConfirmCardSelectionAction,
   createEventOptionAction,
+  createRestOptionAction,
+  createLeaveRestSiteAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
@@ -154,6 +156,29 @@ describe("OfficeSpire wire protocol", () => {
           description: "",
           is_finished: false,
           options: [],
+        },
+      }),
+    ).toBe(true);
+  });
+  it("creates and parses rest-site decisions", () => {
+    expect(createRestOptionAction(0, 80)).toMatchObject({
+      action: "choose_rest_option",
+      expected_revision: 80,
+      payload: { option_index: 0 },
+    });
+    expect(createLeaveRestSiteAction(81).action).toBe("leave_rest_site");
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 80,
+        phase: "rest",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          options: [],
+          can_proceed: true,
+          target_selection_pending: false,
         },
       }),
     ).toBe(true);

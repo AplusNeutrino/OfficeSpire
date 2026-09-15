@@ -199,6 +199,8 @@ internal sealed class ActionInbox
             "choose_card_option" or "confirm_card_selection" =>
                 string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal),
             "choose_event_option" => string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal),
+            "choose_rest_option" or "leave_rest_site" =>
+                string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal),
             _ => string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
         };
     }

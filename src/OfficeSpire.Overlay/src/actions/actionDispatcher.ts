@@ -92,3 +92,24 @@ export function createEventOptionAction(
     payload: { option_index: optionIndex },
   };
 }
+
+export function createRestOptionAction(
+  optionIndex: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "choose_rest_option",
+    expected_revision: revision,
+    payload: { option_index: optionIndex },
+  };
+}
+
+export function createLeaveRestSiteAction(revision: number): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "leave_rest_site",
+    expected_revision: revision,
+    payload: {},
+  };
+}

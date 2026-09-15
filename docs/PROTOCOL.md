@@ -177,6 +177,15 @@ When `phase="event"`, `screen` contains `name`, `description`, `is_finished`, an
 
 The game thread reloads the current native event model and rejects missing, stale, out-of-range, or locked choices. A completed event uses the native event-room proceed path.
 
+## M7 rest-site actions
+
+When `phase="rest"`, `screen.options` contains authoritative rest choices and `can_proceed` exposes the native leave control.
+
+- `choose_rest_option`: `{ "option_index": 0 }`
+- `leave_rest_site`: `{}`
+
+`target_selection_pending=true` indicates a multiplayer target decision that this version does not model. Mutations then fail closed with `unsupported_state`; the user must complete that target in STS2.
+
 ## Action response and status
 
 `action_result` retains the v1 response shape:
@@ -216,6 +225,7 @@ A request can become rejected after `queued` if the state changes before the mai
 - `bad_target`
 - `unreachable_node`
 - `option_locked`
+- `unsupported_state`
 - `not_playable`
 - `unsupported_action`
 - `dispatch_exception`

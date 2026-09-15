@@ -5,6 +5,8 @@ import type {
   CardSelectionStateSnapshot,
   EventOptionState,
   EventStateSnapshot,
+  RestOptionState,
+  RestStateSnapshot,
   CombatStateSnapshot,
   ConnectionStatus,
   EnemyState,
@@ -25,12 +27,15 @@ import {
   createCardOptionAction,
   createConfirmCardSelectionAction,
   createEventOptionAction,
+  createRestOptionAction,
+  createLeaveRestSiteAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
 import { RewardsPanel } from "./components/RewardsPanel";
 import { CardSelectionPanel } from "./components/CardSelectionPanel";
 import { EventPanel } from "./components/EventPanel";
+import { RestPanel } from "./components/RestPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 const terminalCodes = new Set([
@@ -43,6 +48,7 @@ const terminalCodes = new Set([
   "bad_target",
   "unreachable_node",
   "option_locked",
+  "unsupported_state",
   "not_playable",
   "not_ready",
   "action_pending",
@@ -199,6 +205,12 @@ export default function App() {
         createEventOptionAction(option.option_index, snapshot.state_revision),
       );
   };
+  const chooseRestOption = (option: RestOptionState) => {
+    if (snapshot?.phase === "rest")
+      submit(
+        createRestOptionAction(option.option_index, snapshot.state_revision),
+      );
+  };
   const actionInFlight = !!(
     actionResult &&
     actionResult.accepted &&
@@ -261,6 +273,15 @@ export default function App() {
           snapshot={snapshot as EventStateSnapshot}
           disabled={disabled}
           onOption={chooseEventOption}
+        />
+      ) : snapshot.phase === "rest" ? (
+        <RestPanel
+          snapshot={snapshot as RestStateSnapshot}
+          disabled={disabled}
+          onOption={chooseRestOption}
+          onLeave={() =>
+            submit(createLeaveRestSiteAction(snapshot.state_revision))
+          }
         />
       ) : (
         <section className="empty">

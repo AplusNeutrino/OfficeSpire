@@ -401,7 +401,7 @@ Current capability status:
 | Generic choose-a-card prompts | `implemented_unverified` |
 | Deck/grid and hand multi-selection prompts | `implemented_unverified` |
 | Events | `implemented_unverified` |
-| Rest sites | `not_implemented` |
+| Rest sites | `implemented_unverified` |
 | Treasures | `not_implemented` |
 | Shops, purchases, and card removal | `not_implemented` |
 
@@ -412,6 +412,8 @@ The next source pass adds `NChooseACardSelectionScreen` observation and revision
 The following source pass models those distinct confirmation paths: generic grid single-click, deck selection preview confirmation, upgrade confirmation, and combat-hand multi-selection with authoritative min/max/current counts plus explicit `confirm_card_selection`. Optional skipping remains unsupported unless a native screen exposes a separately validated path.
 
 The M7.4 source pass adds authoritative event title, description, completion state, and option snapshots; locked/proceed metadata; revision-guarded `choose_event_option`; fresh main-thread option validation; native `OptionButtonClicked`; and completed-event `Proceed` handling. Event-triggered card overlays reuse the card-selection phase.
+
+The M7.5 source pass adds authoritative rest-option snapshots, `choose_rest_option`, `leave_rest_site`, fresh native control lookup, and overlay interaction. Smith/remove follow-up screens reuse card selection. Multiplayer player-target selection is detected but intentionally fails closed as `unsupported_state` pending stable identity research.
 
 Each phase follows the same delivery gate:
 

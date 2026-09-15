@@ -59,6 +59,8 @@ The same development branch now includes generic choose-a-card, deck/grid select
 
 Event reading and choice/leave control are also present in the alpha.4 source, including locked-option handling and reuse of the card-selection layer for event follow-up prompts.
 
+Ordinary rest-site choices and leaving are implemented in source, with smith/remove follow-ups delegated to card selection. Multiplayer rest-site targeting remains explicitly unsupported.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

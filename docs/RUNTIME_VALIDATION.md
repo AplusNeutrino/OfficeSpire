@@ -253,8 +253,9 @@ Implemented but unverified capability source:
 - deck/grid selection, upgrade confirmation, and hand multi-selection source paths;
 - reflected hand min/max/current counts and guarded `confirm_card_selection`.
 - event state/options plus guarded native event option and proceed dispatch.
+- rest-site options/leave source path, with card-selection follow-ups and explicit unsupported multiplayer targeting.
 
-Frontend checks after this source pass: `npm test` PASS (12 tests) and `npm run build` PASS. Rest sites, treasures, shops, and selection-screen skipping are not implemented. No M7 runtime behavior is a pass.
+Frontend checks after this source pass: `npm test` PASS (13 tests) and `npm run build` PASS. Treasures, shops, selection-screen skipping, and rest-site multiplayer targeting are not implemented. No M7 runtime behavior is a pass.
 
 Use the M5 matrix in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for the next probes.
 

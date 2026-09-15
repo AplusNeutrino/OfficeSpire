@@ -67,6 +67,10 @@ A subsequent M7.3 pass confirmed the distinct `NDeckUpgradeSelectScreen` confirm
 
 The same exact reference commit was inspected for `NEventRoom`, its current `EventModel`, `CurrentOptions`, `OptionButtonClicked`, and `Proceed` API shapes. OfficeSpire independently implements a smaller event DTO and dispatcher with its existing revision/inbox lifecycle; hover previews are deferred rather than inferred.
 
+### M7 rest-site reference
+
+The same exact reference commit was inspected for `NRestSiteRoom.Options`, `NRestSiteButton`, `ProceedButton`, and target-selection detection. OfficeSpire independently implements the ordinary option/leave paths and deliberately omits target dispatch until stable player identity can be carried through the protocol.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

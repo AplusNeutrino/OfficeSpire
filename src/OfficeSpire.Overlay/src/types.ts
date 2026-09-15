@@ -118,6 +118,18 @@ export interface EventScreen {
   is_finished: boolean;
   options: EventOptionState[];
 }
+export interface RestOptionState {
+  option_index: number;
+  id: string;
+  name: string;
+  description: string;
+}
+export interface RestScreen {
+  waiting_for_input: boolean;
+  options: RestOptionState[];
+  can_proceed: boolean;
+  target_selection_pending: boolean;
+}
 export interface RunState {
   ascension_level: number;
   current_act: number;
@@ -152,12 +164,17 @@ export interface EventStateSnapshot extends BaseStateSnapshot {
   phase: "event";
   screen: EventScreen;
 }
+export interface RestStateSnapshot extends BaseStateSnapshot {
+  phase: "rest";
+  screen: RestScreen;
+}
 export type StateSnapshot =
   | CombatStateSnapshot
   | MapStateSnapshot
   | RewardsStateSnapshot
   | CardSelectionStateSnapshot
   | EventStateSnapshot
+  | RestStateSnapshot
   | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
   type: string;
@@ -182,7 +199,9 @@ export interface OverlayAction {
     | "skip_rewards"
     | "choose_card_option"
     | "confirm_card_selection"
-    | "choose_event_option";
+    | "choose_event_option"
+    | "choose_rest_option"
+    | "leave_rest_site";
   expected_revision: number;
   payload: Record<string, unknown>;
 }
@@ -207,6 +226,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         Array.isArray((c.screen as RewardsScreen).card_choices))) &&
     (c.phase !== "card_selection" ||
       Array.isArray((c.screen as CardSelectionScreen).options)) &&
-    (c.phase !== "event" || Array.isArray((c.screen as EventScreen).options))
+    (c.phase !== "event" || Array.isArray((c.screen as EventScreen).options)) &&
+    (c.phase !== "rest" || Array.isArray((c.screen as RestScreen).options))
   );
 }

@@ -15,6 +15,7 @@ using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.RestSite;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
@@ -54,6 +55,8 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_card_option" => ExecuteChooseCardOption(request),
                 "confirm_card_selection" => ExecuteConfirmCardSelection(request),
                 "choose_event_option" => ExecuteChooseEventOption(request),
+                "choose_rest_option" => ExecuteChooseRestOption(request),
+                "leave_rest_site" => ExecuteLeaveRestSite(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -67,6 +70,41 @@ public sealed class M4GameAdapter : IGameAdapter
                 "dispatch_exception",
                 $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static ActionResponse ExecuteChooseRestOption(ActionRequest request)
+    {
+        NRestSiteRoom? room = NRestSiteRoom.Instance;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "A rest site is not active.");
+        }
+        if (NTargetManager.Instance is { IsInSelection: true })
+        {
+            return Reject(request, "unsupported_state", "Rest-site player targeting is not implemented.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "option_index", out int index))
+        {
+            return Reject(request, "bad_request", "choose_rest_option requires integer payload.option_index.");
+        }
+        var buttons = FindNodesRecursive<NRestSiteButton>((Node)room);
+        if (index < 0 || index >= buttons.Count)
+        {
+            return Reject(request, "bad_index", $"Rest option {index} is unavailable.");
+        }
+        buttons[index].ForceClick();
+        return Accept(request, "accepted", $"Selected rest option {index}.");
+    }
+
+    private static ActionResponse ExecuteLeaveRestSite(ActionRequest request)
+    {
+        NRestSiteRoom? room = NRestSiteRoom.Instance;
+        if (room?.ProceedButton is not { IsEnabled: true } proceed)
+        {
+            return Reject(request, "not_ready", "The rest-site proceed button is unavailable.");
+        }
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Left the rest site.");
     }
 
     private static ActionResponse ExecuteChooseEventOption(ActionRequest request)
