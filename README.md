@@ -81,6 +81,8 @@ When STS2 exposes no active run, the backend now reports an explicit read-only m
 
 A visible native game-over screen now produces a read-only `run_end` snapshot classified as victory, defeat, or abandoned from engine-owned signals. The Overlay presents the result but offers no automatic return-to-menu or new-run action. This source path remains `implemented_unverified` until observed in STS2.
 
+M8 runtime evidence preparation includes a passive log analyzer for revision monotonicity, phase/revision conflicts, and pending-action cycles. It never submits a game action and never labels its own report as a runtime pass; see [docs/M8_RUNTIME_PROBES.md](docs/M8_RUNTIME_PROBES.md).
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**
@@ -168,6 +170,7 @@ Tauri runtime/build validation remains part of the active M5 milestone; consult 
 - [Upstream references](docs/UPSTREAM_REFERENCES.md)
 - [Project scope](PROJECT_PLAN.md)
 - [Steam Workshop release preparation](docs/STEAM_WORKSHOP_RELEASE.md)
+- [M8 runtime probes](docs/M8_RUNTIME_PROBES.md)
 
 ## Third-party notices and license
 

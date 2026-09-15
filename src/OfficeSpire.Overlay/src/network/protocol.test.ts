@@ -28,7 +28,32 @@ import { resolveRunShortcut } from "../actions/runKeyboard";
 import { ACTION_TIMEOUT_MS, clientTimeoutResult } from "./actionLifecycle";
 import { ReconnectController } from "./reconnect";
 import { DEFAULT_SETTINGS, parseSettings } from "../settings";
+import { analyzeRuntimeLog } from "../../scripts/analyze-runtime-log.mjs";
 describe("OfficeSpire wire protocol", () => {
+  it("analyzes runtime state transitions without declaring a runtime pass", () => {
+    const report = analyzeRuntimeLog(`
+[2026-09-15T01:00:00Z] [OfficeSpire] state_changed | rev=8 phase=combat pending=False
+[2026-09-15T01:00:01Z] [OfficeSpire] state_changed | rev=8 phase=combat pending=True
+[2026-09-15T01:00:02Z] [OfficeSpire] state_changed | rev=9 phase=combat pending=False
+`);
+    expect(report.samples).toBe(3);
+    expect(report.pending_cycles).toHaveLength(1);
+    expect(report.pending_cycles[0].revision_advanced).toBe(true);
+    expect(report.revision_regressions).toEqual([]);
+    expect(report.invariant_warnings).toBe(0);
+    expect(report.requires_manual_runtime_judgment).toBe(true);
+  });
+
+  it("flags revision regressions and same-revision phase changes", () => {
+    const report = analyzeRuntimeLog(`
+[2026-09-15T01:00:00Z] [OfficeSpire] state_changed | rev=9 phase=combat pending=False
+[2026-09-15T01:00:01Z] [OfficeSpire] state_changed | rev=9 phase=map pending=False
+[2026-09-15T01:00:02Z] [OfficeSpire] state_changed | rev=8 phase=map pending=False
+`);
+    expect(report.same_revision_phase_changes).toHaveLength(1);
+    expect(report.revision_regressions).toHaveLength(1);
+    expect(report.invariant_warnings).toBe(2);
+  });
   it("wraps state requests with protocol version 1", () => {
     expect(getStateMessage()).toEqual({
       type: "get_state",

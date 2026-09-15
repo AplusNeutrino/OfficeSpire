@@ -480,6 +480,9 @@ Implementation checkpoint — 2026-09-15:
 - a visible native game-over overlay now gates a typed, read-only `run_end` snapshot; engine abandonment, victory-room, and recorded-win signals classify `abandoned`, `victory`, or `defeat`;
 - the client accepts only those terminal outcomes and provides no automatic return-to-menu or new-run mutation;
 - run-end classification, outcome accuracy, revival edge cases, and menu transition behavior remain `implemented_unverified` pending live STS2 evidence.
+- a passive, cross-platform runtime-log analyzer reports revision regressions, same-revision phase changes, pending cycles, unresolved pending state, and observed phases without sending game actions;
+- the documented extreme-race procedure uses exactly one deliberately stale request after a manual native state change and explicitly forbids retrying ambiguous/timed-out requests;
+- analyzer tests pass, but the main-thread race/stress criterion remains `implemented_unverified` until the procedure is performed against STS2 and manually judged.
 
 Scope:
 
@@ -538,6 +541,7 @@ The next implementation cycle follows this order:
 
 - **This file** — milestone status, current priority, future development scope, execution order, exit criteria.
 - **[RUNTIME_VALIDATION.md](RUNTIME_VALIDATION.md)** — commands, environment, observations, PASS/FAIL evidence, known runtime limitations.
+- **[M8_RUNTIME_PROBES.md](M8_RUNTIME_PROBES.md)** — safe, non-replaying procedures and evidence requirements for M8 runtime validation.
 - **[PROTOCOL.md](PROTOCOL.md)** — wire schema and protocol invariants.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — component boundaries and design rationale.
 - **[UPSTREAM_REFERENCES.md](UPSTREAM_REFERENCES.md)** — third-party research, commits, licenses, and reuse decisions.

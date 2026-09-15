@@ -9,6 +9,7 @@
     "test": "vitest run",
     "check": "prettier --check src && npm test && npm run build && node scripts/verify-release.mjs",
     "verify:release": "node scripts/verify-release.mjs",
+    "analyze:runtime": "node scripts/analyze-runtime-log.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
