@@ -149,6 +149,7 @@ internal sealed record EventOptionSnapshotDto(
 
 internal sealed record RestScreenDto(
     bool WaitingForInput,
+    string InteractionState,
     IReadOnlyList<RestOptionSnapshotDto> Options,
     bool CanProceed,
     bool TargetSelectionPending);

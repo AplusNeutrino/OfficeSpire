@@ -201,12 +201,14 @@ Each native event-option instance receives an opaque process-local action token.
 
 ## M7 rest-site actions
 
-When `phase="rest"`, `screen.options` contains authoritative rest choices and `can_proceed` exposes the native leave control.
+When `phase="rest"`, `screen.options` contains authoritative rest choices and `can_proceed` exposes the native leave control. `interaction_state` is one of `options`, `player_target`, `proceed`, or `resolving`, so a client never infers completion merely because the option buttons disappeared.
 
 - `choose_rest_option`: `{ "option_index": 0, "option_id": "rest" }`
 - `leave_rest_site`: `{}`
 
 `target_selection_pending=true` indicates a multiplayer target decision that this version does not model. Mutations then fail closed with `unsupported_state`; the user must complete that target in STS2.
+
+`interaction_state="resolving"` is non-actionable and means STS2 has removed the choices without yet exposing a supported follow-up. Card-based smith/remove follow-ups are represented as the separate `card_selection` phase. A phase change or a newer settled decision revision, not the initial click, establishes completion.
 
 `choose_rest_option` carries both the snapshot index and native option ID. Dispatch reloads the current native option list and rejects the request as stale if either identity changed; it also fails closed if the rendered control count no longer matches that authoritative list.
 

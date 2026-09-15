@@ -63,6 +63,8 @@ Merchant-identity source checkpoint: every card, relic, and potion shop entry ex
 
 Reward/event token source checkpoint: ordinary rewards and event options now expose opaque process-local action tokens assigned to native model instances through weak references. Dispatch requires the current indexed model to retain the same token; completed-event proceed uses a reserved token. Tokens are neither derived from localized text nor persisted. Unit/build evidence exists; live reward replacement, event mutation/proceed, localization, and process-restart transitions remain `implemented_unverified`.
 
+Rest-lifecycle source checkpoint: rest snapshots explicitly distinguish `options`, unsupported `player_target`, `proceed`, and non-actionable `resolving` states. Card-based smith/remove follow-ups remain a distinct `card_selection` phase, and accepted rest actions stay pending until a newer settled decision revision rather than completing on click. Unit/build evidence exists; each native rest option family and its transition remain `implemented_unverified`.
+
 M8 coverage correction: the earlier “source complete” label was too broad. Ordinary rest-site choices/leave and smith/remove card-selection follow-ups exist, but multiplayer rest targeting is `not_implemented`; menu and run-end states are read-only by design; map/rest lifecycle variants still need live enumeration. No capability is promoted by this correction.
 
 ## M1 — Mod Runtime

@@ -433,12 +433,34 @@ describe("OfficeSpire wire protocol", () => {
         run: {},
         screen: {
           waiting_for_input: true,
+          interaction_state: "proceed",
           options: [],
           can_proceed: true,
           target_selection_pending: false,
         },
       }),
     ).toBe(true);
+    const resolving = {
+      protocol_version: 1,
+      state_revision: 81,
+      phase: "rest",
+      action_pending: true,
+      run: {},
+      screen: {
+        waiting_for_input: false,
+        interaction_state: "resolving",
+        options: [],
+        can_proceed: false,
+        target_selection_pending: false,
+      },
+    };
+    expect(isStateSnapshot(resolving)).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...resolving,
+        screen: { ...resolving.screen, waiting_for_input: true },
+      }),
+    ).toBe(false);
   });
   it("creates and parses treasure decisions", () => {
     expect(createTreasureAction("open_treasure", 90).action).toBe(

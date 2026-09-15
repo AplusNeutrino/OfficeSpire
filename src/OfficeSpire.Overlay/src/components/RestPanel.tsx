@@ -24,6 +24,9 @@ export function RestPanel({ snapshot, disabled, onOption, onLeave }: Props) {
             Player targeting is active. Complete this choice in STS2.
           </p>
         )}
+        {screen.interaction_state === "resolving" && (
+          <p className="status-copy">STS2 is resolving the rest-site choice…</p>
+        )}
         <div className="rest-options">
           {screen.options.map((option, index) => (
             <button

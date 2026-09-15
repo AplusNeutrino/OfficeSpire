@@ -141,6 +141,7 @@ export interface RestOptionState {
 }
 export interface RestScreen {
   waiting_for_input: boolean;
+  interaction_state: "options" | "player_target" | "proceed" | "resolving";
   options: RestOptionState[];
   can_proceed: boolean;
   target_selection_pending: boolean;
@@ -285,6 +286,37 @@ export interface OverlayAction {
   expected_revision: number;
   payload: Record<string, unknown>;
 }
+
+function isValidRestScreen(screen: RestScreen): boolean {
+  if (!Array.isArray(screen.options)) return false;
+  switch (screen.interaction_state) {
+    case "options":
+      return (
+        screen.waiting_for_input === true &&
+        screen.options.length > 0 &&
+        screen.target_selection_pending === false
+      );
+    case "player_target":
+      return (
+        screen.waiting_for_input === false &&
+        screen.target_selection_pending === true
+      );
+    case "proceed":
+      return (
+        screen.waiting_for_input === true &&
+        screen.can_proceed === true &&
+        screen.target_selection_pending === false
+      );
+    case "resolving":
+      return (
+        screen.waiting_for_input === false &&
+        screen.target_selection_pending === false
+      );
+    default:
+      return false;
+  }
+}
+
 export function isStateSnapshot(value: unknown): value is StateSnapshot {
   if (!value || typeof value !== "object") return false;
   const c = value as Partial<StateSnapshot>;
@@ -310,7 +342,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "card_selection" ||
       Array.isArray((c.screen as CardSelectionScreen).options)) &&
     (c.phase !== "event" || Array.isArray((c.screen as EventScreen).options)) &&
-    (c.phase !== "rest" || Array.isArray((c.screen as RestScreen).options)) &&
+    (c.phase !== "rest" || isValidRestScreen(c.screen as RestScreen)) &&
     (c.phase !== "treasure" ||
       Array.isArray((c.screen as TreasureScreen).relics)) &&
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&

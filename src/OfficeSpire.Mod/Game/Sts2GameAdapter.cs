@@ -320,8 +320,16 @@ public sealed class Sts2GameAdapter : IGameAdapter
             .ToList();
         bool canProceed = options.Count == 0 && room.ProceedButton is { IsEnabled: true };
         bool targetSelectionPending = NTargetManager.Instance is { IsInSelection: true };
+        string interactionState = targetSelectionPending
+            ? "player_target"
+            : options.Count > 0
+                ? "options"
+                : canProceed
+                    ? "proceed"
+                    : "resolving";
         return new RestScreenDto(
             !targetSelectionPending && (options.Count > 0 || canProceed),
+            interactionState,
             options,
             canProceed,
             targetSelectionPending);
@@ -878,6 +886,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 Phase = phase,
                 Run = runProjection,
                 Options = rest.Options.Select(option => new { option.OptionIndex, option.Id }).ToArray(),
+                rest.InteractionState,
                 rest.CanProceed,
                 rest.TargetSelectionPending
             };
