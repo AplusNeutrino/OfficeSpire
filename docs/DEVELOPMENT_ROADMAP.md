@@ -453,6 +453,8 @@ Implementation checkpoint — 2026-09-15:
 - dispatch revalidates the live slot and potion state on the game thread;
 - discard uses `DiscardPotionGameAction` through the native action queue synchronizer;
 - frontend protocol tests and production build pass; live STS2 behavior remains unverified.
+- combat keyboard shortcuts cover cards, potion slots, legal targets, end turn, and cancellation using layout-stable `KeyboardEvent.code` values;
+- controls expose matching `aria-keyshortcuts` and visible shortcut hints; non-combat keyboard navigation remains `not_implemented`.
 
 Scope:
 

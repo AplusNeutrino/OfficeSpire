@@ -67,6 +67,8 @@ The alpha.4 source now covers the planned M7 run decisions, including merchant b
 
 Development has entered the v0.6-beta.1 hardening phase. Combat snapshots now expose authoritative potion availability and legal targets; the overlay supports use, enemy targeting, and confirmed discard through native STS2 action paths. This M8 slice is `implemented_unverified` pending live STS2 validation.
 
+The first keyboard-control slice is also present: number keys play cards or choose a pending target, Shift+number uses potion slots, E ends the turn, and Escape cancels targeting. Full keyboard navigation across non-combat screens remains unfinished.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

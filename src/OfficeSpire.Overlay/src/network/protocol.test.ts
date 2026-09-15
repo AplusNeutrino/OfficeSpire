@@ -22,6 +22,7 @@ import {
   createDiscardPotionAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
+import { resolveCombatShortcut } from "../actions/combatKeyboard";
 describe("OfficeSpire wire protocol", () => {
   it("wraps state requests with protocol version 1", () => {
     expect(getStateMessage()).toEqual({
@@ -254,6 +255,26 @@ describe("OfficeSpire wire protocol", () => {
       action: "discard_potion",
       expected_revision: 111,
       payload: { slot_index: 2 },
+    });
+  });
+  it("maps combat keyboard shortcuts without browser key-layout ambiguity", () => {
+    expect(resolveCombatShortcut("Digit3", false, false)).toEqual({
+      kind: "card",
+      index: 2,
+    });
+    expect(resolveCombatShortcut("Digit2", true, false)).toEqual({
+      kind: "potion",
+      index: 1,
+    });
+    expect(resolveCombatShortcut("Digit1", false, true)).toEqual({
+      kind: "target",
+      index: 0,
+    });
+    expect(resolveCombatShortcut("KeyE", false, false)).toEqual({
+      kind: "end_turn",
+    });
+    expect(resolveCombatShortcut("Escape", false, true)).toEqual({
+      kind: "cancel",
     });
   });
 });

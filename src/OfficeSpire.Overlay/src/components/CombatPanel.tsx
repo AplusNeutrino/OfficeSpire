@@ -30,6 +30,12 @@ export function CombatPanel({
   onEndTurn,
 }: Props) {
   const { screen, run } = snapshot;
+  const validTargetIds =
+    selectedCard?.valid_target_ids ?? selectedPotion?.valid_target_ids ?? [];
+  const visibleEnemies = screen.enemies.filter((enemy) => enemy.is_alive);
+  const targetableEnemies = visibleEnemies.filter((enemy) =>
+    validTargetIds.includes(enemy.combat_id),
+  );
   return (
     <>
       <header className="run-line">
@@ -58,9 +64,11 @@ export function CombatPanel({
       <section>
         <h2>Enemies</h2>
         <div className="list">
-          {screen.enemies
-            .filter((e) => e.is_alive)
-            .map((enemy) => (
+          {visibleEnemies.map((enemy) => {
+            const targetIndex = targetableEnemies.findIndex(
+              (candidate) => candidate.combat_id === enemy.combat_id,
+            );
+            return (
               <button
                 key={enemy.stable_id}
                 className={`enemy ${selectedCard?.valid_target_ids.includes(enemy.combat_id) || selectedPotion?.valid_target_ids.includes(enemy.combat_id) ? "targetable" : ""}`}
@@ -71,13 +79,19 @@ export function CombatPanel({
                   )
                 }
                 onClick={() => onTarget(enemy)}
+                aria-keyshortcuts={
+                  targetIndex >= 0 ? `${targetIndex + 1}` : undefined
+                }
               >
                 <span>
                   <strong>{enemy.name}</strong> {enemy.current_hp}/
                   {enemy.max_hp}
                   {enemy.block > 0 ? ` +${enemy.block} block` : ""}
                 </span>
-                <span>{enemy.intent}</span>
+                <span>
+                  {targetIndex >= 0 ? `[${targetIndex + 1}] ` : ""}
+                  {enemy.intent}
+                </span>
                 {enemy.powers.length > 0 && (
                   <small>
                     {enemy.powers
@@ -86,7 +100,8 @@ export function CombatPanel({
                   </small>
                 )}
               </button>
-            ))}
+            );
+          })}
         </div>
       </section>
       {(selectedCard || selectedPotion) && (
@@ -113,8 +128,11 @@ export function CombatPanel({
                   }
                   onClick={() => onPotion(potion)}
                   title={potion.description}
+                  aria-keyshortcuts={`Shift+${potion.slot_index + 1}`}
                 >
-                  <strong>{potion.name}</strong>
+                  <strong>
+                    [Shift+{potion.slot_index + 1}] {potion.name}
+                  </strong>
                   <small>{potion.description}</small>
                 </button>
                 <button
@@ -163,10 +181,14 @@ export function CombatPanel({
             !screen.is_play_phase
           }
           onClick={onEndTurn}
+          aria-keyshortcuts="E"
         >
-          End Turn
+          [E] End Turn
         </button>
       </footer>
+      <p className="keyboard-help">
+        1–9 cards/targets · Shift+1–9 potions · Esc cancel
+      </p>
     </>
   );
 }

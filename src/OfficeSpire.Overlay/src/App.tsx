@@ -41,6 +41,7 @@ import {
   createUsePotionAction,
   createDiscardPotionAction,
 } from "./actions/actionDispatcher";
+import { resolveCombatShortcut } from "./actions/combatKeyboard";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
 import { RewardsPanel } from "./components/RewardsPanel";
@@ -282,6 +283,66 @@ export default function App() {
     !snapshot ||
     snapshot.action_pending ||
     actionInFlight;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        snapshot?.phase !== "combat"
+      )
+        return;
+      const combatSnapshot = snapshot as CombatStateSnapshot;
+
+      const command = resolveCombatShortcut(
+        event.code,
+        event.shiftKey,
+        !!selectedCard || !!selectedPotion,
+      );
+      if (!command) return;
+
+      if (command.kind === "cancel") {
+        setSelectedCard(undefined);
+        setSelectedPotion(undefined);
+        event.preventDefault();
+        return;
+      }
+      if (disabled) return;
+
+      if (command.kind === "end_turn") {
+        if (
+          combatSnapshot.screen.waiting_for_input &&
+          combatSnapshot.screen.is_play_phase
+        )
+          submit(createEndTurnAction(combatSnapshot.state_revision));
+      } else if (command.kind === "card") {
+        const card = combatSnapshot.screen.hand.find(
+          (candidate) => candidate.hand_index === command.index,
+        );
+        if (card?.can_play) chooseCard(card);
+      } else if (command.kind === "potion") {
+        const potion = combatSnapshot.screen.potions.find(
+          (candidate) => candidate.slot_index === command.index,
+        );
+        if (potion?.can_use) choosePotion(potion);
+      } else {
+        const validIds =
+          selectedCard?.valid_target_ids ??
+          selectedPotion?.valid_target_ids ??
+          [];
+        const enemy = combatSnapshot.screen.enemies.filter(
+          (candidate) =>
+            candidate.is_alive && validIds.includes(candidate.combat_id),
+        )[command.index];
+        if (enemy) chooseTarget(enemy);
+      }
+      event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [disabled, selectedCard, selectedPotion, snapshot]);
   return (
     <main className="overlay" data-tauri-drag-region>
       <div className="titlebar" data-tauri-drag-region>
