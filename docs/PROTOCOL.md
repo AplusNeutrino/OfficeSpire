@@ -86,6 +86,8 @@ Known phase names:
 
 When no authoritative run state exists, the backend reports `phase="menu"` with a read-only lifecycle screen and `status="no_active_run"`. Protocol v1 sets `waiting_for_input=false` and `can_start_run=false`: clients must direct the user to the original STS2 UI and must not synthesize a run-start action.
 
+A missing run and a visible game-over overlay must remain continuously observable for three capture frames before promotion to `menu` or `run_end`. Earlier frames use non-actionable `phase="unknown"` with `action_pending=true`. This transition state cannot complete an accepted mutation or expose lifecycle controls.
+
 `phase="run_end"` is emitted only while the native `NGameOverScreen` is the visible overlay. Its read-only `status` is `victory`, `defeat`, or `abandoned`; the client rejects other values and exposes no automatic post-run action. The Mod uses the engine's abandonment flag, victory-room signal, and recorded win time to classify the outcome. A missing or transient run state alone never establishes `run_end`.
 
 All user-facing presentation strings are plain text. The Mod removes game rich-text/color tags, converts explicit breaks and icon markup to readable text, and suppresses unresolved template variables. Clients must repeat this normalization defensively only for presentation fields; they must never normalize action names, IDs, stable identities, phase values, or other protocol semantics.

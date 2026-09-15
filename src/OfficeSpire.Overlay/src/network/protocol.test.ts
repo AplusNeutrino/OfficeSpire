@@ -235,6 +235,7 @@ describe("OfficeSpire wire protocol", () => {
       },
     };
     expect(isStateSnapshot(menu)).toBe(true);
+    expect(isStateSnapshot({ ...menu, action_pending: true })).toBe(false);
     expect(
       isStateSnapshot({
         ...menu,
@@ -257,6 +258,7 @@ describe("OfficeSpire wire protocol", () => {
       },
     };
     expect(isStateSnapshot(runEnd)).toBe(true);
+    expect(isStateSnapshot({ ...runEnd, action_pending: true })).toBe(false);
     expect(
       isStateSnapshot({
         ...runEnd,

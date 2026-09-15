@@ -347,12 +347,14 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
       Array.isArray((c.screen as TreasureScreen).relics)) &&
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
     (c.phase !== "menu" ||
-      ((c.screen as LifecycleScreen).waiting_for_input === false &&
+      (c.action_pending === false &&
+        (c.screen as LifecycleScreen).waiting_for_input === false &&
         (c.screen as LifecycleScreen).status === "no_active_run" &&
         typeof (c.screen as LifecycleScreen).message === "string" &&
         (c.screen as LifecycleScreen).can_start_run === false)) &&
     (c.phase !== "run_end" ||
-      ((c.screen as LifecycleScreen).waiting_for_input === false &&
+      (c.action_pending === false &&
+        (c.screen as LifecycleScreen).waiting_for_input === false &&
         runEndStatuses.has((c.screen as LifecycleScreen).status) &&
         typeof (c.screen as LifecycleScreen).message === "string" &&
         (c.screen as LifecycleScreen).can_start_run === false)) &&

@@ -44,6 +44,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
     // engine is genuinely quiet. Promote a changed semantic decision state only after three
     // consecutive identical actionable frames. Presentation/localization fields are excluded.
     private const int RequiredStableDecisionFrames = 3;
+    private const int RequiredStableLifecycleFrames = 3;
 
     private long _revision;
     private string _lastFingerprint = string.Empty;
@@ -51,14 +52,26 @@ public sealed class Sts2GameAdapter : IGameAdapter
     private string _candidateFingerprint = string.Empty;
     private int _candidateStableFrames;
     private bool _candidateActive;
+    private int _noRunFrames;
+    private int _gameOverFrames;
 
     public StateEnvelope CaptureState()
     {
         try
         {
             IRunState? runState = RunManager.Instance.DebugOnlyGetState();
-            if (NOverlayStack.Instance?.Peek() is NGameOverScreen)
+            bool gameOverVisible = NOverlayStack.Instance?.Peek() is NGameOverScreen;
+            _gameOverFrames = gameOverVisible
+                ? Math.Min(_gameOverFrames + 1, RequiredStableLifecycleFrames)
+                : 0;
+            if (gameOverVisible && _gameOverFrames < RequiredStableLifecycleFrames)
             {
+                _noRunFrames = 0;
+                return CreateTransitionEnvelope("Confirming the native game-over screen.");
+            }
+            if (gameOverVisible)
+            {
+                _noRunFrames = 0;
                 string outcome = GetRunOutcome(runState);
                 return CreateEnvelope(
                     PhaseNames.RunEnd,
@@ -73,6 +86,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             }
             if (runState is null)
             {
+                _noRunFrames = Math.Min(_noRunFrames + 1, RequiredStableLifecycleFrames);
+                if (_noRunFrames < RequiredStableLifecycleFrames)
+                {
+                    return CreateTransitionEnvelope("Waiting for an authoritative run or menu state.");
+                }
                 return CreateEnvelope(
                     PhaseNames.Menu,
                     new RunSnapshotDto(0, 0, 0, 0, []),
@@ -82,6 +100,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
                         "Start or resume a run through the original STS2 menu.",
                         false));
             }
+
+            _noRunFrames = 0;
 
             Player? player = LocalContext.GetMe(runState);
             RunSnapshotDto run = BuildRunSnapshot(runState, player);
@@ -697,14 +717,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 ? ComputeDecisionFingerprint(phase, runValue, screenValue)
                 : string.Empty;
             _revision++;
-            actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
-                && !stableDecisionState;
+            actionPending = !stableDecisionState;
         }
         else if (!stableDecisionState)
         {
             // Publish live animation/action-queue state but retain the last committed decision revision.
             ResetCandidate();
-            actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal);
+            actionPending = true;
         }
         else
         {
@@ -754,6 +773,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
     /// </summary>
     private static bool IsStableDecisionState(string phase, object screenValue)
     {
+        if (string.Equals(phase, PhaseNames.Unknown, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
         if (string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal))
         {
             return screenValue is MapScreenDto map && map.WaitingForInput;
@@ -1054,6 +1078,16 @@ public sealed class Sts2GameAdapter : IGameAdapter
         _candidateStableFrames = 0;
         _candidateActive = false;
     }
+
+    private StateEnvelope CreateTransitionEnvelope(string message) => CreateEnvelope(
+        PhaseNames.Unknown,
+        new RunSnapshotDto(0, 0, 0, 0, []),
+        new
+        {
+            waiting_for_input = false,
+            transition = true,
+            message
+        });
 
     private static bool NeedsExplicitTarget(TargetType targetType)
     {
