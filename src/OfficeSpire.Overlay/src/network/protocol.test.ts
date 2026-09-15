@@ -190,6 +190,35 @@ describe("OfficeSpire wire protocol", () => {
         screen: { ...map.screen, map_generation: 4 },
       }),
     ).toBe(false);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 13,
+        phase: "event",
+        action_pending: false,
+        run: {},
+        screen: {
+          options: [
+            { option_index: 0, action_token: "same" },
+            { option_index: 1, action_token: "same" },
+          ],
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 14,
+        phase: "rewards",
+        action_pending: false,
+        run: {},
+        screen: {
+          mode: "rewards",
+          items: [{ choice_index: 0, action_token: "" }],
+          card_choices: [],
+        },
+      }),
+    ).toBe(false);
   });
   it("accepts read-only menu lifecycle snapshots", () => {
     const menu = {
@@ -301,6 +330,13 @@ describe("OfficeSpire wire protocol", () => {
       expected_revision: 52,
       payload: { choice_index: 1, card_id: "strike" },
     });
+    expect(
+      createRewardAction("choose_reward", 0, 52, undefined, "reward-token"),
+    ).toMatchObject({
+      action: "choose_reward",
+      expected_revision: 52,
+      payload: { choice_index: 0, action_token: "reward-token" },
+    });
     expect(createSkipRewardsAction(53)).toMatchObject({
       action: "skip_rewards",
       expected_revision: 53,
@@ -359,10 +395,10 @@ describe("OfficeSpire wire protocol", () => {
     });
   });
   it("creates and parses event decisions", () => {
-    expect(createEventOptionAction(1, 70)).toMatchObject({
+    expect(createEventOptionAction(1, "event-token", 70)).toMatchObject({
       action: "choose_event_option",
       expected_revision: 70,
-      payload: { option_index: 1 },
+      payload: { option_index: 1, action_token: "event-token" },
     });
     expect(
       isStateSnapshot({

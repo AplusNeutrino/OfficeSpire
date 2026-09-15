@@ -95,6 +95,7 @@ export interface RewardCardState {
 }
 export interface RewardItemState {
   choice_index: number;
+  action_token: string;
   reward_type: string;
   name: string;
   description: string;
@@ -119,6 +120,7 @@ export interface CardSelectionScreen {
 }
 export interface EventOptionState {
   option_index: number;
+  action_token: string;
   title: string;
   description: string;
   is_locked: boolean;

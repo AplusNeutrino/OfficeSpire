@@ -248,20 +248,21 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 case CardReward cardReward:
                     items.Add(new RewardItemSnapshotDto(
                         index,
+                        NativeActionToken.For(button.Reward),
                         "card",
                         "Card reward",
                         SafeFormat(cardReward.Description),
                         cardReward.Cards.Select((card, cardIndex) => BuildRewardCard(card, cardIndex)).ToList()));
                     break;
                 case GoldReward goldReward:
-                    items.Add(new RewardItemSnapshotDto(index, "gold", $"{goldReward.Amount} gold", SafeFormat(goldReward.Description), []));
+                    items.Add(new RewardItemSnapshotDto(index, NativeActionToken.For(button.Reward), "gold", $"{goldReward.Amount} gold", SafeFormat(goldReward.Description), []));
                     break;
                 case RelicReward relicReward:
                     string relic = SafeFormat(relicReward.Description);
-                    items.Add(new RewardItemSnapshotDto(index, "relic", relic, relic, []));
+                    items.Add(new RewardItemSnapshotDto(index, NativeActionToken.For(button.Reward), "relic", relic, relic, []));
                     break;
                 case PotionReward potionReward:
-                    items.Add(new RewardItemSnapshotDto(index, "potion", "Potion", SafeFormat(potionReward.Description), []));
+                    items.Add(new RewardItemSnapshotDto(index, NativeActionToken.For(button.Reward), "potion", "Potion", SafeFormat(potionReward.Description), []));
                     break;
             }
         }
@@ -287,6 +288,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         var options = model.CurrentOptions
             .Select((option, index) => new EventOptionSnapshotDto(
                 index,
+                NativeActionToken.For(option),
                 SafeFormat(option.Title),
                 SafeFormat(option.Description),
                 option.IsLocked,
@@ -294,7 +296,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             .ToList();
         if (model.IsFinished && options.Count == 0)
         {
-            options.Add(new EventOptionSnapshotDto(0, "Leave", "Leave the event.", false, true));
+            options.Add(new EventOptionSnapshotDto(0, "event-proceed", "Leave", "Leave the event.", false, true));
         }
 
         bool actionable = model.IsFinished || options.Any(option => !option.IsLocked);

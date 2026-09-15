@@ -293,18 +293,28 @@ public sealed class M4GameAdapter : IGameAdapter
         }
         if (model.IsFinished)
         {
+            if (!TryReadRequiredString(request.Payload, "action_token", out string? proceedToken) ||
+                !string.Equals(proceedToken, "event-proceed", StringComparison.Ordinal))
+            {
+                return Reject(request, "stale_state", "The completed-event action token is stale.");
+            }
             NEventRoom.Proceed();
             return Accept(request, "accepted", "Left the completed event.");
         }
-        if (!TryReadRequiredInt(request.Payload, "option_index", out int index))
+        if (!TryReadRequiredInt(request.Payload, "option_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "action_token", out string? actionToken))
         {
-            return Reject(request, "bad_request", "choose_event_option requires integer payload.option_index.");
+            return Reject(request, "bad_request", "choose_event_option requires payload.option_index and payload.action_token.");
         }
         if (index < 0 || index >= model.CurrentOptions.Count)
         {
             return Reject(request, "bad_index", $"Event option {index} is unavailable.");
         }
         var option = model.CurrentOptions[index];
+        if (!string.Equals(NativeActionToken.For(option), actionToken, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected event option changed before dispatch.");
+        }
         if (option.IsLocked)
         {
             return Reject(request, "option_locked", $"Event option {index} is locked.");
@@ -399,14 +409,19 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return Reject(request, "bad_phase", "The combat rewards screen is not active.");
         }
-        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "action_token", out string? actionToken))
         {
-            return Reject(request, "bad_request", "choose_reward requires integer payload.choice_index.");
+            return Reject(request, "bad_request", "choose_reward requires payload.choice_index and payload.action_token.");
         }
         var buttons = FindNodesRecursive<NRewardButton>((Node)screen);
         if (index < 0 || index >= buttons.Count)
         {
             return Reject(request, "bad_index", $"Reward choice {index} is unavailable.");
+        }
+        if (!string.Equals(NativeActionToken.For(buttons[index].Reward), actionToken, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected reward changed before dispatch.");
         }
         buttons[index].ForceClick();
         return Accept(request, "accepted", $"Selected reward {index}.");

@@ -296,6 +296,8 @@ export default function App() {
           "choose_reward",
           reward.choice_index,
           snapshot.state_revision,
+          undefined,
+          reward.action_token,
         ),
       );
   };
@@ -323,7 +325,11 @@ export default function App() {
   const chooseEventOption = (option: EventOptionState) => {
     if (snapshot?.phase === "event")
       submit(
-        createEventOptionAction(option.option_index, snapshot.state_revision),
+        createEventOptionAction(
+          option.option_index,
+          option.action_token,
+          snapshot.state_revision,
+        ),
       );
   };
   const chooseRestOption = (option: RestOptionState) => {

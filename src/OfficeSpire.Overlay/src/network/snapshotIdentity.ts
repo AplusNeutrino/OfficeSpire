@@ -68,7 +68,15 @@ export function hasStableSnapshotIdentities(
         );
       }
       const indexes = screen.items.map((item) => item.choice_index);
-      return nonNegativeIntegers(indexes) && unique(indexes);
+      const tokens = screen.items.map((item) => item.action_token);
+      return (
+        nonNegativeIntegers(indexes) &&
+        unique(indexes) &&
+        tokens.every(
+          (token) => typeof token === "string" && token.length > 0,
+        ) &&
+        unique(tokens)
+      );
     }
     case "card_selection": {
       const indexes = (snapshot.screen as CardSelectionScreen).options.map(
@@ -84,10 +92,17 @@ export function hasStableSnapshotIdentities(
       );
     }
     case "event": {
-      const indexes = (snapshot.screen as EventScreen).options.map(
-        (option) => option.option_index,
+      const options = (snapshot.screen as EventScreen).options;
+      const indexes = options.map((option) => option.option_index);
+      const tokens = options.map((option) => option.action_token);
+      return (
+        nonNegativeIntegers(indexes) &&
+        unique(indexes) &&
+        tokens.every(
+          (token) => typeof token === "string" && token.length > 0,
+        ) &&
+        unique(tokens)
       );
-      return nonNegativeIntegers(indexes) && unique(indexes);
     }
     case "rest": {
       const screen = snapshot.screen as RestScreen;

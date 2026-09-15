@@ -176,11 +176,11 @@ When `phase="map"`, `screen.map_generation` identifies the native generated map 
 
 When `phase="rewards"`, the screen uses either `mode="rewards"` with `items`, or `mode="card_selection"` with `card_choices`.
 
-- `choose_reward`: `{ "choice_index": 0 }`
+- `choose_reward`: `{ "choice_index": 0, "action_token": "<opaque>" }`
 - `choose_reward_card`: `{ "choice_index": 1, "card_id": "strike" }`
 - `skip_rewards`: `{}`
 
-Every choice is resolved again from the current native overlay on the game thread. Indexes are never retained as STS2 object references across threads. Card reward selection also binds the native card ID and fails as stale if the card at that index changed.
+Every ordinary reward receives an opaque, process-local action token bound to its native model instance. The game thread requires the current button at the index to retain that token; tokens are never persisted or interpreted as game identity. Indexes are never retained as STS2 object references across threads. Card reward selection separately binds the native card ID and fails as stale if the card at that index changed.
 
 ## M7 card-selection action
 
@@ -195,9 +195,9 @@ For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="ca
 
 When `phase="event"`, `screen` contains `name`, `description`, `is_finished`, and authoritative `options`. Each option exposes `option_index`, title/description, `is_locked`, and `is_proceed`.
 
-- `choose_event_option`: `{ "option_index": 1 }`
+- `choose_event_option`: `{ "option_index": 1, "action_token": "<opaque>" }`
 
-The game thread reloads the current native event model and rejects missing, stale, out-of-range, or locked choices. A completed event uses the native event-room proceed path.
+Each native event-option instance receives an opaque process-local action token. The game thread reloads the current event model and rejects a missing, replaced, out-of-range, or locked choice. The synthetic completed-event leave control uses the reserved `event-proceed` token and native event-room proceed path. Tokens do not depend on localized display text.
 
 ## M7 rest-site actions
 

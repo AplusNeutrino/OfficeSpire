@@ -75,6 +75,7 @@ export function createRewardAction(
   choiceIndex: number,
   revision: number,
   cardId?: string,
+  actionToken?: string,
 ): OverlayAction {
   return {
     request_id: requestId(),
@@ -83,6 +84,7 @@ export function createRewardAction(
     payload: {
       choice_index: choiceIndex,
       ...(cardId === undefined ? {} : { card_id: cardId }),
+      ...(actionToken === undefined ? {} : { action_token: actionToken }),
     },
   };
 }
@@ -122,13 +124,14 @@ export function createConfirmCardSelectionAction(
 
 export function createEventOptionAction(
   optionIndex: number,
+  actionToken: string,
   revision: number,
 ): OverlayAction {
   return {
     request_id: requestId(),
     action: "choose_event_option",
     expected_revision: revision,
-    payload: { option_index: optionIndex },
+    payload: { option_index: optionIndex, action_token: actionToken },
   };
 }
 

@@ -107,6 +107,7 @@ internal sealed record RewardsScreenDto(
 
 internal sealed record RewardItemSnapshotDto(
     int ChoiceIndex,
+    string ActionToken,
     string RewardType,
     string Name,
     string Description,
@@ -140,6 +141,7 @@ internal sealed record EventScreenDto(
 
 internal sealed record EventOptionSnapshotDto(
     int OptionIndex,
+    string ActionToken,
     string Title,
     string Description,
     bool IsLocked,
