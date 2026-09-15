@@ -14,6 +14,8 @@ import {
   createEventOptionAction,
   createRestOptionAction,
   createLeaveRestSiteAction,
+  createTreasureAction,
+  createTreasureRelicAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
@@ -179,6 +181,33 @@ describe("OfficeSpire wire protocol", () => {
           options: [],
           can_proceed: true,
           target_selection_pending: false,
+        },
+      }),
+    ).toBe(true);
+  });
+  it("creates and parses treasure decisions", () => {
+    expect(createTreasureAction("open_treasure", 90).action).toBe(
+      "open_treasure",
+    );
+    expect(createTreasureRelicAction(1, 91)).toMatchObject({
+      action: "choose_treasure_relic",
+      expected_revision: 91,
+      payload: { choice_index: 1 },
+    });
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 90,
+        phase: "treasure",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          chest_opened: false,
+          is_picking: false,
+          can_leave: false,
+          relics: [],
+          selected_relic_index: null,
         },
       }),
     ).toBe(true);

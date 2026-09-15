@@ -232,6 +232,46 @@ footer,
   background: rgba(111, 59, 53, 0.3);
   font-size: 11px;
 }
+.treasure-relics {
+  display: grid;
+  gap: 8px;
+}
+.treasure-open,
+.treasure-relic,
+.treasure-skip,
+.treasure-leave {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid rgba(212, 169, 94, 0.5);
+  border-radius: 8px;
+  padding: 10px;
+  color: inherit;
+  background: rgba(212, 169, 94, 0.12);
+  text-align: left;
+  cursor: pointer;
+}
+.treasure-relic {
+  display: grid;
+  gap: 4px;
+}
+.treasure-relic span {
+  color: #aaa;
+  font-size: 11px;
+}
+.treasure-relic.selected {
+  border-color: #85d7a5;
+}
+.treasure-skip,
+.treasure-leave {
+  text-align: center;
+}
+.treasure-open:disabled,
+.treasure-relic:disabled,
+.treasure-skip:disabled,
+.treasure-leave:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .reward-item,
 .reward-card {
   display: grid;

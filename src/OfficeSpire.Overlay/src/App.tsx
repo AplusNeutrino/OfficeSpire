@@ -7,6 +7,8 @@ import type {
   EventStateSnapshot,
   RestOptionState,
   RestStateSnapshot,
+  TreasureRelicState,
+  TreasureStateSnapshot,
   CombatStateSnapshot,
   ConnectionStatus,
   EnemyState,
@@ -29,6 +31,8 @@ import {
   createEventOptionAction,
   createRestOptionAction,
   createLeaveRestSiteAction,
+  createTreasureAction,
+  createTreasureRelicAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
@@ -36,6 +40,7 @@ import { RewardsPanel } from "./components/RewardsPanel";
 import { CardSelectionPanel } from "./components/CardSelectionPanel";
 import { EventPanel } from "./components/EventPanel";
 import { RestPanel } from "./components/RestPanel";
+import { TreasurePanel } from "./components/TreasurePanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 const terminalCodes = new Set([
@@ -211,6 +216,12 @@ export default function App() {
         createRestOptionAction(option.option_index, snapshot.state_revision),
       );
   };
+  const chooseTreasureRelic = (relic: TreasureRelicState) => {
+    if (snapshot?.phase === "treasure")
+      submit(
+        createTreasureRelicAction(relic.choice_index, snapshot.state_revision),
+      );
+  };
   const actionInFlight = !!(
     actionResult &&
     actionResult.accepted &&
@@ -281,6 +292,30 @@ export default function App() {
           onOption={chooseRestOption}
           onLeave={() =>
             submit(createLeaveRestSiteAction(snapshot.state_revision))
+          }
+        />
+      ) : snapshot.phase === "treasure" ? (
+        <TreasurePanel
+          snapshot={snapshot as TreasureStateSnapshot}
+          disabled={disabled}
+          onOpen={() =>
+            submit(
+              createTreasureAction("open_treasure", snapshot.state_revision),
+            )
+          }
+          onRelic={chooseTreasureRelic}
+          onSkip={() =>
+            submit(
+              createTreasureAction(
+                "skip_treasure_relic",
+                snapshot.state_revision,
+              ),
+            )
+          }
+          onLeave={() =>
+            submit(
+              createTreasureAction("leave_treasure", snapshot.state_revision),
+            )
           }
         />
       ) : (

@@ -186,6 +186,17 @@ When `phase="rest"`, `screen.options` contains authoritative rest choices and `c
 
 `target_selection_pending=true` indicates a multiplayer target decision that this version does not model. Mutations then fail closed with `unsupported_state`; the user must complete that target in STS2.
 
+## M7 treasure actions
+
+When `phase="treasure"`, `screen` exposes `chest_opened`, `is_picking`, `can_leave`, relic candidates, and the predicted local selected relic index when available.
+
+- `open_treasure`: `{}`
+- `choose_treasure_relic`: `{ "choice_index": 0 }`
+- `skip_treasure_relic`: `{}`
+- `leave_treasure`: `{}`
+
+Opening, voting, and leaving are intentionally separate requests and revision boundaries. Relic selection uses the native treasure synchronizer so multiplayer voting remains game-authoritative.
+
 ## Action response and status
 
 `action_result` retains the v1 response shape:

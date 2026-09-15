@@ -113,3 +113,27 @@ export function createLeaveRestSiteAction(revision: number): OverlayAction {
     payload: {},
   };
 }
+
+export function createTreasureAction(
+  action: "open_treasure" | "skip_treasure_relic" | "leave_treasure",
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action,
+    expected_revision: revision,
+    payload: {},
+  };
+}
+
+export function createTreasureRelicAction(
+  choiceIndex: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "choose_treasure_relic",
+    expected_revision: revision,
+    payload: { choice_index: choiceIndex },
+  };
+}

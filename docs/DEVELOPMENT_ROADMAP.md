@@ -402,7 +402,7 @@ Current capability status:
 | Deck/grid and hand multi-selection prompts | `implemented_unverified` |
 | Events | `implemented_unverified` |
 | Rest sites | `implemented_unverified` |
-| Treasures | `not_implemented` |
+| Treasures | `implemented_unverified` |
 | Shops, purchases, and card removal | `not_implemented` |
 
 The first M7 source pass adds authoritative reward/button snapshots, distinct reward and card-selection modes, `choose_reward`, `choose_reward_card`, and `skip_rewards`, fresh main-thread screen/index checks, and a mouse-operated overlay renderer.
@@ -414,6 +414,8 @@ The following source pass models those distinct confirmation paths: generic grid
 The M7.4 source pass adds authoritative event title, description, completion state, and option snapshots; locked/proceed metadata; revision-guarded `choose_event_option`; fresh main-thread option validation; native `OptionButtonClicked`; and completed-event `Proceed` handling. Event-triggered card overlays reuse the card-selection phase.
 
 The M7.5 source pass adds authoritative rest-option snapshots, `choose_rest_option`, `leave_rest_site`, fresh native control lookup, and overlay interaction. Smith/remove follow-up screens reuse card selection. Multiplayer player-target selection is detected but intentionally fails closed as `unsupported_state` pending stable identity research.
+
+The M7.6 source pass adds authoritative chest/picking/leave state, relic candidates and predicted local vote, plus separate `open_treasure`, `choose_treasure_relic`, `skip_treasure_relic`, and `leave_treasure` actions. Each step settles through a distinct decision revision instead of chaining native mutations.
 
 Each phase follows the same delivery gate:
 

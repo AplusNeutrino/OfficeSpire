@@ -201,6 +201,8 @@ internal sealed class ActionInbox
             "choose_event_option" => string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal),
             "choose_rest_option" or "leave_rest_site" =>
                 string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal),
+            "open_treasure" or "choose_treasure_relic" or "skip_treasure_relic" or "leave_treasure" =>
+                string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal),
             _ => string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
         };
     }

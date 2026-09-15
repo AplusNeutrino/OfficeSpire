@@ -144,3 +144,17 @@ internal sealed record RestOptionSnapshotDto(
     string Id,
     string Name,
     string Description);
+
+internal sealed record TreasureScreenDto(
+    bool WaitingForInput,
+    bool ChestOpened,
+    bool IsPicking,
+    bool CanLeave,
+    IReadOnlyList<TreasureRelicSnapshotDto> Relics,
+    int? SelectedRelicIndex);
+
+internal sealed record TreasureRelicSnapshotDto(
+    int ChoiceIndex,
+    string Id,
+    string Name,
+    string Description);

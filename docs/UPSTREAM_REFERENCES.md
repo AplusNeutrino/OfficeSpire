@@ -71,6 +71,10 @@ The same exact reference commit was inspected for `NEventRoom`, its current `Eve
 
 The same exact reference commit was inspected for `NRestSiteRoom.Options`, `NRestSiteButton`, `ProceedButton`, and target-selection detection. OfficeSpire independently implements the ordinary option/leave paths and deliberately omits target dispatch until stable player identity can be carried through the protocol.
 
+### M7 treasure reference
+
+The same exact reference commit was inspected for `NTreasureRoom`, its chest/picking fields, `TreasureRoomRelicSynchronizer`, local pick/skip methods, and native chest/proceed controls. OfficeSpire independently separates these into revision-guarded protocol actions and does not auto-chain opening with relic voting.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

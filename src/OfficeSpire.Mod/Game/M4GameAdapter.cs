@@ -57,6 +57,10 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_event_option" => ExecuteChooseEventOption(request),
                 "choose_rest_option" => ExecuteChooseRestOption(request),
                 "leave_rest_site" => ExecuteLeaveRestSite(request),
+                "open_treasure" => ExecuteOpenTreasure(request),
+                "choose_treasure_relic" => ExecuteChooseTreasureRelic(request),
+                "skip_treasure_relic" => ExecuteSkipTreasureRelic(request),
+                "leave_treasure" => ExecuteLeaveTreasure(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -70,6 +74,62 @@ public sealed class M4GameAdapter : IGameAdapter
                 "dispatch_exception",
                 $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static ActionResponse ExecuteOpenTreasure(ActionRequest request)
+    {
+        var room = NRun.Instance?.TreasureRoom;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "A treasure room is not active.");
+        }
+        NButton? chest = room.GetNodeOrNull<NButton>("%Chest");
+        if (chest is null)
+        {
+            return Reject(request, "not_ready", "The treasure chest control is unavailable.");
+        }
+        chest.EmitSignal(NClickableControl.SignalName.Released, chest);
+        return Accept(request, "accepted", "Opened the treasure chest.");
+    }
+
+    private static ActionResponse ExecuteChooseTreasureRelic(ActionRequest request)
+    {
+        if (NRun.Instance?.TreasureRoom is null)
+        {
+            return Reject(request, "bad_phase", "A treasure room is not active.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        {
+            return Reject(request, "bad_request", "choose_treasure_relic requires integer payload.choice_index.");
+        }
+        var synchronizer = RunManager.Instance.TreasureRoomRelicSynchronizer;
+        if (synchronizer.CurrentRelics is null || index < 0 || index >= synchronizer.CurrentRelics.Count)
+        {
+            return Reject(request, "bad_index", $"Treasure relic {index} is unavailable.");
+        }
+        synchronizer.PickRelicLocally(index);
+        return Accept(request, "accepted", $"Selected treasure relic {index}.");
+    }
+
+    private static ActionResponse ExecuteSkipTreasureRelic(ActionRequest request)
+    {
+        if (NRun.Instance?.TreasureRoom is null)
+        {
+            return Reject(request, "bad_phase", "A treasure room is not active.");
+        }
+        RunManager.Instance.TreasureRoomRelicSynchronizer.SkipRelicLocally();
+        return Accept(request, "accepted", "Skipped the treasure relic.");
+    }
+
+    private static ActionResponse ExecuteLeaveTreasure(ActionRequest request)
+    {
+        var room = NRun.Instance?.TreasureRoom;
+        if (room?.ProceedButton is not { IsEnabled: true } proceed)
+        {
+            return Reject(request, "not_ready", "The treasure-room proceed button is unavailable.");
+        }
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Left the treasure room.");
     }
 
     private static ActionResponse ExecuteChooseRestOption(ActionRequest request)

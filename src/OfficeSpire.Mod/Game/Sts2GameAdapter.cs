@@ -134,6 +134,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 return CreateEnvelope(PhaseNames.Rest, run, BuildRestSnapshot());
             }
 
+            if (NRun.Instance?.TreasureRoom is not null)
+            {
+                return CreateEnvelope(PhaseNames.Treasure, run, BuildTreasureSnapshot());
+            }
+
             if (!CombatManager.Instance.IsInProgress || player?.PlayerCombatState is null)
             {
                 return CreateEnvelope(
@@ -271,6 +276,43 @@ public sealed class Sts2GameAdapter : IGameAdapter
             options,
             canProceed,
             targetSelectionPending);
+    }
+
+    private static TreasureScreenDto BuildTreasureSnapshot()
+    {
+        var room = NRun.Instance!.TreasureRoom!;
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        bool chestOpened = (bool)(room.GetType().GetField("_hasChestBeenOpened", flags)?.GetValue(room) ?? false);
+        bool isPicking = (bool)(room.GetType().GetField("_isRelicCollectionOpen", flags)?.GetValue(room) ?? false);
+        bool canLeave = room.ProceedButton.IsEnabled;
+        var synchronizer = RunManager.Instance.TreasureRoomRelicSynchronizer;
+        var relics = synchronizer.CurrentRelics?
+            .Select((relic, index) => new TreasureRelicSnapshotDto(
+                index,
+                relic.Id.ToString(),
+                SafeFormat(relic.Title),
+                SafeFormat(relic.DynamicDescription)))
+            .ToList() ?? [];
+
+        int? selectedIndex = null;
+        object? predictedVote = synchronizer.GetType().GetField("_predictedVote", flags)?.GetValue(synchronizer);
+        if (predictedVote is not null)
+        {
+            var type = predictedVote.GetType();
+            if (type.GetField("voteReceived")?.GetValue(predictedVote) is true &&
+                type.GetField("index")?.GetValue(predictedVote) is int index)
+            {
+                selectedIndex = index;
+            }
+        }
+
+        return new TreasureScreenDto(
+            !chestOpened || isPicking || canLeave,
+            chestOpened,
+            isPicking,
+            canLeave,
+            relics,
+            selectedIndex);
     }
 
     private static CardSelectionScreenDto BuildHandSelectionSnapshot(NPlayerHand playerHand)
@@ -627,6 +669,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is RestScreenDto rest && rest.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal))
+        {
+            return screenValue is TreasureScreenDto treasure && treasure.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -680,7 +727,21 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal) &&
+            screenValue is TreasureScreenDto treasure)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                treasure.ChestOpened,
+                treasure.IsPicking,
+                treasure.CanLeave,
+                Relics = treasure.Relics.Select(relic => new { relic.ChoiceIndex, relic.Id }).ToArray(),
+                treasure.SelectedRelicIndex
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal) &&
             screenValue is RestScreenDto rest)
         {
             projection = new

@@ -130,6 +130,20 @@ export interface RestScreen {
   can_proceed: boolean;
   target_selection_pending: boolean;
 }
+export interface TreasureRelicState {
+  choice_index: number;
+  id: string;
+  name: string;
+  description: string;
+}
+export interface TreasureScreen {
+  waiting_for_input: boolean;
+  chest_opened: boolean;
+  is_picking: boolean;
+  can_leave: boolean;
+  relics: TreasureRelicState[];
+  selected_relic_index: number | null;
+}
 export interface RunState {
   ascension_level: number;
   current_act: number;
@@ -168,6 +182,10 @@ export interface RestStateSnapshot extends BaseStateSnapshot {
   phase: "rest";
   screen: RestScreen;
 }
+export interface TreasureStateSnapshot extends BaseStateSnapshot {
+  phase: "treasure";
+  screen: TreasureScreen;
+}
 export type StateSnapshot =
   | CombatStateSnapshot
   | MapStateSnapshot
@@ -175,6 +193,7 @@ export type StateSnapshot =
   | CardSelectionStateSnapshot
   | EventStateSnapshot
   | RestStateSnapshot
+  | TreasureStateSnapshot
   | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
   type: string;
@@ -201,7 +220,11 @@ export interface OverlayAction {
     | "confirm_card_selection"
     | "choose_event_option"
     | "choose_rest_option"
-    | "leave_rest_site";
+    | "leave_rest_site"
+    | "open_treasure"
+    | "choose_treasure_relic"
+    | "skip_treasure_relic"
+    | "leave_treasure";
   expected_revision: number;
   payload: Record<string, unknown>;
 }
@@ -227,6 +250,8 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "card_selection" ||
       Array.isArray((c.screen as CardSelectionScreen).options)) &&
     (c.phase !== "event" || Array.isArray((c.screen as EventScreen).options)) &&
-    (c.phase !== "rest" || Array.isArray((c.screen as RestScreen).options))
+    (c.phase !== "rest" || Array.isArray((c.screen as RestScreen).options)) &&
+    (c.phase !== "treasure" ||
+      Array.isArray((c.screen as TreasureScreen).relics))
   );
 }

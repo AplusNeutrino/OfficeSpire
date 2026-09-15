@@ -61,6 +61,8 @@ Event reading and choice/leave control are also present in the alpha.4 source, i
 
 Ordinary rest-site choices and leaving are implemented in source, with smith/remove follow-ups delegated to card selection. Multiplayer rest-site targeting remains explicitly unsupported.
 
+Treasure rooms now have source support for opening, authoritative relic choice/skip, predicted local vote display, and leaving. Live game behavior remains unverified.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**
