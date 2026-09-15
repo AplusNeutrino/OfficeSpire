@@ -35,3 +35,25 @@ export function createChooseMapNodeAction(
     payload: { column, row },
   };
 }
+
+export function createRewardAction(
+  action: "choose_reward" | "choose_reward_card",
+  choiceIndex: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action,
+    expected_revision: revision,
+    payload: { choice_index: choiceIndex },
+  };
+}
+
+export function createSkipRewardsAction(revision: number): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "skip_rewards",
+    expected_revision: revision,
+    payload: {},
+  };
+}

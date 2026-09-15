@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -14,6 +15,13 @@ using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
+using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Cards;
+using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
 
@@ -53,6 +61,15 @@ public sealed class Sts2GameAdapter : IGameAdapter
             Player? player = LocalContext.GetMe(runState);
             RunSnapshotDto run = BuildRunSnapshot(runState, player);
 
+            if (NOverlayStack.Instance?.Peek() is NRewardsScreen or NCardRewardSelectionScreen)
+            {
+                RewardsScreenDto? rewards = BuildRewardsSnapshot();
+                return CreateEnvelope(
+                    PhaseNames.Rewards,
+                    run,
+                    rewards ?? new RewardsScreenDto(false, "unavailable", [], [], false));
+            }
+
             if (NMapScreen.Instance?.IsOpen == true)
             {
                 return CreateEnvelope(PhaseNames.Map, run, BuildMapSnapshot(runState));
@@ -88,6 +105,84 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     adapter_error = ex.GetType().Name
                 });
         }
+    }
+
+    private static RewardsScreenDto? BuildRewardsSnapshot()
+    {
+        var overlay = NOverlayStack.Instance?.Peek();
+        if (overlay is NCardRewardSelectionScreen cardScreen)
+        {
+            var cards = FindNodesRecursive<NCardHolder>((Node)cardScreen)
+                .Select((holder, index) =>
+                {
+                    CardModel? card = holder.GetChildren().OfType<NCard>().FirstOrDefault()?.Model;
+                    return card is null ? null : BuildRewardCard(card, index);
+                })
+                .Where(card => card is not null)
+                .Cast<RewardCardSnapshotDto>()
+                .ToList();
+            return new RewardsScreenDto(cards.Count > 0, "card_selection", [], cards, false);
+        }
+
+        if (overlay is not NRewardsScreen rewardsScreen)
+        {
+            return null;
+        }
+
+        var items = new List<RewardItemSnapshotDto>();
+        foreach ((NRewardButton button, int index) in FindNodesRecursive<NRewardButton>((Node)rewardsScreen).Select((button, index) => (button, index)))
+        {
+            switch (button.Reward)
+            {
+                case CardReward cardReward:
+                    items.Add(new RewardItemSnapshotDto(
+                        index,
+                        "card",
+                        "Card reward",
+                        SafeFormat(cardReward.Description),
+                        cardReward.Cards.Select((card, cardIndex) => BuildRewardCard(card, cardIndex)).ToList()));
+                    break;
+                case GoldReward goldReward:
+                    items.Add(new RewardItemSnapshotDto(index, "gold", $"{goldReward.Amount} gold", SafeFormat(goldReward.Description), []));
+                    break;
+                case RelicReward relicReward:
+                    string relic = SafeFormat(relicReward.Description);
+                    items.Add(new RewardItemSnapshotDto(index, "relic", relic, relic, []));
+                    break;
+                case PotionReward potionReward:
+                    items.Add(new RewardItemSnapshotDto(index, "potion", "Potion", SafeFormat(potionReward.Description), []));
+                    break;
+            }
+        }
+
+        bool canSkip = FindNodesRecursive<NProceedButton>((Node)rewardsScreen).Any(button => button.IsEnabled);
+        return new RewardsScreenDto(items.Count > 0 || canSkip, "rewards", items, [], canSkip);
+    }
+
+    private static RewardCardSnapshotDto BuildRewardCard(CardModel card, int index)
+    {
+        return new RewardCardSnapshotDto(
+            index,
+            card.Id.ToString(),
+            CleanIcons(card.Title.ToString() ?? string.Empty),
+            card.EnergyCost.GetWithModifiers(CostModifiers.All),
+            card.Type.ToString(),
+            card.Rarity.ToString(),
+            GetCardDescription(card));
+    }
+
+    private static List<T> FindNodesRecursive<T>(Node parent, List<T>? results = null) where T : Node
+    {
+        results ??= [];
+        foreach (Node child in parent.GetChildren())
+        {
+            if (child is T match)
+            {
+                results.Add(match);
+            }
+            FindNodesRecursive(child, results);
+        }
+        return results;
     }
 
     private static MapScreenDto BuildMapSnapshot(IRunState runState)
@@ -354,6 +449,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is MapScreenDto map && map.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal))
+        {
+            return screenValue is RewardsScreenDto rewards && rewards.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -407,7 +507,25 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal) &&
+            screenValue is RewardsScreenDto rewards)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                rewards.Mode,
+                Items = rewards.Items.Select(item => new
+                {
+                    item.ChoiceIndex,
+                    item.RewardType,
+                    Cards = item.CardOptions.Select(card => card.Id).ToArray()
+                }).ToArray(),
+                Cards = rewards.CardChoices.Select(card => new { card.ChoiceIndex, card.Id }).ToArray(),
+                rewards.CanSkip
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal) &&
             screenValue is MapScreenDto map)
         {
             projection = new

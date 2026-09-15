@@ -7,8 +7,8 @@
 
 Last updated: 2026-09-15
 Product target: OfficeSpire v0.6
-Current development version: v0.6-alpha.3 — Map Controller
-Current milestone: M6 (source development; M5 runtime validation remains deferred)
+Current development version: v0.6-alpha.4 — Run Decisions
+Current milestone: M7 (partial source development; M5/M6 runtime validation remains deferred)
 Previous validated milestone: v0.6-alpha.1 — Playable Backend
 
 ## 1. Product objective
@@ -380,6 +380,8 @@ Still unverified: C# compilation against the installed STS2 assemblies, live map
 
 Planned after M6 passes.
 
+Maintainer-directed source development began on 2026-09-15 while unavailable game-dependent validation remains deferred. The overall milestone remains `not_implemented` until every required decision family exists; the capability states below do not imply live validation.
+
 Implementation order:
 
 1. combat rewards;
@@ -389,6 +391,20 @@ Implementation order:
 5. rest sites;
 6. treasures;
 7. shops, purchases, and card removal.
+
+Current capability status:
+
+| Capability | Status |
+|---|---|
+| Combat reward collection | `implemented_unverified` |
+| Card reward choice and skip | `implemented_unverified` |
+| Generic card-selection prompts | `not_implemented` |
+| Events | `not_implemented` |
+| Rest sites | `not_implemented` |
+| Treasures | `not_implemented` |
+| Shops, purchases, and card removal | `not_implemented` |
+
+The first M7 source pass adds authoritative reward/button snapshots, distinct reward and card-selection modes, `choose_reward`, `choose_reward_card`, and `skip_rewards`, fresh main-thread screen/index checks, and a mouse-operated overlay renderer.
 
 Each phase follows the same delivery gate:
 

@@ -5,7 +5,11 @@ import {
   getStateMessage,
   parseEnvelope,
 } from "./protocol";
-import { createChooseMapNodeAction } from "../actions/actionDispatcher";
+import {
+  createChooseMapNodeAction,
+  createRewardAction,
+  createSkipRewardsAction,
+} from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
   it("wraps state requests with protocol version 1", () => {
@@ -61,6 +65,36 @@ describe("OfficeSpire wire protocol", () => {
           current_node: null,
           reachable_nodes: [],
           all_nodes: [],
+        },
+      }),
+    ).toBe(true);
+  });
+  it("creates reward selection and skip actions", () => {
+    expect(createRewardAction("choose_reward_card", 1, 52)).toMatchObject({
+      action: "choose_reward_card",
+      expected_revision: 52,
+      payload: { choice_index: 1 },
+    });
+    expect(createSkipRewardsAction(53)).toMatchObject({
+      action: "skip_rewards",
+      expected_revision: 53,
+      payload: {},
+    });
+  });
+  it("accepts authoritative rewards snapshots", () => {
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 10,
+        phase: "rewards",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          mode: "rewards",
+          items: [],
+          card_choices: [],
+          can_skip: true,
         },
       }),
     ).toBe(true);

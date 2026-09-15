@@ -55,6 +55,10 @@ OfficeSpire independently implements its own `ActionInbox`, WebSocket lifecycle,
 
 The same exact reference commit was inspected for map-state and native-selection API shapes. Confirmed interfaces include `IRunState.Map`, `CurrentMapPoint`, `MapPoint.Children`, `startMapPoints`, `MapCoord`, `MapVote`, and `VoteForMapCoordAction`. OfficeSpire independently implements a smaller versioned snapshot and action path with its own two-stage revision and reachability checks.
 
+### M7 reward reference
+
+The same exact reference commit was inspected for reward overlay API shapes. Confirmed interfaces include `NOverlayStack`, `NRewardsScreen`, `NRewardButton`, `NCardRewardSelectionScreen`, `NCardHolder`, and `NProceedButton`. OfficeSpire independently implements versioned reward DTOs, revision gates, and a limited reward-only dispatcher; generic selection and later room actions were not copied or enabled.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

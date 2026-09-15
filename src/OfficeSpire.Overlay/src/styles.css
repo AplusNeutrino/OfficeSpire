@@ -110,6 +110,57 @@ footer,
 .map-empty {
   color: #aaa;
 }
+.reward-list {
+  display: grid;
+  gap: 8px;
+}
+.reward-item,
+.reward-card,
+.skip-rewards {
+  border: 1px solid rgba(212, 169, 94, 0.38);
+  border-radius: 8px;
+  padding: 10px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  text-align: left;
+  cursor: pointer;
+}
+.reward-item,
+.reward-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 9px;
+}
+.reward-item span,
+.reward-card span:not(.card-cost) {
+  grid-column: 1 / -1;
+  color: #bbb7ae;
+  font-size: 11px;
+}
+.reward-item small,
+.reward-card small {
+  justify-self: end;
+  color: #a99d83;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.reward-item:hover:not(:disabled),
+.reward-card:hover:not(:disabled) {
+  border-color: #d4a95e;
+  background: rgba(212, 169, 94, 0.13);
+}
+.reward-item:disabled,
+.reward-card:disabled,
+.skip-rewards:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.reward-footer {
+  align-items: center;
+}
+.skip-rewards {
+  background: #4d4231;
+}
 .stats strong {
   font-size: 15px;
 }

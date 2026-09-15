@@ -238,6 +238,20 @@ Current non-runtime verification:
 
 No live map snapshot, route choice, native settlement, or room transition is a runtime pass yet.
 
+## M7 — Run Decisions
+
+Overall status: `not_implemented`
+
+Implemented but unverified capability source:
+
+- combat reward list and card-option snapshots;
+- reward collection through the current native reward button;
+- card reward selection through the current native card holder;
+- reward skip/continue through the enabled native proceed button;
+- overlay rendering and revision-guarded mouse actions.
+
+Frontend checks after this source pass: `npm test` PASS (9 tests) and `npm run build` PASS. Generic selections, events, rest sites, treasures, and shops are not implemented. No M7 runtime behavior is a pass.
+
 Use the M5 matrix in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for the next probes.
 
 ## Required evidence format for future probes

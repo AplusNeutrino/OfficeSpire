@@ -85,3 +85,26 @@ internal sealed record MapNodeSnapshotDto(
     int Row,
     string NodeType,
     bool Reachable);
+
+internal sealed record RewardsScreenDto(
+    bool WaitingForInput,
+    string Mode,
+    IReadOnlyList<RewardItemSnapshotDto> Items,
+    IReadOnlyList<RewardCardSnapshotDto> CardChoices,
+    bool CanSkip);
+
+internal sealed record RewardItemSnapshotDto(
+    int ChoiceIndex,
+    string RewardType,
+    string Name,
+    string Description,
+    IReadOnlyList<RewardCardSnapshotDto> CardOptions);
+
+internal sealed record RewardCardSnapshotDto(
+    int ChoiceIndex,
+    string Id,
+    string Name,
+    int Cost,
+    string Type,
+    string Rarity,
+    string Description);

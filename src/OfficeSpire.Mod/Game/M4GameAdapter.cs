@@ -6,6 +6,12 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Map;
+using Godot;
+using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
@@ -39,6 +45,9 @@ public sealed class M4GameAdapter : IGameAdapter
                 "end_turn" => ExecuteEndTurn(request),
                 "use_potion" => ExecuteUsePotion(request),
                 "choose_map_node" => ExecuteChooseMapNode(request),
+                "choose_reward" => ExecuteChooseReward(request),
+                "choose_reward_card" => ExecuteChooseRewardCard(request),
+                "skip_rewards" => ExecuteSkipRewards(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -52,6 +61,70 @@ public sealed class M4GameAdapter : IGameAdapter
                 "dispatch_exception",
                 $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static ActionResponse ExecuteChooseReward(ActionRequest request)
+    {
+        if (NOverlayStack.Instance?.Peek() is not NRewardsScreen screen)
+        {
+            return Reject(request, "bad_phase", "The combat rewards screen is not active.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        {
+            return Reject(request, "bad_request", "choose_reward requires integer payload.choice_index.");
+        }
+        var buttons = FindNodesRecursive<NRewardButton>((Node)screen);
+        if (index < 0 || index >= buttons.Count)
+        {
+            return Reject(request, "bad_index", $"Reward choice {index} is unavailable.");
+        }
+        buttons[index].ForceClick();
+        return Accept(request, "accepted", $"Selected reward {index}.");
+    }
+
+    private static ActionResponse ExecuteChooseRewardCard(ActionRequest request)
+    {
+        if (NOverlayStack.Instance?.Peek() is not NCardRewardSelectionScreen screen)
+        {
+            return Reject(request, "bad_phase", "The card reward selection screen is not active.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        {
+            return Reject(request, "bad_request", "choose_reward_card requires integer payload.choice_index.");
+        }
+        var holders = FindNodesRecursive<NCardHolder>((Node)screen);
+        if (index < 0 || index >= holders.Count)
+        {
+            return Reject(request, "bad_index", $"Card reward choice {index} is unavailable.");
+        }
+        holders[index].EmitSignal(NCardHolder.SignalName.Pressed, holders[index]);
+        return Accept(request, "accepted", $"Selected reward card {index}.");
+    }
+
+    private static ActionResponse ExecuteSkipRewards(ActionRequest request)
+    {
+        if (NOverlayStack.Instance?.Peek() is not NRewardsScreen screen)
+        {
+            return Reject(request, "bad_phase", "The combat rewards screen is not active.");
+        }
+        NProceedButton? proceed = FindNodesRecursive<NProceedButton>((Node)screen).FirstOrDefault(button => button.IsEnabled);
+        if (proceed is null)
+        {
+            return Reject(request, "not_ready", "No enabled reward skip/continue button is available.");
+        }
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Skipped the remaining rewards.");
+    }
+
+    private static List<T> FindNodesRecursive<T>(Node parent, List<T>? results = null) where T : Node
+    {
+        results ??= [];
+        foreach (Node child in parent.GetChildren())
+        {
+            if (child is T match) results.Add(match);
+            FindNodesRecursive(child, results);
+        }
+        return results;
     }
 
     private static ActionResponse ExecuteChooseMapNode(ActionRequest request)

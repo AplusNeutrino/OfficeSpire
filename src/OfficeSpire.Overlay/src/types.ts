@@ -71,6 +71,29 @@ export interface MapScreen {
   reachable_nodes: MapNodeState[];
   all_nodes: MapNodeState[];
 }
+export interface RewardCardState {
+  choice_index: number;
+  id: string;
+  name: string;
+  cost: number;
+  type: string;
+  rarity: string;
+  description: string;
+}
+export interface RewardItemState {
+  choice_index: number;
+  reward_type: string;
+  name: string;
+  description: string;
+  card_options: RewardCardState[];
+}
+export interface RewardsScreen {
+  waiting_for_input: boolean;
+  mode: "rewards" | "card_selection" | "unavailable";
+  items: RewardItemState[];
+  card_choices: RewardCardState[];
+  can_skip: boolean;
+}
 export interface RunState {
   ascension_level: number;
   current_act: number;
@@ -93,9 +116,14 @@ export interface MapStateSnapshot extends BaseStateSnapshot {
   phase: "map";
   screen: MapScreen;
 }
+export interface RewardsStateSnapshot extends BaseStateSnapshot {
+  phase: "rewards";
+  screen: RewardsScreen;
+}
 export type StateSnapshot =
   | CombatStateSnapshot
   | MapStateSnapshot
+  | RewardsStateSnapshot
   | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
   type: string;
@@ -111,7 +139,13 @@ export interface ActionResponse {
 }
 export interface OverlayAction {
   request_id: string;
-  action: "play_card" | "end_turn" | "choose_map_node";
+  action:
+    | "play_card"
+    | "end_turn"
+    | "choose_map_node"
+    | "choose_reward"
+    | "choose_reward_card"
+    | "skip_rewards";
   expected_revision: number;
   payload: Record<string, unknown>;
 }
@@ -130,6 +164,9 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         Array.isArray((c.screen as CombatScreen).enemies))) &&
     (c.phase !== "map" ||
       (Array.isArray((c.screen as MapScreen).reachable_nodes) &&
-        Array.isArray((c.screen as MapScreen).all_nodes)))
+        Array.isArray((c.screen as MapScreen).all_nodes))) &&
+    (c.phase !== "rewards" ||
+      (Array.isArray((c.screen as RewardsScreen).items) &&
+        Array.isArray((c.screen as RewardsScreen).card_choices)))
   );
 }

@@ -9,14 +9,20 @@ import type {
   StateSnapshot,
   MapNodeState,
   MapStateSnapshot,
+  RewardCardState,
+  RewardItemState,
+  RewardsStateSnapshot,
 } from "./types";
 import {
   createEndTurnAction,
   createPlayCardAction,
   createChooseMapNodeAction,
+  createRewardAction,
+  createSkipRewardsAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
+import { RewardsPanel } from "./components/RewardsPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 const terminalCodes = new Set([
@@ -152,6 +158,26 @@ export default function App() {
         ),
       );
   };
+  const chooseReward = (reward: RewardItemState) => {
+    if (snapshot?.phase === "rewards")
+      submit(
+        createRewardAction(
+          "choose_reward",
+          reward.choice_index,
+          snapshot.state_revision,
+        ),
+      );
+  };
+  const chooseRewardCard = (card: RewardCardState) => {
+    if (snapshot?.phase === "rewards")
+      submit(
+        createRewardAction(
+          "choose_reward_card",
+          card.choice_index,
+          snapshot.state_revision,
+        ),
+      );
+  };
   const actionInFlight = !!(
     actionResult &&
     actionResult.accepted &&
@@ -189,6 +215,16 @@ export default function App() {
           snapshot={snapshot as MapStateSnapshot}
           disabled={disabled}
           onChooseNode={chooseMapNode}
+        />
+      ) : snapshot.phase === "rewards" ? (
+        <RewardsPanel
+          snapshot={snapshot as RewardsStateSnapshot}
+          disabled={disabled}
+          onReward={chooseReward}
+          onCard={chooseRewardCard}
+          onSkip={() =>
+            submit(createSkipRewardsAction(snapshot.state_revision))
+          }
         />
       ) : (
         <section className="empty">

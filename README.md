@@ -53,6 +53,8 @@ The first M5 source implementation is now present and its TypeScript/Vite produc
 
 The v0.6-alpha.3 source adds authoritative map snapshots, reachable-node display, and revision-guarded native route selection. It remains `implemented_unverified`; code presence and frontend builds are not live STS2 proof.
 
+Development has entered the partial v0.6-alpha.4 source phase. Combat reward collection plus card reward selection/skip are implemented but unverified; the remaining M7 decision families are still absent.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

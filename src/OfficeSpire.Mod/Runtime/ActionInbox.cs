@@ -194,6 +194,8 @@ internal sealed class ActionInbox
         return action switch
         {
             "choose_map_node" => string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal),
+            "choose_reward" or "choose_reward_card" or "skip_rewards" =>
+                string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal),
             _ => string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
         };
     }

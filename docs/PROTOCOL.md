@@ -150,6 +150,16 @@ Potion discard is not yet enabled in the M4 source baseline.
 
 When `phase="map"`, `screen.reachable_nodes` contains the authoritative choices. Each node has `stable_id`, `column`, `row`, `node_type`, and `reachable`. The backend validates the coordinate against the current native map immediately before submitting `VoteForMapCoordAction`; stale or unreachable choices fail without mutation.
 
+## M7 reward actions
+
+When `phase="rewards"`, the screen uses either `mode="rewards"` with `items`, or `mode="card_selection"` with `card_choices`.
+
+- `choose_reward`: `{ "choice_index": 0 }`
+- `choose_reward_card`: `{ "choice_index": 1 }`
+- `skip_rewards`: `{}`
+
+Every choice is resolved again from the current native overlay on the game thread. Indexes are never retained as STS2 object references across threads.
+
 ## Action response and status
 
 `action_result` retains the v1 response shape:
