@@ -464,6 +464,9 @@ Implementation checkpoint — 2026-09-15:
 - versioned, fail-safe local settings persist opacity, 85–140% interface scaling, high contrast, and reduced motion;
 - the modal settings surface traps focus, supports Escape close, and disables underlying mutation controls while open;
 - settings parsing/clamping tests and the frontend production build pass; Windows/Tauri visual behavior remains `implemented_unverified`.
+- protocol ingestion validates non-negative, unique action indexes and stable identities for combat, map, reward, selection, event, rest, treasure, and shop snapshots;
+- ambiguous snapshots fail closed before replacing the last accepted state, so duplicate identities cannot become actionable UI;
+- malformed-identity regression tests and the frontend production build pass; live version-drift behavior remains `implemented_unverified`.
 
 Scope:
 

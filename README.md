@@ -73,6 +73,8 @@ Action recovery now includes a 15-second client observation deadline, stale requ
 
 Versioned local settings now persist background opacity, interface scale, high contrast, and reduced motion. The keyboard-contained settings dialog disables underlying game actions while open; native Tauri rendering remains `implemented_unverified`.
 
+Protocol ingestion now fails closed on ambiguous actionable identities, including duplicate hand/slot/choice indexes, duplicate or negative combat IDs, duplicate map coordinates, and empty/duplicate enemy stable IDs. Malformed snapshots cannot replace the last accepted state or enable mutations.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

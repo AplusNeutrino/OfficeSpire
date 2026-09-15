@@ -85,6 +85,40 @@ describe("OfficeSpire wire protocol", () => {
       }),
     ).toBe(true);
   });
+  it("rejects snapshots with ambiguous actionable identities", () => {
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 9,
+        phase: "combat",
+        action_pending: false,
+        run: {},
+        screen: {
+          hand: [],
+          enemies: [
+            { stable_id: "enemy-4", combat_id: 4 },
+            { stable_id: "enemy-4", combat_id: 4 },
+          ],
+          potions: [],
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 10,
+        phase: "shop",
+        action_pending: false,
+        run: {},
+        screen: {
+          items: [
+            { category: "relic", item_index: 0 },
+            { category: "relic", item_index: 0 },
+          ],
+        },
+      }),
+    ).toBe(false);
+  });
   it("creates reward selection and skip actions", () => {
     expect(createRewardAction("choose_reward_card", 1, 52)).toMatchObject({
       action: "choose_reward_card",

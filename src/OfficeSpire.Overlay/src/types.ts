@@ -1,3 +1,4 @@
+import { hasStableSnapshotIdentities } from "./network/snapshotIdentity";
 export const PROTOCOL_VERSION = 1;
 export type ConnectionStatus =
   | "discovering"
@@ -280,7 +281,8 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     !!c.screen &&
     (c.phase !== "combat" ||
       (Array.isArray((c.screen as CombatScreen).hand) &&
-        Array.isArray((c.screen as CombatScreen).enemies))) &&
+        Array.isArray((c.screen as CombatScreen).enemies) &&
+        Array.isArray((c.screen as CombatScreen).potions))) &&
     (c.phase !== "map" ||
       (Array.isArray((c.screen as MapScreen).reachable_nodes) &&
         Array.isArray((c.screen as MapScreen).all_nodes))) &&
@@ -293,6 +295,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "rest" || Array.isArray((c.screen as RestScreen).options)) &&
     (c.phase !== "treasure" ||
       Array.isArray((c.screen as TreasureScreen).relics)) &&
-    (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items))
+    (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
+    hasStableSnapshotIdentities(c as StateSnapshot)
   );
 }

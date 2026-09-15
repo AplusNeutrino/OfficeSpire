@@ -39,6 +39,8 @@ Recovery source checkpoint: the overlay has a 15-second non-replaying action tim
 
 Settings/accessibility source checkpoint: versioned local persistence, bounded opacity/scale values, high contrast, reduced motion, modal focus containment, and action suppression while settings are open are implemented. Parser tests and frontend build evidence exist; Windows/Tauri rendering and assistive-technology behavior remain `implemented_unverified`.
 
+Stable-identity source checkpoint: the protocol boundary rejects negative or duplicate combat IDs, hand/potion indexes, route coordinates, phase choice indexes, shop category/index pairs, and empty/duplicate enemy stable IDs. Regression/build evidence exists; malformed live snapshots and game-version drift remain `implemented_unverified`.
+
 ## M1 — Mod Runtime
 
 Status: `runtime_pass`

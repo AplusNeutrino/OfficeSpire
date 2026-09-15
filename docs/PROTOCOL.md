@@ -64,6 +64,8 @@ Inbound messages are capped at 64 KiB. Outbound messages are capped at 1 MiB.
 
 `state_revision` is a monotonic **decision revision**, not a rendering revision. Rich/localized presentation text can update without minting a revision. On the validated M3 adapter, combat revision promotion requires an actionable/idle engine state plus a stable semantic snapshot.
 
+Clients must reject an entire snapshot when actionable identities are ambiguous. Protocol-v1 Overlay validation requires non-negative unique combat IDs, hand/potion indexes and choice indexes; unique map coordinates and stable IDs within each route collection; unique shop category/index pairs; and non-empty unique enemy stable IDs. A rejected snapshot must not replace the last accepted state or enable a mutation.
+
 `action_pending=true` means conflicting mutation requests should not be sent. It is true while either the game itself is settling or OfficeSpire has a queued/accepted action waiting to reach the next authoritative decision boundary.
 
 Known phase names:
