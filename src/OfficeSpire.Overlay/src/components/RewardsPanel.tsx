@@ -36,29 +36,35 @@ export function RewardsPanel({
         </h2>
         <div className="reward-list">
           {screen.mode === "card_selection"
-            ? screen.card_choices.map((card) => (
+            ? screen.card_choices.map((card, index) => (
                 <button
                   key={`${card.id}-${card.choice_index}`}
                   className="reward-card"
                   disabled={disabled || !screen.waiting_for_input}
                   onClick={() => onCard(card)}
+                  aria-keyshortcuts={`${index + 1}`}
                 >
                   <span className="card-cost">{card.cost}</span>
-                  <strong>{card.name}</strong>
+                  <strong>
+                    [{index + 1}] {card.name}
+                  </strong>
                   <small>
                     {card.type} · {card.rarity}
                   </small>
                   <span>{card.description}</span>
                 </button>
               ))
-            : screen.items.map((reward) => (
+            : screen.items.map((reward, index) => (
                 <button
                   key={`${reward.reward_type}-${reward.choice_index}`}
                   className="reward-item"
                   disabled={disabled || !screen.waiting_for_input}
                   onClick={() => onReward(reward)}
+                  aria-keyshortcuts={`${index + 1}`}
                 >
-                  <strong>{reward.name}</strong>
+                  <strong>
+                    [{index + 1}] {reward.name}
+                  </strong>
                   <small>{reward.reward_type}</small>
                   {reward.description && <span>{reward.description}</span>}
                   {reward.card_options.length > 0 && (
@@ -73,8 +79,13 @@ export function RewardsPanel({
       {screen.mode === "rewards" && screen.can_skip && (
         <footer className="reward-footer">
           <span>Unclaimed rewards will be left behind.</span>
-          <button className="skip-rewards" disabled={disabled} onClick={onSkip}>
-            Skip / Continue
+          <button
+            className="skip-rewards"
+            disabled={disabled}
+            onClick={onSkip}
+            aria-keyshortcuts="S"
+          >
+            [S] Skip / Continue
           </button>
         </footer>
       )}

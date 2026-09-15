@@ -33,12 +33,13 @@ export function TreasurePanel({
             className="treasure-open"
             disabled={disabled}
             onClick={onOpen}
+            aria-keyshortcuts="Enter"
           >
-            Open chest
+            [Enter] Open chest
           </button>
         ) : (
           <div className="treasure-relics">
-            {screen.relics.map((relic) => (
+            {screen.relics.map((relic, index) => (
               <button
                 key={relic.id}
                 className={
@@ -48,8 +49,11 @@ export function TreasurePanel({
                 }
                 disabled={disabled || !screen.is_picking}
                 onClick={() => onRelic(relic)}
+                aria-keyshortcuts={`${index + 1}`}
               >
-                <strong>{relic.name}</strong>
+                <strong>
+                  [{index + 1}] {relic.name}
+                </strong>
                 <span>{relic.description}</span>
               </button>
             ))}
@@ -60,8 +64,9 @@ export function TreasurePanel({
             className="treasure-skip"
             disabled={disabled}
             onClick={onSkip}
+            aria-keyshortcuts="S"
           >
-            Skip relic
+            [S] Skip relic
           </button>
         )}
         {screen.can_leave && (
@@ -69,8 +74,9 @@ export function TreasurePanel({
             className="treasure-leave"
             disabled={disabled}
             onClick={onLeave}
+            aria-keyshortcuts="L"
           >
-            Continue
+            [L] Continue
           </button>
         )}
       </section>

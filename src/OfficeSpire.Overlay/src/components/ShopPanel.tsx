@@ -29,17 +29,23 @@ export function ShopPanel({
       <section>
         <h1>Merchant</h1>
         {!screen.inventory_open ? (
-          <button className="shop-open" disabled={disabled} onClick={onOpen}>
-            Browse wares
+          <button
+            className="shop-open"
+            disabled={disabled}
+            onClick={onOpen}
+            aria-keyshortcuts="Enter"
+          >
+            [Enter] Browse wares
           </button>
         ) : (
           <div className="shop-items">
-            {screen.items.map((item) => (
+            {screen.items.map((item, index) => (
               <button
                 key={`${item.category}-${item.item_index}`}
                 className="shop-item"
                 disabled={disabled || !item.is_stocked || !item.enough_gold}
                 onClick={() => onBuy(item)}
+                aria-keyshortcuts={`${index + 1}`}
                 title={
                   !item.is_stocked
                     ? "Out of stock"
@@ -48,7 +54,9 @@ export function ShopPanel({
                       : item.description
                 }
               >
-                <strong>{item.name}</strong>
+                <strong>
+                  [{index + 1}] {item.name}
+                </strong>
                 <b>{item.price}G</b>
                 <small>{item.category.replace(/_/g, " ")}</small>
                 {item.description && <span>{item.description}</span>}
@@ -59,15 +67,21 @@ export function ShopPanel({
                 className="shop-remove"
                 disabled={disabled || screen.gold < screen.card_removal_cost}
                 onClick={onRemove}
+                aria-keyshortcuts="R"
               >
-                Remove a card <b>{screen.card_removal_cost}G</b>
+                [R] Remove a card <b>{screen.card_removal_cost}G</b>
               </button>
             )}
           </div>
         )}
         {screen.can_leave && (
-          <button className="shop-leave" disabled={disabled} onClick={onLeave}>
-            Leave merchant
+          <button
+            className="shop-leave"
+            disabled={disabled}
+            onClick={onLeave}
+            aria-keyshortcuts="L"
+          >
+            [L] Leave merchant
           </button>
         )}
       </section>

@@ -33,7 +33,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 
 M4 passes as a core control-chain milestone. Potion use/discard and the extreme main-thread race probe remain separately tracked and do not invalidate that core milestone.
 
-M8 source checkpoint: combat keyboard shortcuts and their pure key mapping tests are present. Browser/Tauri focus behavior and live game actions remain `implemented_unverified`.
+M8 source checkpoint: keyboard shortcuts and pure key-mapping tests cover every currently supported combat and run-decision screen. Browser/Tauri focus behavior and live game actions remain `implemented_unverified`.
 
 ## M1 — Mod Runtime
 

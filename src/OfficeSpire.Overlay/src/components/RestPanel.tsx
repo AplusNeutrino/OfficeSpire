@@ -25,14 +25,17 @@ export function RestPanel({ snapshot, disabled, onOption, onLeave }: Props) {
           </p>
         )}
         <div className="rest-options">
-          {screen.options.map((option) => (
+          {screen.options.map((option, index) => (
             <button
               key={`${option.id}-${option.option_index}`}
               className="rest-option"
               disabled={disabled || !screen.waiting_for_input}
               onClick={() => onOption(option)}
+              aria-keyshortcuts={`${index + 1}`}
             >
-              <strong>{option.name}</strong>
+              <strong>
+                [{index + 1}] {option.name}
+              </strong>
               {option.description && <span>{option.description}</span>}
             </button>
           ))}
@@ -42,8 +45,9 @@ export function RestPanel({ snapshot, disabled, onOption, onLeave }: Props) {
             className="rest-proceed"
             disabled={disabled}
             onClick={onLeave}
+            aria-keyshortcuts="L"
           >
-            Continue
+            [L] Continue
           </button>
         )}
       </section>

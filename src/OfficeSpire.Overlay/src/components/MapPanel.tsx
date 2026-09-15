@@ -30,14 +30,17 @@ export function MapPanel({ snapshot, disabled, onChooseNode }: Props) {
       <section>
         <h2>Reachable rooms</h2>
         <div className="map-choices">
-          {screen.reachable_nodes.map((node) => (
+          {screen.reachable_nodes.map((node, index) => (
             <button
               key={node.stable_id}
               className="map-node"
               disabled={disabled || !screen.waiting_for_input}
               onClick={() => onChooseNode(node)}
+              aria-keyshortcuts={`${index + 1}`}
             >
-              <strong>{nodeLabel(node)}</strong>
+              <strong>
+                [{index + 1}] {nodeLabel(node)}
+              </strong>
               <small>
                 Column {node.column + 1} · Row {node.row + 1}
               </small>

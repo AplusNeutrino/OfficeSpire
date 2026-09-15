@@ -23,6 +23,7 @@ import {
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 import { resolveCombatShortcut } from "../actions/combatKeyboard";
+import { resolveRunShortcut } from "../actions/runKeyboard";
 describe("OfficeSpire wire protocol", () => {
   it("wraps state requests with protocol version 1", () => {
     expect(getStateMessage()).toEqual({
@@ -276,5 +277,12 @@ describe("OfficeSpire wire protocol", () => {
     expect(resolveCombatShortcut("Escape", false, true)).toEqual({
       kind: "cancel",
     });
+  });
+  it("maps run-screen keyboard shortcuts", () => {
+    expect(resolveRunShortcut("Digit4")).toEqual({ kind: "choice", index: 3 });
+    expect(resolveRunShortcut("Enter")).toEqual({ kind: "confirm" });
+    expect(resolveRunShortcut("KeyS")).toEqual({ kind: "skip" });
+    expect(resolveRunShortcut("KeyL")).toEqual({ kind: "leave" });
+    expect(resolveRunShortcut("KeyR")).toEqual({ kind: "remove" });
   });
 });

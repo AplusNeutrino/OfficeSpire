@@ -454,7 +454,9 @@ Implementation checkpoint — 2026-09-15:
 - discard uses `DiscardPotionGameAction` through the native action queue synchronizer;
 - frontend protocol tests and production build pass; live STS2 behavior remains unverified.
 - combat keyboard shortcuts cover cards, potion slots, legal targets, end turn, and cancellation using layout-stable `KeyboardEvent.code` values;
-- controls expose matching `aria-keyshortcuts` and visible shortcut hints; non-combat keyboard navigation remains `not_implemented`.
+- controls expose matching `aria-keyshortcuts` and visible shortcut hints;
+- keyboard commands now cover every currently supported combat and run-decision screen, with authoritative availability checks immediately before submission;
+- browser/Tauri focus behavior and end-to-end live keyboard operation remain `implemented_unverified`.
 
 Scope:
 

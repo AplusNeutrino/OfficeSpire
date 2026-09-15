@@ -27,15 +27,18 @@ export function CardSelectionPanel({
         </p>
       )}
       <div className="reward-list">
-        {screen.options.map((card) => (
+        {screen.options.map((card, index) => (
           <button
             key={`${card.id}-${card.choice_index}`}
             className="reward-card"
             disabled={disabled || !screen.waiting_for_input}
             onClick={() => onCard(card)}
+            aria-keyshortcuts={`${index + 1}`}
           >
             <span className="card-cost">{card.cost}</span>
-            <strong>{card.name}</strong>
+            <strong>
+              [{index + 1}] {card.name}
+            </strong>
             <small>
               {card.type} · {card.rarity}
             </small>
@@ -48,8 +51,9 @@ export function CardSelectionPanel({
           className="confirm-selection"
           disabled={disabled || !screen.can_confirm}
           onClick={onConfirm}
+          aria-keyshortcuts="Enter"
         >
-          Confirm selection
+          [Enter] Confirm selection
         </button>
       )}
     </section>

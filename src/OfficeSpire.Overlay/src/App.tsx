@@ -42,6 +42,7 @@ import {
   createDiscardPotionAction,
 } from "./actions/actionDispatcher";
 import { resolveCombatShortcut } from "./actions/combatKeyboard";
+import { resolveRunShortcut } from "./actions/runKeyboard";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
 import { RewardsPanel } from "./components/RewardsPanel";
@@ -343,6 +344,138 @@ export default function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [disabled, selectedCard, selectedPotion, snapshot]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.shiftKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        !snapshot ||
+        snapshot.phase === "combat" ||
+        disabled
+      )
+        return;
+      const command = resolveRunShortcut(event.code);
+      if (!command) return;
+
+      let handled = false;
+      if (snapshot.phase === "map" && command.kind === "choice") {
+        const state = snapshot as MapStateSnapshot;
+        const node = state.screen.reachable_nodes[command.index];
+        if (state.screen.waiting_for_input && node) {
+          chooseMapNode(node);
+          handled = true;
+        }
+      } else if (snapshot.phase === "rewards") {
+        const state = snapshot as RewardsStateSnapshot;
+        if (command.kind === "choice" && state.screen.waiting_for_input) {
+          const choice =
+            state.screen.mode === "card_selection"
+              ? state.screen.card_choices[command.index]
+              : state.screen.items[command.index];
+          if (choice) {
+            if (state.screen.mode === "card_selection")
+              chooseRewardCard(choice as RewardCardState);
+            else chooseReward(choice as RewardItemState);
+            handled = true;
+          }
+        } else if (command.kind === "skip" && state.screen.can_skip) {
+          submit(createSkipRewardsAction(snapshot.state_revision));
+          handled = true;
+        }
+      } else if (snapshot.phase === "card_selection") {
+        const state = snapshot as CardSelectionStateSnapshot;
+        if (command.kind === "choice" && state.screen.waiting_for_input) {
+          const card = state.screen.options[command.index];
+          if (card) {
+            chooseCardOption(card);
+            handled = true;
+          }
+        } else if (command.kind === "confirm" && state.screen.can_confirm) {
+          submit(createConfirmCardSelectionAction(snapshot.state_revision));
+          handled = true;
+        }
+      } else if (snapshot.phase === "event" && command.kind === "choice") {
+        const state = snapshot as EventStateSnapshot;
+        const option = state.screen.options.filter(
+          (candidate) => !candidate.is_locked,
+        )[command.index];
+        if (state.screen.waiting_for_input && option) {
+          chooseEventOption(option);
+          handled = true;
+        }
+      } else if (snapshot.phase === "rest") {
+        const state = snapshot as RestStateSnapshot;
+        if (command.kind === "choice" && state.screen.waiting_for_input) {
+          const option = state.screen.options[command.index];
+          if (option) {
+            chooseRestOption(option);
+            handled = true;
+          }
+        } else if (command.kind === "leave" && state.screen.can_proceed) {
+          submit(createLeaveRestSiteAction(snapshot.state_revision));
+          handled = true;
+        }
+      } else if (snapshot.phase === "treasure") {
+        const state = snapshot as TreasureStateSnapshot;
+        if (command.kind === "choice" && state.screen.is_picking) {
+          const relic = state.screen.relics[command.index];
+          if (relic) {
+            chooseTreasureRelic(relic);
+            handled = true;
+          }
+        } else if (command.kind === "confirm" && !state.screen.chest_opened) {
+          submit(
+            createTreasureAction("open_treasure", snapshot.state_revision),
+          );
+          handled = true;
+        } else if (command.kind === "skip" && state.screen.is_picking) {
+          submit(
+            createTreasureAction(
+              "skip_treasure_relic",
+              snapshot.state_revision,
+            ),
+          );
+          handled = true;
+        } else if (command.kind === "leave" && state.screen.can_leave) {
+          submit(
+            createTreasureAction("leave_treasure", snapshot.state_revision),
+          );
+          handled = true;
+        }
+      } else if (snapshot.phase === "shop") {
+        const state = snapshot as ShopStateSnapshot;
+        if (command.kind === "choice" && state.screen.inventory_open) {
+          const item = state.screen.items[command.index];
+          if (item?.is_stocked && item.enough_gold) {
+            buyShopItem(item);
+            handled = true;
+          }
+        } else if (command.kind === "confirm" && !state.screen.inventory_open) {
+          submit(createShopAction("open_shop", snapshot.state_revision));
+          handled = true;
+        } else if (
+          command.kind === "remove" &&
+          state.screen.card_removal_available &&
+          state.screen.gold >= state.screen.card_removal_cost
+        ) {
+          submit(
+            createShopAction("request_card_removal", snapshot.state_revision),
+          );
+          handled = true;
+        } else if (command.kind === "leave" && state.screen.can_leave) {
+          submit(createShopAction("leave_shop", snapshot.state_revision));
+          handled = true;
+        }
+      }
+      if (handled) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [disabled, snapshot]);
   return (
     <main className="overlay" data-tauri-drag-region>
       <div className="titlebar" data-tauri-drag-region>
