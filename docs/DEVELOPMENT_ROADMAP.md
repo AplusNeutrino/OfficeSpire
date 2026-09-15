@@ -444,7 +444,7 @@ M7 exit criteria:
 
 Planned after the ordinary run-decision loop is established.
 
-Status: `implemented_unverified` — the main hardening slices exist, but source coverage is still being audited and mandatory runtime exit criteria have not passed.
+Status: `implemented_unverified` — planned safe source delivery is complete; mandatory runtime exit criteria have not passed.
 
 Implementation checkpoint — 2026-09-15:
 
@@ -533,7 +533,7 @@ The following work packages are the authoritative path from the current branch t
 | M8.8 | Keyboard/accessibility | Complete keyboard paths, focus management, readable scaling, contrast, reduced motion, and screen-reader labels | Windows/Tauri keyboard-only and assistive-technology checklist | `implemented_unverified` — source focus/announcement paths complete; native checklist remains |
 | M8.9 | Compatibility and diagnostics | Maintain protocol/release metadata checks, passive runtime analyzer, actionable logs, and fail-closed version drift | Supported and incompatible-version observations with traceable logs | `implemented_unverified` — source traceability/integrity checks complete; live observations remain |
 | M8.10 | Workshop candidate | Keep manifest/dependencies explicit, build an unsigned traceable candidate, document framework coexistence, install/upgrade/uninstall, and policy checks; never publish automatically | Windows artifact/checksum plus private manual subscription lifecycle and current Steam policy review | `implemented_unverified` — source packaging/provenance boundary complete; Windows/Steam lifecycle remains |
-| M8.11 | Full-run qualification | Execute repeated supported runs spanning all implemented surfaces and collect exact game/mod/app versions | Completed evidence matrix with no silent unsupported transitions or replayed writes | `implemented_unverified` |
+| M8.11 | Full-run qualification | Execute repeated supported runs spanning all implemented surfaces and collect exact game/mod/app versions | Completed evidence matrix with no silent unsupported transitions or replayed writes | `blocked` — qualification matrix exists; Windows/STS2 runtime is unavailable |
 
 Execution rules:
 
@@ -556,7 +556,7 @@ M8 source-coverage audit — corrected 2026-09-15:
 | Menu/run end | `implemented_unverified` | Startup, resume, victory, defeat, abandon, revival edge, and return-to-menu observations |
 | Rich/localized text display | `implemented_unverified` | Live cards, powers, intents, events, rest sites, rewards, relics, potions, and non-English strings |
 | Windows/Workshop packaging | `implemented_unverified` | Native bundle, signing decision, candidate script, clean install/upgrade/uninstall, and Workshop policy check |
-| Repeated supported full run | `implemented_unverified` | Recorded full-run matrix with exact commits and artifacts |
+| Repeated supported full run | `blocked` | Windows/STS2 environment and recorded full-run matrix with exact commits and artifacts |
 
 Run-start automation is intentionally not exposed: OfficeSpire remains an explicit control surface, and starting/resuming a run stays in the original STS2 UI. This is a product safety boundary, not an unfinished mutation path.
 
@@ -585,7 +585,7 @@ Exit criteria:
 | v0.6-alpha.2 | Overlay Prototype | Live translucent mouse-operated combat overlay | `implemented_unverified` |
 | v0.6-alpha.3 | Map Controller | Map display and native route selection | `implemented_unverified` |
 | v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `implemented_unverified` |
-| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `implemented_unverified` (source audit active) |
+| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `implemented_unverified` (safe source delivery complete) |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
 
 Version numbers may be adjusted before release, but milestone scope and evidence gates must be updated here first.
@@ -594,21 +594,21 @@ Version numbers may be adjusted before release, but milestone scope and evidence
 
 Continue the remaining safe source audit, then use the external runtime in this order:
 
-1. finish the source-level run-decision coverage audit, including rest-site variants and plain-text presentation coverage;
-2. build the Mod against the installed supported STS2 assemblies;
-3. run the manual Windows bundle workflow and PowerShell candidate packager;
-4. validate the Tauri shell, session discovery, focus, settings, and reconnect behavior;
-5. execute potion and one-shot main-thread stale-window probes without replay;
-6. validate map/rest/menu/run-end and death-prevention edges;
-7. complete repeated supported full runs and clean install/upgrade/uninstall checks;
-8. confirm current STS2 Workshop content policy and test a private candidate manually;
-9. promote only individually evidenced capabilities to `runtime_pass`.
+1. build the Mod against the installed supported STS2 assemblies;
+2. run the manual Windows bundle workflow and PowerShell candidate packager;
+3. validate the Tauri shell, session discovery, focus, settings, and reconnect behavior;
+4. execute potion and one-shot main-thread stale-window probes without replay;
+5. validate map/rest/menu/run-end and death-prevention edges;
+6. complete [M8_QUALIFICATION_MATRIX.md](M8_QUALIFICATION_MATRIX.md), including repeated supported full runs and clean install/upgrade/uninstall checks;
+7. confirm current STS2 Workshop content policy and test a private candidate manually;
+8. promote only individually evidenced capabilities to `runtime_pass`.
 
 ## 11. Documentation ownership
 
 - **This file** — milestone status, current priority, future development scope, execution order, exit criteria.
 - **[RUNTIME_VALIDATION.md](RUNTIME_VALIDATION.md)** — commands, environment, observations, PASS/FAIL evidence, known runtime limitations.
 - **[M8_RUNTIME_PROBES.md](M8_RUNTIME_PROBES.md)** — safe, non-replaying procedures and evidence requirements for M8 runtime validation.
+- **[M8_QUALIFICATION_MATRIX.md](M8_QUALIFICATION_MATRIX.md)** — complete M8.11 full-run, accessibility, compatibility, and packaging evidence matrix.
 - **[PROTOCOL.md](PROTOCOL.md)** — wire schema and protocol invariants.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — component boundaries and design rationale.
 - **[UPSTREAM_REFERENCES.md](UPSTREAM_REFERENCES.md)** — third-party research, commits, licenses, and reuse decisions.

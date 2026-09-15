@@ -29,7 +29,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 | M5 | Overlay Prototype | `implemented_unverified` |
 | M6 | Map Controller | `implemented_unverified` |
 | M7 | Run Decisions | `implemented_unverified` |
-| M8 | Advanced Combat / Hardening | `implemented_unverified` (source audit active) |
+| M8 | Advanced Combat / Hardening | `implemented_unverified` (safe source delivery complete; runtime qualification blocked) |
 
 M4 passes as a core control-chain milestone. Potion use/discard and the extreme main-thread race probe remain separately tracked and do not invalidate that core milestone.
 
@@ -78,6 +78,8 @@ Rest-lifecycle source checkpoint: rest snapshots explicitly distinguish `options
 Lifecycle-transition source checkpoint: missing-run and visible-game-over signals require three consecutive capture frames before promotion to read-only `menu` or `run_end`. Earlier frames are non-actionable `unknown` snapshots with `action_pending=true`. Non-input states in every decision phase now remain pending rather than applying the former combat-only rule, preventing rest resolution/player-target waits from timing out as false no-effects. Source/build evidence exists; startup, load/resume, death prevention, game-over, and return-to-menu timing remain `implemented_unverified`.
 
 M8 coverage correction: the earlier “source complete” label was too broad. Ordinary rest-site choices/leave and smith/remove card-selection follow-ups exist, but multiplayer rest targeting is `not_implemented`; menu and run-end states are read-only by design; map/rest lifecycle variants still need live enumeration. No capability is promoted by this correction.
+
+Final source-delivery audit: M8.1–M8.10 have their planned fail-closed source paths, tests, documentation, diagnostics, and packaging controls. M8.11 is now explicitly `blocked`, not `runtime_pass` or source-validated: its authoritative checklist is [M8_QUALIFICATION_MATRIX.md](M8_QUALIFICATION_MATRIX.md) and requires Windows, current STS2 assemblies/runtime, Tauri/WebView, and Steam access. No live capability is promoted by this audit.
 
 ## M1 — Mod Runtime
 
