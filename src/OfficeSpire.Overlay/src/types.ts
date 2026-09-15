@@ -160,6 +160,7 @@ export interface TreasureScreen {
 export interface ShopItemState {
   category: "character_card" | "colorless_card" | "relic" | "potion";
   item_index: number;
+  item_id: string;
   name: string;
   price: number;
   description: string;

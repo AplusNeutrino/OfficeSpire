@@ -59,6 +59,8 @@ Map-generation source checkpoint: map snapshots now expose the native map-genera
 
 Card/relic identity source checkpoint: reward-card, generic card-selection, hand-selection, and treasure-relic actions now carry the native card/relic ID beside the displayed index. Main-thread dispatch reloads the native model and rejects identity drift before pressing or voting. Unit/build evidence exists; live reward, upgrade, deck, hand multi-select, and treasure transitions remain `implemented_unverified`.
 
+Merchant-identity source checkpoint: every card, relic, and potion shop entry exposes its native model ID; purchases carry category, category-local index, and ID. Main-thread dispatch reloads the inventory and rejects missing or changed identity before stock/affordability checks and asynchronous purchase. Unit/build evidence exists; live inventory refresh, discounts, purchase settlement, removal, and modded inventory remain `implemented_unverified`.
+
 M8 coverage correction: the earlier “source complete” label was too broad. Ordinary rest-site choices/leave and smith/remove card-selection follow-ups exist, but multiplayer rest targeting is `not_implemented`; menu and run-end states are read-only by design; map/rest lifecycle variants still need live enumeration. No capability is promoted by this correction.
 
 ## M1 — Mod Runtime

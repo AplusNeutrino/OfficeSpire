@@ -194,12 +194,13 @@ export function createShopAction(
 export function createBuyShopItemAction(
   category: string,
   itemIndex: number,
+  itemId: string,
   revision: number,
 ): OverlayAction {
   return {
     request_id: requestId(),
     action: "buy_shop_item",
     expected_revision: revision,
-    payload: { category, item_index: itemIndex },
+    payload: { category, item_index: itemIndex, item_id: itemId },
   };
 }

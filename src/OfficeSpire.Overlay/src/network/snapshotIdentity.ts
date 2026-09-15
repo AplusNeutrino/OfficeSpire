@@ -118,6 +118,9 @@ export function hasStableSnapshotIdentities(
       );
       return (
         nonNegativeIntegers(screen.items.map((item) => item.item_index)) &&
+        screen.items.every(
+          (item) => typeof item.item_id === "string" && item.item_id.length > 0,
+        ) &&
         unique(identities)
       );
     }

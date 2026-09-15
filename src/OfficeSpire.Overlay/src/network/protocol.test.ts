@@ -432,10 +432,10 @@ describe("OfficeSpire wire protocol", () => {
     ).toBe(true);
   });
   it("creates and parses merchant decisions", () => {
-    expect(createBuyShopItemAction("relic", 2, 100)).toMatchObject({
+    expect(createBuyShopItemAction("relic", 2, "anchor", 100)).toMatchObject({
       action: "buy_shop_item",
       expected_revision: 100,
-      payload: { category: "relic", item_index: 2 },
+      payload: { category: "relic", item_index: 2, item_id: "anchor" },
     });
     expect(createShopAction("request_card_removal", 101).action).toBe(
       "request_card_removal",

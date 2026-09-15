@@ -223,14 +223,14 @@ Opening, voting, and leaving are intentionally separate requests and revision bo
 
 ## M7 shop actions
 
-When `phase="shop"`, `screen.items` contains category-local indexes, prices, stock and affordability. Card removal is exposed separately with its current price.
+When `phase="shop"`, `screen.items` contains native `item_id`, category-local indexes, prices, stock and affordability. Card removal is exposed separately with its current price.
 
 - `open_shop`: `{}`
-- `buy_shop_item`: `{ "category": "relic", "item_index": 1 }`
+- `buy_shop_item`: `{ "category": "relic", "item_index": 1, "item_id": "anchor" }`
 - `request_card_removal`: `{}`
 - `leave_shop`: `{}`
 
-Purchases use the native asynchronous merchant path without blocking the Godot thread. Card removal starts the native purchase/selection flow; the resulting deck selector is completed through `choose_card_option`.
+Purchases bind category and index to the current native card/relic/potion ID, then use the native asynchronous merchant path without blocking the Godot thread. Missing or changed model identity fails closed before purchase. Card removal starts the native purchase/selection flow; the resulting deck selector is completed through `choose_card_option`.
 
 ## Action response and status
 

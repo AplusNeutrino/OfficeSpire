@@ -183,6 +183,7 @@ internal sealed record ShopScreenDto(
 internal sealed record ShopItemSnapshotDto(
     string Category,
     int ItemIndex,
+    string ItemId,
     string Name,
     int Price,
     string Description,

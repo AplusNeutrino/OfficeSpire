@@ -104,9 +104,10 @@ public sealed class M4GameAdapter : IGameAdapter
             return Reject(request, "bad_phase", "A merchant inventory is not available.");
         }
         if (!TryReadRequiredString(request.Payload, "category", out string? category) ||
-            !TryReadRequiredInt(request.Payload, "item_index", out int index) || index < 0)
+            !TryReadRequiredInt(request.Payload, "item_index", out int index) || index < 0 ||
+            !TryReadRequiredString(request.Payload, "item_id", out string? itemId))
         {
-            return Reject(request, "bad_request", "buy_shop_item requires payload.category and non-negative payload.item_index.");
+            return Reject(request, "bad_request", "buy_shop_item requires payload.category, payload.item_id, and non-negative payload.item_index.");
         }
         MerchantEntry? entry = category switch
         {
@@ -117,6 +118,18 @@ public sealed class M4GameAdapter : IGameAdapter
             _ => null
         };
         if (entry is null) return Reject(request, "bad_index", $"Shop item {category}[{index}] is unavailable.");
+        string? currentItemId = category switch
+        {
+            "character_card" => inventory.CharacterCardEntries[index].CreationResult?.Card?.Id.ToString(),
+            "colorless_card" => inventory.ColorlessCardEntries[index].CreationResult?.Card?.Id.ToString(),
+            "relic" => inventory.RelicEntries[index].Model?.Id.ToString(),
+            "potion" => inventory.PotionEntries[index].Model?.Id.ToString(),
+            _ => null
+        };
+        if (!string.Equals(currentItemId, itemId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected merchant item changed before dispatch.");
+        }
         if (!entry.IsStocked) return Reject(request, "out_of_stock", "The selected shop item is out of stock.");
         if (!entry.EnoughGold) return Reject(request, "insufficient_gold", "There is not enough gold for this item.");
         if (!room.Inventory.IsOpen) room.OpenInventory();

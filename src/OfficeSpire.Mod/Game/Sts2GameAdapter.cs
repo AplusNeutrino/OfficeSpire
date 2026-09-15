@@ -373,16 +373,20 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         var items = new List<ShopItemSnapshotDto>();
         items.AddRange(inventory.CharacterCardEntries.Select((entry, index) => new ShopItemSnapshotDto(
-            "character_card", index, entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card",
+            "character_card", index, entry.CreationResult?.Card?.Id.ToString() ?? string.Empty,
+            NormalizeRichText(entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card"),
             entry.Cost, GetCardDescription(entry.CreationResult?.Card), entry.IsStocked, entry.EnoughGold)));
         items.AddRange(inventory.ColorlessCardEntries.Select((entry, index) => new ShopItemSnapshotDto(
-            "colorless_card", index, entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card",
+            "colorless_card", index, entry.CreationResult?.Card?.Id.ToString() ?? string.Empty,
+            NormalizeRichText(entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card"),
             entry.Cost, GetCardDescription(entry.CreationResult?.Card), entry.IsStocked, entry.EnoughGold)));
         items.AddRange(inventory.RelicEntries.Select((entry, index) => new ShopItemSnapshotDto(
-            "relic", index, entry.Model is null ? "Unknown relic" : SafeFormat(entry.Model.Title),
+            "relic", index, entry.Model?.Id.ToString() ?? string.Empty,
+            entry.Model is null ? "Unknown relic" : SafeFormat(entry.Model.Title),
             entry.Cost, entry.Model is null ? string.Empty : SafeFormat(entry.Model.DynamicDescription), entry.IsStocked, entry.EnoughGold)));
         items.AddRange(inventory.PotionEntries.Select((entry, index) => new ShopItemSnapshotDto(
-            "potion", index, entry.Model is null ? "Unknown potion" : SafeFormat(entry.Model.Title),
+            "potion", index, entry.Model?.Id.ToString() ?? string.Empty,
+            entry.Model is null ? "Unknown potion" : SafeFormat(entry.Model.Title),
             entry.Cost, entry.Model is null ? string.Empty : SafeFormat(entry.Model.DynamicDescription), entry.IsStocked, entry.EnoughGold)));
 
         bool removalAvailable = inventory.CardRemovalEntry is { IsStocked: true };

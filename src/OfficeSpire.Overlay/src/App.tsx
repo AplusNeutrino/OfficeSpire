@@ -352,6 +352,7 @@ export default function App() {
         createBuyShopItemAction(
           item.category,
           item.item_index,
+          item.item_id,
           snapshot.state_revision,
         ),
       );
