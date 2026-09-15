@@ -28,6 +28,7 @@ import { resolveCombatShortcut } from "../actions/combatKeyboard";
 import { resolveRunShortcut } from "../actions/runKeyboard";
 import { ACTION_TIMEOUT_MS, clientTimeoutResult } from "./actionLifecycle";
 import { ReconnectController } from "./reconnect";
+import { shouldMoveDecisionFocus } from "../accessibility/focusPolicy";
 import { DEFAULT_SETTINGS, parseSettings } from "../settings";
 import { analyzeRuntimeLog } from "../../scripts/analyze-runtime-log.mjs";
 import { normalizeGameText, normalizeSnapshotText } from "./richText";
@@ -563,6 +564,13 @@ describe("OfficeSpire wire protocol", () => {
     expect(resolveRunShortcut("KeyS")).toEqual({ kind: "skip" });
     expect(resolveRunShortcut("KeyL")).toEqual({ kind: "leave" });
     expect(resolveRunShortcut("KeyR")).toEqual({ kind: "remove" });
+  });
+  it("moves focus only when the decision surface changes outside settings", () => {
+    expect(shouldMoveDecisionFocus(undefined, "menu", false)).toBe(true);
+    expect(shouldMoveDecisionFocus("map", "combat", false)).toBe(true);
+    expect(shouldMoveDecisionFocus("combat", "combat", false)).toBe(false);
+    expect(shouldMoveDecisionFocus("map", "combat", true)).toBe(false);
+    expect(shouldMoveDecisionFocus("combat", undefined, false)).toBe(false);
   });
   it("creates a terminal client timeout without claiming backend completion", () => {
     expect(ACTION_TIMEOUT_MS).toBe(15_000);

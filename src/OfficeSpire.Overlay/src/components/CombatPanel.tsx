@@ -145,6 +145,7 @@ export function CombatPanel({
                   }
                   onClick={() => onDiscardPotion(potion)}
                   title="Discard potion"
+                  aria-label={`Discard ${potion.name}`}
                 >
                   ×
                 </button>

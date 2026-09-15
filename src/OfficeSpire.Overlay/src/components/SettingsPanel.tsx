@@ -1,13 +1,19 @@
 import { DEFAULT_SETTINGS, type OverlaySettings } from "../settings";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 interface Props {
   settings: OverlaySettings;
   onChange: (settings: OverlaySettings) => void;
   onClose: () => void;
+  returnFocusRef: RefObject<HTMLButtonElement | null>;
 }
 
-export function SettingsPanel({ settings, onChange, onClose }: Props) {
+export function SettingsPanel({
+  settings,
+  onChange,
+  onClose,
+  returnFocusRef,
+}: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -32,8 +38,11 @@ export function SettingsPanel({ settings, onChange, onClose }: Props) {
       }
     };
     window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      returnFocusRef.current?.focus();
+    };
+  }, [onClose, returnFocusRef]);
   const update = (change: Partial<OverlaySettings>) =>
     onChange({ ...settings, ...change, version: 1 });
 

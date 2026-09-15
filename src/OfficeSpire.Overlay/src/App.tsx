@@ -68,6 +68,7 @@ import {
   clientTimeoutResult,
 } from "./network/actionLifecycle";
 import { loadSettings, saveSettings, type OverlaySettings } from "./settings";
+import { shouldMoveDecisionFocus } from "./accessibility/focusPolicy";
 const terminalCodes = new Set([
   "completed",
   "stale_state",
@@ -108,6 +109,9 @@ export default function App() {
   const stoppedRef = useRef(false);
   const revisionRef = useRef<number | undefined>(undefined);
   const reconnectRef = useRef(new ReconnectController());
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const decisionSurfaceRef = useRef<HTMLDivElement>(null);
+  const previousPhaseRef = useRef<string | undefined>(undefined);
   const clearPoll = useCallback(() => {
     if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
     pollRef.current = undefined;
@@ -394,6 +398,15 @@ export default function App() {
   };
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   useEffect(() => {
+    const nextPhase = snapshot?.phase;
+    if (
+      shouldMoveDecisionFocus(previousPhaseRef.current, nextPhase, settingsOpen)
+    ) {
+      decisionSurfaceRef.current?.focus();
+    }
+    previousPhaseRef.current = nextPhase;
+  }, [settingsOpen, snapshot?.phase]);
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -604,6 +617,7 @@ export default function App() {
         <span className="title-actions">
           <span className={`status ${status}`}>{status}</span>
           <button
+            ref={settingsButtonRef}
             className="settings-toggle"
             onClick={() => setSettingsOpen((open) => !open)}
             aria-label="Overlay settings"
@@ -618,121 +632,141 @@ export default function App() {
           settings={settings}
           onChange={updateSettings}
           onClose={closeSettings}
+          returnFocusRef={settingsButtonRef}
         />
       )}
-      {!snapshot ? (
-        <section className="empty">
-          <h1>Waiting for STS2</h1>
-          <p>{message}</p>
-          <button onClick={() => void connect()}>Retry now</button>
-        </section>
-      ) : snapshot.phase === "combat" ? (
-        <CombatPanel
-          snapshot={snapshot as CombatStateSnapshot}
-          disabled={disabled}
-          selectedCard={selectedCard}
-          selectedPotion={selectedPotion}
-          onCard={chooseCard}
-          onTarget={chooseTarget}
-          onPotion={choosePotion}
-          onDiscardPotion={discardPotion}
-          onCancelTarget={() => {
-            setSelectedCard(undefined);
-            setSelectedPotion(undefined);
-          }}
-          onEndTurn={() => submit(createEndTurnAction(snapshot.state_revision))}
-        />
-      ) : snapshot.phase === "map" ? (
-        <MapPanel
-          snapshot={snapshot as MapStateSnapshot}
-          disabled={disabled}
-          onChooseNode={chooseMapNode}
-        />
-      ) : snapshot.phase === "rewards" ? (
-        <RewardsPanel
-          snapshot={snapshot as RewardsStateSnapshot}
-          disabled={disabled}
-          onReward={chooseReward}
-          onCard={chooseRewardCard}
-          onSkip={() =>
-            submit(createSkipRewardsAction(snapshot.state_revision))
-          }
-        />
-      ) : snapshot.phase === "card_selection" ? (
-        <CardSelectionPanel
-          snapshot={snapshot as CardSelectionStateSnapshot}
-          disabled={disabled}
-          onCard={chooseCardOption}
-          onConfirm={() =>
-            submit(createConfirmCardSelectionAction(snapshot.state_revision))
-          }
-        />
-      ) : snapshot.phase === "event" ? (
-        <EventPanel
-          snapshot={snapshot as EventStateSnapshot}
-          disabled={disabled}
-          onOption={chooseEventOption}
-        />
-      ) : snapshot.phase === "rest" ? (
-        <RestPanel
-          snapshot={snapshot as RestStateSnapshot}
-          disabled={disabled}
-          onOption={chooseRestOption}
-          onLeave={() =>
-            submit(createLeaveRestSiteAction(snapshot.state_revision))
-          }
-        />
-      ) : snapshot.phase === "treasure" ? (
-        <TreasurePanel
-          snapshot={snapshot as TreasureStateSnapshot}
-          disabled={disabled}
-          onOpen={() =>
-            submit(
-              createTreasureAction("open_treasure", snapshot.state_revision),
-            )
-          }
-          onRelic={chooseTreasureRelic}
-          onSkip={() =>
-            submit(
-              createTreasureAction(
-                "skip_treasure_relic",
-                snapshot.state_revision,
-              ),
-            )
-          }
-          onLeave={() =>
-            submit(
-              createTreasureAction("leave_treasure", snapshot.state_revision),
-            )
-          }
-        />
-      ) : snapshot.phase === "shop" ? (
-        <ShopPanel
-          snapshot={snapshot as ShopStateSnapshot}
-          disabled={disabled}
-          onOpen={() =>
-            submit(createShopAction("open_shop", snapshot.state_revision))
-          }
-          onBuy={buyShopItem}
-          onRemove={() =>
-            submit(
-              createShopAction("request_card_removal", snapshot.state_revision),
-            )
-          }
-          onLeave={() =>
-            submit(createShopAction("leave_shop", snapshot.state_revision))
-          }
-        />
-      ) : snapshot.phase === "menu" || snapshot.phase === "run_end" ? (
-        <LifecyclePanel snapshot={snapshot as LifecycleStateSnapshot} />
-      ) : (
-        <section className="empty">
-          <h1>{snapshot.phase.replace("_", " ")}</h1>
-          <p>This phase remains available through the original STS2 UI.</p>
-        </section>
-      )}
+      <div
+        ref={decisionSurfaceRef}
+        className="decision-surface"
+        tabIndex={-1}
+        aria-label={
+          snapshot
+            ? `${snapshot.phase.replace("_", " ")} controls`
+            : "Connection status"
+        }
+      >
+        {!snapshot ? (
+          <section className="empty">
+            <h1>Waiting for STS2</h1>
+            <p>{message}</p>
+            <button onClick={() => void connect()}>Retry now</button>
+          </section>
+        ) : snapshot.phase === "combat" ? (
+          <CombatPanel
+            snapshot={snapshot as CombatStateSnapshot}
+            disabled={disabled}
+            selectedCard={selectedCard}
+            selectedPotion={selectedPotion}
+            onCard={chooseCard}
+            onTarget={chooseTarget}
+            onPotion={choosePotion}
+            onDiscardPotion={discardPotion}
+            onCancelTarget={() => {
+              setSelectedCard(undefined);
+              setSelectedPotion(undefined);
+            }}
+            onEndTurn={() =>
+              submit(createEndTurnAction(snapshot.state_revision))
+            }
+          />
+        ) : snapshot.phase === "map" ? (
+          <MapPanel
+            snapshot={snapshot as MapStateSnapshot}
+            disabled={disabled}
+            onChooseNode={chooseMapNode}
+          />
+        ) : snapshot.phase === "rewards" ? (
+          <RewardsPanel
+            snapshot={snapshot as RewardsStateSnapshot}
+            disabled={disabled}
+            onReward={chooseReward}
+            onCard={chooseRewardCard}
+            onSkip={() =>
+              submit(createSkipRewardsAction(snapshot.state_revision))
+            }
+          />
+        ) : snapshot.phase === "card_selection" ? (
+          <CardSelectionPanel
+            snapshot={snapshot as CardSelectionStateSnapshot}
+            disabled={disabled}
+            onCard={chooseCardOption}
+            onConfirm={() =>
+              submit(createConfirmCardSelectionAction(snapshot.state_revision))
+            }
+          />
+        ) : snapshot.phase === "event" ? (
+          <EventPanel
+            snapshot={snapshot as EventStateSnapshot}
+            disabled={disabled}
+            onOption={chooseEventOption}
+          />
+        ) : snapshot.phase === "rest" ? (
+          <RestPanel
+            snapshot={snapshot as RestStateSnapshot}
+            disabled={disabled}
+            onOption={chooseRestOption}
+            onLeave={() =>
+              submit(createLeaveRestSiteAction(snapshot.state_revision))
+            }
+          />
+        ) : snapshot.phase === "treasure" ? (
+          <TreasurePanel
+            snapshot={snapshot as TreasureStateSnapshot}
+            disabled={disabled}
+            onOpen={() =>
+              submit(
+                createTreasureAction("open_treasure", snapshot.state_revision),
+              )
+            }
+            onRelic={chooseTreasureRelic}
+            onSkip={() =>
+              submit(
+                createTreasureAction(
+                  "skip_treasure_relic",
+                  snapshot.state_revision,
+                ),
+              )
+            }
+            onLeave={() =>
+              submit(
+                createTreasureAction("leave_treasure", snapshot.state_revision),
+              )
+            }
+          />
+        ) : snapshot.phase === "shop" ? (
+          <ShopPanel
+            snapshot={snapshot as ShopStateSnapshot}
+            disabled={disabled}
+            onOpen={() =>
+              submit(createShopAction("open_shop", snapshot.state_revision))
+            }
+            onBuy={buyShopItem}
+            onRemove={() =>
+              submit(
+                createShopAction(
+                  "request_card_removal",
+                  snapshot.state_revision,
+                ),
+              )
+            }
+            onLeave={() =>
+              submit(createShopAction("leave_shop", snapshot.state_revision))
+            }
+          />
+        ) : snapshot.phase === "menu" || snapshot.phase === "run_end" ? (
+          <LifecyclePanel snapshot={snapshot as LifecycleStateSnapshot} />
+        ) : (
+          <section className="empty">
+            <h1>{snapshot.phase.replace("_", " ")}</h1>
+            <p>This phase remains available through the original STS2 UI.</p>
+          </section>
+        )}
+      </div>
       <aside
         className={`notice ${actionResult && !actionResult.accepted ? "failure" : ""}`}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
       >
         <span>{message}</span>
         {snapshot && (
