@@ -177,19 +177,19 @@ When `phase="map"`, `screen.map_generation` identifies the native generated map 
 When `phase="rewards"`, the screen uses either `mode="rewards"` with `items`, or `mode="card_selection"` with `card_choices`.
 
 - `choose_reward`: `{ "choice_index": 0 }`
-- `choose_reward_card`: `{ "choice_index": 1 }`
+- `choose_reward_card`: `{ "choice_index": 1, "card_id": "strike" }`
 - `skip_rewards`: `{}`
 
-Every choice is resolved again from the current native overlay on the game thread. Indexes are never retained as STS2 object references across threads.
+Every choice is resolved again from the current native overlay on the game thread. Indexes are never retained as STS2 object references across threads. Card reward selection also binds the native card ID and fails as stale if the card at that index changed.
 
 ## M7 card-selection action
 
 For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="card_selection"` and exposes authoritative `screen.options`.
 
-- `choose_card_option`: `{ "choice_index": 2 }`
+- `choose_card_option`: `{ "choice_index": 2, "card_id": "defend" }`
 - `confirm_card_selection`: `{}`
 
-`screen.selection_type` distinguishes single-click, grid/deck, and `hand_multi_select` states. Hand selection also exposes `min_select`, `max_select`, `current_select_count`, and `can_confirm`. Skip behavior is not enabled without a separately identified native control.
+`screen.selection_type` distinguishes single-click, grid/deck, and `hand_multi_select` states. Hand selection also exposes `min_select`, `max_select`, `current_select_count`, and `can_confirm`. Every selection binds index to the native card ID and rejects identity drift before pressing the control. Skip behavior is not enabled without a separately identified native control.
 
 ## M7 event action
 
@@ -215,11 +215,11 @@ When `phase="rest"`, `screen.options` contains authoritative rest choices and `c
 When `phase="treasure"`, `screen` exposes `chest_opened`, `is_picking`, `can_leave`, relic candidates, and the predicted local selected relic index when available.
 
 - `open_treasure`: `{}`
-- `choose_treasure_relic`: `{ "choice_index": 0 }`
+- `choose_treasure_relic`: `{ "choice_index": 0, "relic_id": "anchor" }`
 - `skip_treasure_relic`: `{}`
 - `leave_treasure`: `{}`
 
-Opening, voting, and leaving are intentionally separate requests and revision boundaries. Relic selection uses the native treasure synchronizer so multiplayer voting remains game-authoritative.
+Opening, voting, and leaving are intentionally separate requests and revision boundaries. Relic selection binds index to the current native relic ID and uses the native treasure synchronizer so multiplayer voting remains game-authoritative.
 
 ## M7 shop actions
 

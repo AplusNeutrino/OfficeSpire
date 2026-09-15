@@ -268,12 +268,38 @@ describe("OfficeSpire wire protocol", () => {
         },
       }),
     ).toBe(false);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 11,
+        phase: "card_selection",
+        action_pending: false,
+        run: {},
+        screen: {
+          options: [{ choice_index: 0, id: "" }],
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 12,
+        phase: "treasure",
+        action_pending: false,
+        run: {},
+        screen: {
+          relics: [{ choice_index: 0, id: "" }],
+        },
+      }),
+    ).toBe(false);
   });
   it("creates reward selection and skip actions", () => {
-    expect(createRewardAction("choose_reward_card", 1, 52)).toMatchObject({
+    expect(
+      createRewardAction("choose_reward_card", 1, 52, "strike"),
+    ).toMatchObject({
       action: "choose_reward_card",
       expected_revision: 52,
-      payload: { choice_index: 1 },
+      payload: { choice_index: 1, card_id: "strike" },
     });
     expect(createSkipRewardsAction(53)).toMatchObject({
       action: "skip_rewards",
@@ -300,10 +326,10 @@ describe("OfficeSpire wire protocol", () => {
     ).toBe(true);
   });
   it("creates and parses generic card-selection decisions", () => {
-    expect(createCardOptionAction(2, 61)).toMatchObject({
+    expect(createCardOptionAction(2, "defend", 61)).toMatchObject({
       action: "choose_card_option",
       expected_revision: 61,
-      payload: { choice_index: 2 },
+      payload: { choice_index: 2, card_id: "defend" },
     });
     expect(
       isStateSnapshot({
@@ -382,10 +408,10 @@ describe("OfficeSpire wire protocol", () => {
     expect(createTreasureAction("open_treasure", 90).action).toBe(
       "open_treasure",
     );
-    expect(createTreasureRelicAction(1, 91)).toMatchObject({
+    expect(createTreasureRelicAction(1, "anchor", 91)).toMatchObject({
       action: "choose_treasure_relic",
       expected_revision: 91,
-      payload: { choice_index: 1 },
+      payload: { choice_index: 1, relic_id: "anchor" },
     });
     expect(
       isStateSnapshot({

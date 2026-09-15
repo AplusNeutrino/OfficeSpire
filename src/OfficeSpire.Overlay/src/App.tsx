@@ -306,13 +306,18 @@ export default function App() {
           "choose_reward_card",
           card.choice_index,
           snapshot.state_revision,
+          card.id,
         ),
       );
   };
   const chooseCardOption = (card: RewardCardState) => {
     if (snapshot?.phase === "card_selection")
       submit(
-        createCardOptionAction(card.choice_index, snapshot.state_revision),
+        createCardOptionAction(
+          card.choice_index,
+          card.id,
+          snapshot.state_revision,
+        ),
       );
   };
   const chooseEventOption = (option: EventOptionState) => {
@@ -334,7 +339,11 @@ export default function App() {
   const chooseTreasureRelic = (relic: TreasureRelicState) => {
     if (snapshot?.phase === "treasure")
       submit(
-        createTreasureRelicAction(relic.choice_index, snapshot.state_revision),
+        createTreasureRelicAction(
+          relic.choice_index,
+          relic.id,
+          snapshot.state_revision,
+        ),
       );
   };
   const buyShopItem = (item: ShopItemState) => {

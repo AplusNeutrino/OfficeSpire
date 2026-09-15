@@ -57,6 +57,8 @@ Rest-identity source checkpoint: `choose_rest_option` now carries the native opt
 
 Map-generation source checkpoint: map snapshots now expose the native map-generation counter and scope node stable IDs to it. Route requests carry generation, stable ID, and coordinates; main-thread dispatch rejects a generation/identity mismatch before its existing live reachability check and native vote enqueue. Unit/build evidence exists; first-floor, boss, act-transition, and multiplayer voting behavior remains `implemented_unverified`.
 
+Card/relic identity source checkpoint: reward-card, generic card-selection, hand-selection, and treasure-relic actions now carry the native card/relic ID beside the displayed index. Main-thread dispatch reloads the native model and rejects identity drift before pressing or voting. Unit/build evidence exists; live reward, upgrade, deck, hand multi-select, and treasure transitions remain `implemented_unverified`.
+
 M8 coverage correction: the earlier “source complete” label was too broad. Ordinary rest-site choices/leave and smith/remove card-selection follow-ups exist, but multiplayer rest targeting is `not_implemented`; menu and run-end states are read-only by design; map/rest lifecycle variants still need live enumeration. No capability is promoted by this correction.
 
 ## M1 — Mod Runtime

@@ -57,17 +57,31 @@ export function hasStableSnapshotIdentities(
     }
     case "rewards": {
       const screen = snapshot.screen as RewardsScreen;
-      const indexes =
-        screen.mode === "card_selection"
-          ? screen.card_choices.map((card) => card.choice_index)
-          : screen.items.map((item) => item.choice_index);
+      if (screen.mode === "card_selection") {
+        const indexes = screen.card_choices.map((card) => card.choice_index);
+        return (
+          nonNegativeIntegers(indexes) &&
+          unique(indexes) &&
+          screen.card_choices.every(
+            (card) => typeof card.id === "string" && card.id.length > 0,
+          )
+        );
+      }
+      const indexes = screen.items.map((item) => item.choice_index);
       return nonNegativeIntegers(indexes) && unique(indexes);
     }
     case "card_selection": {
       const indexes = (snapshot.screen as CardSelectionScreen).options.map(
         (card) => card.choice_index,
       );
-      return nonNegativeIntegers(indexes) && unique(indexes);
+      const options = (snapshot.screen as CardSelectionScreen).options;
+      return (
+        nonNegativeIntegers(indexes) &&
+        unique(indexes) &&
+        options.every(
+          (card) => typeof card.id === "string" && card.id.length > 0,
+        )
+      );
     }
     case "event": {
       const indexes = (snapshot.screen as EventScreen).options.map(
@@ -87,10 +101,15 @@ export function hasStableSnapshotIdentities(
       );
     }
     case "treasure": {
-      const indexes = (snapshot.screen as TreasureScreen).relics.map(
-        (relic) => relic.choice_index,
+      const relics = (snapshot.screen as TreasureScreen).relics;
+      const indexes = relics.map((relic) => relic.choice_index);
+      return (
+        nonNegativeIntegers(indexes) &&
+        unique(indexes) &&
+        relics.every(
+          (relic) => typeof relic.id === "string" && relic.id.length > 0,
+        )
       );
-      return nonNegativeIntegers(indexes) && unique(indexes);
     }
     case "shop": {
       const screen = snapshot.screen as ShopScreen;

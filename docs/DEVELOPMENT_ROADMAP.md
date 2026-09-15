@@ -470,6 +470,8 @@ Implementation checkpoint — 2026-09-15:
 - map snapshots expose the native map-generation counter and scope every node identity to that generation;
 - route requests bind generation, stable ID, and coordinates, then main-thread dispatch rechecks all three plus live reachability before enqueueing a native vote;
 - first-floor, boss, cross-act regeneration, and multiplayer voting remain `implemented_unverified`.
+- reward-card, generic grid/deck/hand selection, and treasure-relic actions bind their displayed indexes to native card/relic IDs and reject identity drift on the game thread;
+- ordinary reward buttons, event options, and merchant entries still require separate identity audits because their native models do not share the card/relic identity shape.
 - protocol parsing now rejects malformed version numbers while preserving future-version envelopes long enough to report an explicit incompatibility;
 - `npm run check` provides a single formatting, test, frontend-build, and release-metadata preflight, and Overlay CI runs it plus production dependency audit;
 - release metadata synchronization is source-validated; native Windows bundle creation, install, upgrade, and signing remain `implemented_unverified`.
@@ -511,7 +513,7 @@ The following work packages are the authoritative path from the current branch t
 
 | ID | Work package | Source tasks | Required evidence / exit condition | Current status |
 |---|---|---|---|---|
-| M8.1 | Run-decision inventory | Audit map, rewards, selections, events, rest sites, treasure, and shop against authoritative native controls; document every unsupported variant | A version-stamped surface matrix and at least one observed transition per supported family | `in_progress` |
+| M8.1 | Run-decision inventory | Audit map, rewards, selections, events, rest sites, treasure, and shop against authoritative native controls; document every unsupported variant | A version-stamped surface matrix and at least one observed transition per supported family | `in_progress` — map, rest, card-selection, and treasure identity passes complete; reward/event/shop remain |
 | M8.2 | Rest/campfire hardening | Bind actions to both option index and stable option ID; reject reordered/replaced options; retain fail-closed multiplayer target handling; enumerate option families | Ordinary choice, leave, smith/remove follow-up, unavailable option, stale option, and multiplayer-target evidence | `in_progress` |
 | M8.3 | Map hardening | Revalidate stable coordinate/ID/reachability on the game thread; audit first-floor, boss, act transition, and multiplayer vote states | Recorded legal, stale, unreachable, transition, and voting observations | `implemented_unverified` |
 | M8.4 | Menu and run start | Keep no-run detection read-only; provide clear original-UI handoff; do not synthesize start/resume actions unless a later explicitly reviewed design proves idempotent | Startup and resume handoff observations; no automatic write or replay | `implemented_unverified` (read-only design) |

@@ -182,14 +182,19 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return Reject(request, "bad_phase", "A treasure room is not active.");
         }
-        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "relic_id", out string? relicId))
         {
-            return Reject(request, "bad_request", "choose_treasure_relic requires integer payload.choice_index.");
+            return Reject(request, "bad_request", "choose_treasure_relic requires payload.choice_index and payload.relic_id.");
         }
         var synchronizer = RunManager.Instance.TreasureRoomRelicSynchronizer;
         if (synchronizer.CurrentRelics is null || index < 0 || index >= synchronizer.CurrentRelics.Count)
         {
             return Reject(request, "bad_index", $"Treasure relic {index} is unavailable.");
+        }
+        if (!string.Equals(synchronizer.CurrentRelics[index].Id.ToString(), relicId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected treasure relic changed before dispatch.");
         }
         synchronizer.PickRelicLocally(index);
         return Accept(request, "accepted", $"Selected treasure relic {index}.");
@@ -297,9 +302,10 @@ public sealed class M4GameAdapter : IGameAdapter
 
     private static ActionResponse ExecuteChooseCardOption(ActionRequest request)
     {
-        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "card_id", out string? cardId))
         {
-            return Reject(request, "bad_request", "choose_card_option requires integer payload.choice_index.");
+            return Reject(request, "bad_request", "choose_card_option requires payload.choice_index and payload.card_id.");
         }
 
         if (NCombatRoom.Instance?.Ui?.Hand is { IsInCardSelection: true } playerHand)
@@ -308,6 +314,11 @@ public sealed class M4GameAdapter : IGameAdapter
             if (index < 0 || index >= handHolders.Count)
             {
                 return Reject(request, "bad_index", $"Hand card option {index} is unavailable.");
+            }
+            string? currentCardId = handHolders[index].CardNode?.Model?.Id.ToString();
+            if (!string.Equals(currentCardId, cardId, StringComparison.Ordinal))
+            {
+                return Reject(request, "stale_state", "The selected hand card changed before dispatch.");
             }
             handHolders[index].EmitSignal(NCardHolder.SignalName.Pressed, handHolders[index]);
             return Accept(request, "accepted", $"Toggled hand card option {index}.");
@@ -322,6 +333,10 @@ public sealed class M4GameAdapter : IGameAdapter
         if (index < 0 || index >= holders.Count)
         {
             return Reject(request, "bad_index", $"Card option {index} is unavailable.");
+        }
+        if (!string.Equals(holders[index].CardModel?.Id.ToString(), cardId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected card changed before dispatch.");
         }
         holders[index].EmitSignal(NCardHolder.SignalName.Pressed, holders[index]);
 
@@ -390,14 +405,20 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return Reject(request, "bad_phase", "The card reward selection screen is not active.");
         }
-        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "card_id", out string? cardId))
         {
-            return Reject(request, "bad_request", "choose_reward_card requires integer payload.choice_index.");
+            return Reject(request, "bad_request", "choose_reward_card requires payload.choice_index and payload.card_id.");
         }
         var holders = FindNodesRecursive<NCardHolder>((Node)screen);
         if (index < 0 || index >= holders.Count)
         {
             return Reject(request, "bad_index", $"Card reward choice {index} is unavailable.");
+        }
+        string? currentCardId = holders[index].GetChildren().OfType<NCard>().FirstOrDefault()?.Model?.Id.ToString();
+        if (!string.Equals(currentCardId, cardId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected reward card changed before dispatch.");
         }
         holders[index].EmitSignal(NCardHolder.SignalName.Pressed, holders[index]);
         return Accept(request, "accepted", $"Selected reward card {index}.");
