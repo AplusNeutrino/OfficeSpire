@@ -53,6 +53,11 @@ import { TreasurePanel } from "./components/TreasurePanel";
 import { ShopPanel } from "./components/ShopPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
+import { ReconnectController } from "./network/reconnect";
+import {
+  ACTION_TIMEOUT_MS,
+  clientTimeoutResult,
+} from "./network/actionLifecycle";
 const terminalCodes = new Set([
   "completed",
   "stale_state",
@@ -71,6 +76,8 @@ const terminalCodes = new Set([
   "action_pending",
   "dispatch_exception",
   "unknown_request",
+  "timeout",
+  "client_timeout",
 ]);
 export default function App() {
   const [status, setStatus] = useState<ConnectionStatus>("discovering");
@@ -84,25 +91,48 @@ export default function App() {
   const clientRef = useRef<OfficeSpireWebSocketClient | undefined>(undefined);
   const retryRef = useRef<number | undefined>(undefined);
   const pollRef = useRef<number | undefined>(undefined);
+  const actionTimeoutRef = useRef<number | undefined>(undefined);
+  const activeRequestRef = useRef<string | undefined>(undefined);
   const stoppedRef = useRef(false);
   const revisionRef = useRef<number | undefined>(undefined);
+  const reconnectRef = useRef(new ReconnectController());
   const clearPoll = useCallback(() => {
     if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
     pollRef.current = undefined;
   }, []);
+  const clearActionTracking = useCallback(() => {
+    clearPoll();
+    if (actionTimeoutRef.current !== undefined)
+      window.clearTimeout(actionTimeoutRef.current);
+    actionTimeoutRef.current = undefined;
+    activeRequestRef.current = undefined;
+  }, [clearPoll]);
   const handleActionResult = useCallback(
     (result: ActionResponse) => {
+      if (
+        activeRequestRef.current !== undefined &&
+        result.request_id !== activeRequestRef.current
+      )
+        return;
       setActionResult(result);
       setMessage(result.message);
-      if (terminalCodes.has(result.code) || !result.accepted) clearPoll();
+      if (terminalCodes.has(result.code) || !result.accepted)
+        clearActionTracking();
       else if (pollRef.current === undefined)
         pollRef.current = window.setInterval(
           () => clientRef.current?.requestActionStatus(result.request_id),
           150,
         );
     },
-    [clearPoll],
+    [clearActionTracking],
   );
+  const scheduleReconnect = useCallback((retry: () => void) => {
+    if (retryRef.current !== undefined) window.clearTimeout(retryRef.current);
+    retryRef.current = window.setTimeout(
+      retry,
+      reconnectRef.current.nextDelay(),
+    );
+  }, []);
   const connect = useCallback(async () => {
     if (stoppedRef.current) return;
     setStatus((s) => (s === "disconnected" ? "reconnecting" : "discovering"));
@@ -117,20 +147,22 @@ export default function App() {
       setMessage(
         error instanceof Error ? error.message : "Session discovery failed.",
       );
-      retryRef.current = window.setTimeout(() => void connect(), 2000);
+      scheduleReconnect(() => void connect());
     }
-  }, []);
+  }, [scheduleReconnect]);
   useEffect(() => {
     stoppedRef.current = false;
     clientRef.current = new OfficeSpireWebSocketClient({
       onOpen: () => {
+        reconnectRef.current.reset();
         setStatus("connected");
         setMessage("Live connection established.");
       },
       onClose: (reason) => {
+        clearActionTracking();
         setStatus("disconnected");
         setMessage(reason);
-        retryRef.current = window.setTimeout(() => void connect(), 1500);
+        scheduleReconnect(() => void connect());
       },
       onSnapshot: (next) => {
         if (
@@ -155,16 +187,37 @@ export default function App() {
       stoppedRef.current = true;
       if (retryRef.current !== undefined) window.clearTimeout(retryRef.current);
       clearPoll();
+      clearActionTracking();
       clientRef.current?.disconnect();
     };
-  }, [clearPoll, connect, handleActionResult]);
+  }, [
+    clearActionTracking,
+    clearPoll,
+    connect,
+    handleActionResult,
+    scheduleReconnect,
+  ]);
   const submit = (action: OverlayAction) => {
     setSelectedCard(undefined);
     setSelectedPotion(undefined);
     setActionResult(undefined);
     setMessage(`Sending ${action.action}…`);
-    if (!clientRef.current?.sendAction(action))
+    clearActionTracking();
+    activeRequestRef.current = action.request_id;
+    actionTimeoutRef.current = window.setTimeout(() => {
+      if (activeRequestRef.current !== action.request_id) return;
+      const result = clientTimeoutResult(
+        action.request_id,
+        revisionRef.current ?? action.expected_revision,
+      );
+      clearActionTracking();
+      setActionResult(result);
+      setMessage(result.message);
+    }, ACTION_TIMEOUT_MS);
+    if (!clientRef.current?.sendAction(action)) {
+      clearActionTracking();
       setMessage("Action blocked: backend is not connected.");
+    }
   };
   const chooseCard = (card: CardState) => {
     if (!snapshot) return;

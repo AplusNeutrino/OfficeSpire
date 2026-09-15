@@ -35,6 +35,8 @@ M4 passes as a core control-chain milestone. Potion use/discard and the extreme 
 
 M8 source checkpoint: keyboard shortcuts and pure key-mapping tests cover every currently supported combat and run-decision screen. Browser/Tauri focus behavior and live game actions remain `implemented_unverified`.
 
+Recovery source checkpoint: the overlay has a 15-second non-replaying action timeout, request-ID filtering, continued state polling, and bounded reconnect backoff. Unit/build evidence exists; STS2 scene-transition, backend-restart, and delayed-action behavior remain `implemented_unverified`.
+
 ## M1 — Mod Runtime
 
 Status: `runtime_pass`

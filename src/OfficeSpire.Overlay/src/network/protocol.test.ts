@@ -24,6 +24,8 @@ import {
 import { isStateSnapshot } from "../types";
 import { resolveCombatShortcut } from "../actions/combatKeyboard";
 import { resolveRunShortcut } from "../actions/runKeyboard";
+import { ACTION_TIMEOUT_MS, clientTimeoutResult } from "./actionLifecycle";
+import { ReconnectController } from "./reconnect";
 describe("OfficeSpire wire protocol", () => {
   it("wraps state requests with protocol version 1", () => {
     expect(getStateMessage()).toEqual({
@@ -284,5 +286,26 @@ describe("OfficeSpire wire protocol", () => {
     expect(resolveRunShortcut("KeyS")).toEqual({ kind: "skip" });
     expect(resolveRunShortcut("KeyL")).toEqual({ kind: "leave" });
     expect(resolveRunShortcut("KeyR")).toEqual({ kind: "remove" });
+  });
+  it("creates a terminal client timeout without claiming backend completion", () => {
+    expect(ACTION_TIMEOUT_MS).toBe(15_000);
+    expect(clientTimeoutResult("slow-request", 12)).toEqual({
+      request_id: "slow-request",
+      accepted: false,
+      code: "client_timeout",
+      message:
+        "Action status timed out. State will keep refreshing; verify the game state before retrying.",
+      state_revision: 12,
+    });
+  });
+  it("bounds reconnect backoff and resets after a successful connection", () => {
+    const reconnect = new ReconnectController();
+    expect([reconnect.nextDelay(), reconnect.nextDelay()]).toEqual([
+      1_000, 2_000,
+    ]);
+    for (let attempt = 0; attempt < 10; attempt += 1) reconnect.nextDelay();
+    expect(reconnect.nextDelay()).toBe(10_000);
+    reconnect.reset();
+    expect(reconnect.nextDelay()).toBe(1_000);
   });
 });

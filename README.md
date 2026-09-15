@@ -69,6 +69,8 @@ Development has entered the v0.6-beta.1 hardening phase. Combat snapshots now ex
 
 Keyboard controls now cover every currently supported overlay screen. Number keys choose cards, targets, routes, rewards, options, relics, or shop items; Shift+number uses potion slots; E ends combat turns; Enter confirms or opens; S skips; L leaves; R starts merchant card removal; and Escape cancels targeting. Live Tauri focus behavior remains unverified.
 
+Action recovery now includes a 15-second client observation deadline, stale request-result filtering, continued authoritative state polling after timeout, and reconnect backoff from 1 to 10 seconds. Timed-out mutations are never automatically replayed.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

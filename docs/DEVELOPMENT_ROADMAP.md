@@ -457,6 +457,10 @@ Implementation checkpoint — 2026-09-15:
 - controls expose matching `aria-keyshortcuts` and visible shortcut hints;
 - keyboard commands now cover every currently supported combat and run-decision screen, with authoritative availability checks immediately before submission;
 - browser/Tauri focus behavior and end-to-end live keyboard operation remain `implemented_unverified`.
+- each submitted mutation receives a bounded client observation deadline; expiry unlocks the client but never retries a possibly executed action;
+- late results from superseded request IDs are ignored while state polling continues as the recovery authority;
+- reconnect discovery uses bounded 1–10 second backoff and resets after a successful connection;
+- timeout/reconnect source tests pass, while scene-transition and process-restart behavior remain `implemented_unverified`.
 
 Scope:
 
