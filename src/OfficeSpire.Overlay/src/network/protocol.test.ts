@@ -10,6 +10,7 @@ import {
   createRewardAction,
   createSkipRewardsAction,
   createCardOptionAction,
+  createConfirmCardSelectionAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
@@ -118,8 +119,19 @@ describe("OfficeSpire wire protocol", () => {
           selection_type: "choose_a_card",
           options: [],
           can_skip: false,
+          min_select: 1,
+          max_select: 1,
+          current_select_count: 0,
+          can_confirm: false,
         },
       }),
     ).toBe(true);
+  });
+  it("creates a guarded hand-selection confirmation", () => {
+    expect(createConfirmCardSelectionAction(62)).toMatchObject({
+      action: "confirm_card_selection",
+      expected_revision: 62,
+      payload: {},
+    });
   });
 });

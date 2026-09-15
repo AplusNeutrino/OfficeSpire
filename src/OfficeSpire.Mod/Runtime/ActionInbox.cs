@@ -196,7 +196,8 @@ internal sealed class ActionInbox
             "choose_map_node" => string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal),
             "choose_reward" or "choose_reward_card" or "skip_rewards" =>
                 string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal),
-            "choose_card_option" => string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal),
+            "choose_card_option" or "confirm_card_selection" =>
+                string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal),
             _ => string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
         };
     }

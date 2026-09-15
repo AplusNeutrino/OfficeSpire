@@ -69,3 +69,14 @@ export function createCardOptionAction(
     payload: { choice_index: choiceIndex },
   };
 }
+
+export function createConfirmCardSelectionAction(
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "confirm_card_selection",
+    expected_revision: revision,
+    payload: {},
+  };
+}

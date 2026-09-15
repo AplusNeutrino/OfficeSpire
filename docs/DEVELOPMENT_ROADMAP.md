@@ -399,7 +399,7 @@ Current capability status:
 | Combat reward collection | `implemented_unverified` |
 | Card reward choice and skip | `implemented_unverified` |
 | Generic choose-a-card prompts | `implemented_unverified` |
-| Deck/grid and hand multi-selection prompts | `not_implemented` |
+| Deck/grid and hand multi-selection prompts | `implemented_unverified` |
 | Events | `not_implemented` |
 | Rest sites | `not_implemented` |
 | Treasures | `not_implemented` |
@@ -408,6 +408,8 @@ Current capability status:
 The first M7 source pass adds authoritative reward/button snapshots, distinct reward and card-selection modes, `choose_reward`, `choose_reward_card`, and `skip_rewards`, fresh main-thread screen/index checks, and a mouse-operated overlay renderer.
 
 The next source pass adds `NChooseACardSelectionScreen` observation and revision-guarded `choose_card_option`. Deck/grid mutation, upgrade confirmation, hand multi-selection, and optional skipping remain deliberately unsupported until their distinct confirmation rules are modeled.
+
+The following source pass models those distinct confirmation paths: generic grid single-click, deck selection preview confirmation, upgrade confirmation, and combat-hand multi-selection with authoritative min/max/current counts plus explicit `confirm_card_selection`. Optional skipping remains unsupported unless a native screen exposes a separately validated path.
 
 Each phase follows the same delivery gate:
 

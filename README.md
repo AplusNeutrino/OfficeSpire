@@ -55,7 +55,7 @@ The v0.6-alpha.3 source adds authoritative map snapshots, reachable-node display
 
 Development has entered the partial v0.6-alpha.4 source phase. Combat reward collection plus card reward selection/skip are implemented but unverified; the remaining M7 decision families are still absent.
 
-The same development branch also includes the first generic choose-a-card prompt path. Multi-selection and room-specific confirmation flows remain unsupported.
+The same development branch now includes generic choose-a-card, deck/grid selection, upgrade confirmation, and combat-hand multi-selection paths. These remain runtime-unverified; selection skipping is not enabled without an authoritative native control.
 
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 

@@ -99,6 +99,10 @@ export interface CardSelectionScreen {
   selection_type: string;
   options: RewardCardState[];
   can_skip: boolean;
+  min_select: number;
+  max_select: number;
+  current_select_count: number;
+  can_confirm: boolean;
 }
 export interface RunState {
   ascension_level: number;
@@ -157,7 +161,8 @@ export interface OverlayAction {
     | "choose_reward"
     | "choose_reward_card"
     | "skip_rewards"
-    | "choose_card_option";
+    | "choose_card_option"
+    | "confirm_card_selection";
   expected_revision: number;
   payload: Record<string, unknown>;
 }

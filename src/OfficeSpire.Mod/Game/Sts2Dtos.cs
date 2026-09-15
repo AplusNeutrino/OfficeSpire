@@ -113,4 +113,8 @@ internal sealed record CardSelectionScreenDto(
     bool WaitingForInput,
     string SelectionType,
     IReadOnlyList<RewardCardSnapshotDto> Options,
-    bool CanSkip);
+    bool CanSkip,
+    int MinSelect = 1,
+    int MaxSelect = 1,
+    int CurrentSelectCount = 0,
+    bool CanConfirm = false);

@@ -4,9 +4,15 @@ interface Props {
   snapshot: CardSelectionStateSnapshot;
   disabled: boolean;
   onCard: (card: RewardCardState) => void;
+  onConfirm: () => void;
 }
 
-export function CardSelectionPanel({ snapshot, disabled, onCard }: Props) {
+export function CardSelectionPanel({
+  snapshot,
+  disabled,
+  onCard,
+  onConfirm,
+}: Props) {
   const { screen } = snapshot;
   return (
     <section className="selection-panel">
@@ -14,6 +20,12 @@ export function CardSelectionPanel({ snapshot, disabled, onCard }: Props) {
       <p className="selection-kind">
         {screen.selection_type.replace(/_/g, " ")}
       </p>
+      {screen.max_select > 1 && (
+        <p className="selection-count">
+          Selected {screen.current_select_count} · Required {screen.min_select}–
+          {screen.max_select}
+        </p>
+      )}
       <div className="reward-list">
         {screen.options.map((card) => (
           <button
@@ -31,6 +43,15 @@ export function CardSelectionPanel({ snapshot, disabled, onCard }: Props) {
           </button>
         ))}
       </div>
+      {screen.selection_type === "hand_multi_select" && (
+        <button
+          className="confirm-selection"
+          disabled={disabled || !screen.can_confirm}
+          onClick={onConfirm}
+        >
+          Confirm selection
+        </button>
+      )}
     </section>
   );
 }

@@ -137,6 +137,24 @@ footer,
   text-transform: capitalize;
   font-size: 11px;
 }
+.selection-count {
+  color: #c7b98f;
+  font-size: 12px;
+}
+.confirm-selection {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid #769b7f;
+  border-radius: 8px;
+  padding: 9px;
+  color: inherit;
+  background: rgba(86, 139, 99, 0.25);
+  cursor: pointer;
+}
+.confirm-selection:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .reward-item,
 .reward-card {
   display: grid;

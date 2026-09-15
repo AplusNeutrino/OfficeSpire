@@ -21,6 +21,7 @@ import {
   createRewardAction,
   createSkipRewardsAction,
   createCardOptionAction,
+  createConfirmCardSelectionAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
@@ -240,6 +241,9 @@ export default function App() {
           snapshot={snapshot as CardSelectionStateSnapshot}
           disabled={disabled}
           onCard={chooseCardOption}
+          onConfirm={() =>
+            submit(createConfirmCardSelectionAction(snapshot.state_revision))
+          }
         />
       ) : (
         <section className="empty">

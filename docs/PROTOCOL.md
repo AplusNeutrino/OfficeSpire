@@ -165,8 +165,9 @@ Every choice is resolved again from the current native overlay on the game threa
 For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="card_selection"` and exposes authoritative `screen.options`.
 
 - `choose_card_option`: `{ "choice_index": 2 }`
+- `confirm_card_selection`: `{}`
 
-Deck/grid mutation, upgrade confirmation, hand multi-selection, and skip behavior are not part of this first generic-selection slice.
+`screen.selection_type` distinguishes single-click, grid/deck, and `hand_multi_select` states. Hand selection also exposes `min_select`, `max_select`, `current_select_count`, and `can_confirm`. Skip behavior is not enabled without a separately identified native control.
 
 ## Action response and status
 

@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
@@ -49,6 +50,7 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_reward_card" => ExecuteChooseRewardCard(request),
                 "skip_rewards" => ExecuteSkipRewards(request),
                 "choose_card_option" => ExecuteChooseCardOption(request),
+                "confirm_card_selection" => ExecuteConfirmCardSelection(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -66,21 +68,72 @@ public sealed class M4GameAdapter : IGameAdapter
 
     private static ActionResponse ExecuteChooseCardOption(ActionRequest request)
     {
-        if (NOverlayStack.Instance?.Peek() is not NChooseACardSelectionScreen screen)
-        {
-            return Reject(request, "bad_phase", "A supported choose-a-card screen is not active.");
-        }
         if (!TryReadRequiredInt(request.Payload, "choice_index", out int index))
         {
             return Reject(request, "bad_request", "choose_card_option requires integer payload.choice_index.");
         }
-        var holders = FindNodesRecursive<NGridCardHolder>((Node)screen);
+
+        if (NCombatRoom.Instance?.Ui?.Hand is { IsInCardSelection: true } playerHand)
+        {
+            var handHolders = FindNodesRecursive<NHandCardHolder>(playerHand).Where(holder => holder.Visible).ToList();
+            if (index < 0 || index >= handHolders.Count)
+            {
+                return Reject(request, "bad_index", $"Hand card option {index} is unavailable.");
+            }
+            handHolders[index].EmitSignal(NCardHolder.SignalName.Pressed, handHolders[index]);
+            return Accept(request, "accepted", $"Toggled hand card option {index}.");
+        }
+
+        Node? screen = NOverlayStack.Instance?.Peek() as Node;
+        if (screen is not NChooseACardSelectionScreen && screen is not NCardGridSelectionScreen)
+        {
+            return Reject(request, "bad_phase", "A supported card selection screen is not active.");
+        }
+        var holders = FindNodesRecursive<NGridCardHolder>(screen);
         if (index < 0 || index >= holders.Count)
         {
             return Reject(request, "bad_index", $"Card option {index} is unavailable.");
         }
         holders[index].EmitSignal(NCardHolder.SignalName.Pressed, holders[index]);
+
+        if (screen is NDeckUpgradeSelectScreen upgradeScreen)
+        {
+            NConfirmButton? confirm = ((Node)upgradeScreen).GetNodeOrNull<NConfirmButton>("%UpgradeSinglePreviewContainer/Confirm");
+            if (confirm is not { IsEnabled: true })
+            {
+                return Reject(request, "not_ready", "Upgrade confirmation was not available after selection.");
+            }
+            confirm.ForceClick();
+        }
+        else if (screen is NDeckCardSelectScreen deckScreen)
+        {
+            Control? preview = ((Node)deckScreen).GetNodeOrNull<Control>("%PreviewContainer");
+            if (preview is { Visible: true } &&
+                preview.GetNodeOrNull<NConfirmButton>("%PreviewConfirm") is { IsEnabled: true } previewConfirm)
+            {
+                previewConfirm.ForceClick();
+            }
+        }
         return Accept(request, "accepted", $"Selected card option {index}.");
+    }
+
+    private static ActionResponse ExecuteConfirmCardSelection(ActionRequest request)
+    {
+        if (NCombatRoom.Instance?.Ui?.Hand is not { IsInCardSelection: true } playerHand)
+        {
+            return Reject(request, "bad_phase", "Hand card selection is not active.");
+        }
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        if (typeof(NPlayerHand).GetField("_selectModeConfirmButton", flags)?.GetValue(playerHand) is not NConfirmButton confirm)
+        {
+            return Reject(request, "not_ready", "Hand selection confirmation is unavailable.");
+        }
+        if (!confirm.IsEnabled)
+        {
+            return Reject(request, "not_ready", "The current hand selection count cannot be confirmed.");
+        }
+        confirm.ForceClick();
+        return Accept(request, "accepted", "Confirmed the hand card selection.");
     }
 
     private static ActionResponse ExecuteChooseReward(ActionRequest request)

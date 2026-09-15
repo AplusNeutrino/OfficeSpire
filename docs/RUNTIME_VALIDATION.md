@@ -250,8 +250,10 @@ Implemented but unverified capability source:
 - reward skip/continue through the enabled native proceed button;
 - overlay rendering and revision-guarded mouse actions.
 - choose-a-card option snapshots and `choose_card_option` dispatch for `NChooseACardSelectionScreen`.
+- deck/grid selection, upgrade confirmation, and hand multi-selection source paths;
+- reflected hand min/max/current counts and guarded `confirm_card_selection`.
 
-Frontend checks after this source pass: `npm test` PASS (10 tests) and `npm run build` PASS. Deck/grid and hand multi-selection, events, rest sites, treasures, and shops are not implemented. No M7 runtime behavior is a pass.
+Frontend checks after this source pass: `npm test` PASS (11 tests) and `npm run build` PASS. Events, rest sites, treasures, shops, and selection-screen skipping are not implemented. No M7 runtime behavior is a pass.
 
 Use the M5 matrix in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for the next probes.
 

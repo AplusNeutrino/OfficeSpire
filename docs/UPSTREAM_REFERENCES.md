@@ -61,6 +61,8 @@ The same exact reference commit was inspected for reward overlay API shapes. Con
 
 The M7.3 inspection additionally confirmed the `NChooseACardSelectionScreen` + `NGridCardHolder` selection signal shape. OfficeSpire enables only that single-click prompt family in this pass; other grid/hand selectors remain separated because their confirmation semantics differ.
 
+A subsequent M7.3 pass confirmed the distinct `NDeckUpgradeSelectScreen` confirm control, `NDeckCardSelectScreen` preview confirmation, and `NPlayerHand` selection fields/control used by the exact reference commit. These version-sensitive fields remain runtime-unverified and fail closed when unavailable.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

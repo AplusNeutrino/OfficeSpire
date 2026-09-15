@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -20,6 +21,7 @@ using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
@@ -83,6 +85,30 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     PhaseNames.CardSelection,
                     run,
                     new CardSelectionScreenDto(options.Count > 0, "choose_a_card", options, false));
+            }
+
+            if (NOverlayStack.Instance?.Peek() is NCardGridSelectionScreen gridScreen)
+            {
+                var options = FindNodesRecursive<NGridCardHolder>((Node)gridScreen)
+                    .Select((holder, index) => holder.CardModel is null
+                        ? null
+                        : BuildRewardCard(holder.CardModel, index))
+                    .Where(card => card is not null)
+                    .Cast<RewardCardSnapshotDto>()
+                    .ToList();
+                return CreateEnvelope(
+                    PhaseNames.CardSelection,
+                    run,
+                    new CardSelectionScreenDto(
+                        options.Count > 0,
+                        gridScreen.GetType().Name,
+                        options,
+                        false));
+            }
+
+            if (NCombatRoom.Instance?.Ui?.Hand is { IsInCardSelection: true } playerHand)
+            {
+                return CreateEnvelope(PhaseNames.CardSelection, run, BuildHandSelectionSnapshot(playerHand));
             }
 
             if (NMapScreen.Instance?.IsOpen == true)
@@ -172,6 +198,50 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         bool canSkip = FindNodesRecursive<NProceedButton>((Node)rewardsScreen).Any(button => button.IsEnabled);
         return new RewardsScreenDto(items.Count > 0 || canSkip, "rewards", items, [], canSkip);
+    }
+
+    private static CardSelectionScreenDto BuildHandSelectionSnapshot(NPlayerHand playerHand)
+    {
+        var holders = FindNodesRecursive<NHandCardHolder>(playerHand)
+            .Where(holder => holder.Visible)
+            .ToList();
+        var options = holders
+            .Select((holder, index) => holder.CardNode?.Model is CardModel card
+                ? BuildRewardCard(card, index)
+                : null)
+            .Where(card => card is not null)
+            .Cast<RewardCardSnapshotDto>()
+            .ToList();
+
+        int minSelect = 1;
+        int maxSelect = 1;
+        int currentCount = 0;
+        bool canConfirm = false;
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        object? preferences = typeof(NPlayerHand).GetField("_prefs", flags)?.GetValue(playerHand);
+        if (preferences is not null)
+        {
+            minSelect = (int)(preferences.GetType().GetProperty("MinSelect")?.GetValue(preferences) ?? 1);
+            maxSelect = (int)(preferences.GetType().GetProperty("MaxSelect")?.GetValue(preferences) ?? 1);
+        }
+        if (typeof(NPlayerHand).GetField("_selectedCards", flags)?.GetValue(playerHand) is System.Collections.ICollection selected)
+        {
+            currentCount = selected.Count;
+        }
+        if (typeof(NPlayerHand).GetField("_selectModeConfirmButton", flags)?.GetValue(playerHand) is NConfirmButton confirm)
+        {
+            canConfirm = confirm.IsEnabled;
+        }
+
+        return new CardSelectionScreenDto(
+            options.Count > 0,
+            "hand_multi_select",
+            options,
+            false,
+            minSelect,
+            maxSelect,
+            currentCount,
+            canConfirm);
     }
 
     private static RewardCardSnapshotDto BuildRewardCard(CardModel card, int index)
@@ -536,7 +606,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 Run = runProjection,
                 selection.SelectionType,
                 Options = selection.Options.Select(card => new { card.ChoiceIndex, card.Id }).ToArray(),
-                selection.CanSkip
+                selection.CanSkip,
+                selection.MinSelect,
+                selection.MaxSelect,
+                selection.CurrentSelectCount,
+                selection.CanConfirm
             };
         }
         else if (string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal) &&
