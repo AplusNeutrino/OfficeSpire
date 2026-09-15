@@ -28,7 +28,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 | M4 | Action Control Core | `runtime_pass` |
 | M5 | Overlay Prototype | `implemented_unverified` |
 | M6 | Map Controller | `implemented_unverified` |
-| M7 | Run Decisions | `not_implemented` |
+| M7 | Run Decisions | `implemented_unverified` |
 | M8 | Advanced Combat / Hardening | `not_implemented` |
 
 M4 passes as a core control-chain milestone. Potion use/discard and the extreme main-thread race probe remain separately tracked and do not invalidate that core milestone.
@@ -240,7 +240,7 @@ No live map snapshot, route choice, native settlement, or room transition is a r
 
 ## M7 — Run Decisions
 
-Overall status: `not_implemented`
+Overall status: `implemented_unverified`
 
 Implemented but unverified capability source:
 
@@ -255,8 +255,9 @@ Implemented but unverified capability source:
 - event state/options plus guarded native event option and proceed dispatch.
 - rest-site options/leave source path, with card-selection follow-ups and explicit unsupported multiplayer targeting.
 - treasure open, relic choice/skip, predicted vote, and leave source paths.
+- merchant inventory, purchase, card-removal initiation, and leave source paths.
 
-Frontend checks after this source pass: `npm test` PASS (14 tests) and `npm run build` PASS. Shops, selection-screen skipping, and rest-site multiplayer targeting are not implemented. No M7 runtime behavior is a pass.
+Frontend checks after this source pass: `npm test` PASS (15 tests) and `npm run build` PASS. Selection-screen skipping and rest-site multiplayer targeting are not implemented. No M7 runtime behavior is a pass.
 
 Use the M5 matrix in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for the next probes.
 

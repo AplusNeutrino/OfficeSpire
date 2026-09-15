@@ -16,6 +16,8 @@ import {
   createLeaveRestSiteAction,
   createTreasureAction,
   createTreasureRelicAction,
+  createShopAction,
+  createBuyShopItemAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
@@ -208,6 +210,34 @@ describe("OfficeSpire wire protocol", () => {
           can_leave: false,
           relics: [],
           selected_relic_index: null,
+        },
+      }),
+    ).toBe(true);
+  });
+  it("creates and parses merchant decisions", () => {
+    expect(createBuyShopItemAction("relic", 2, 100)).toMatchObject({
+      action: "buy_shop_item",
+      expected_revision: 100,
+      payload: { category: "relic", item_index: 2 },
+    });
+    expect(createShopAction("request_card_removal", 101).action).toBe(
+      "request_card_removal",
+    );
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 100,
+        phase: "shop",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          inventory_open: true,
+          gold: 80,
+          items: [],
+          card_removal_available: false,
+          card_removal_cost: 0,
+          can_leave: true,
         },
       }),
     ).toBe(true);

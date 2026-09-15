@@ -137,3 +137,28 @@ export function createTreasureRelicAction(
     payload: { choice_index: choiceIndex },
   };
 }
+
+export function createShopAction(
+  action: "open_shop" | "request_card_removal" | "leave_shop",
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action,
+    expected_revision: revision,
+    payload: {},
+  };
+}
+
+export function createBuyShopItemAction(
+  category: string,
+  itemIndex: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "buy_shop_item",
+    expected_revision: revision,
+    payload: { category, item_index: itemIndex },
+  };
+}

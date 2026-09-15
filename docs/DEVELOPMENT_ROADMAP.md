@@ -380,7 +380,7 @@ Still unverified: C# compilation against the installed STS2 assemblies, live map
 
 Planned after M6 passes.
 
-Maintainer-directed source development began on 2026-09-15 while unavailable game-dependent validation remains deferred. The overall milestone remains `not_implemented` until every required decision family exists; the capability states below do not imply live validation.
+Maintainer-directed source development began on 2026-09-15 while unavailable game-dependent validation remains deferred. Every planned M7 decision family now has a source path, so the overall milestone is `implemented_unverified`; the capability states below do not imply live validation.
 
 Implementation order:
 
@@ -403,7 +403,7 @@ Current capability status:
 | Events | `implemented_unverified` |
 | Rest sites | `implemented_unverified` |
 | Treasures | `implemented_unverified` |
-| Shops, purchases, and card removal | `not_implemented` |
+| Shops, purchases, and card removal | `implemented_unverified` |
 
 The first M7 source pass adds authoritative reward/button snapshots, distinct reward and card-selection modes, `choose_reward`, `choose_reward_card`, and `skip_rewards`, fresh main-thread screen/index checks, and a mouse-operated overlay renderer.
 
@@ -416,6 +416,8 @@ The M7.4 source pass adds authoritative event title, description, completion sta
 The M7.5 source pass adds authoritative rest-option snapshots, `choose_rest_option`, `leave_rest_site`, fresh native control lookup, and overlay interaction. Smith/remove follow-up screens reuse card selection. Multiplayer player-target selection is detected but intentionally fails closed as `unsupported_state` pending stable identity research.
 
 The M7.6 source pass adds authoritative chest/picking/leave state, relic candidates and predicted local vote, plus separate `open_treasure`, `choose_treasure_relic`, `skip_treasure_relic`, and `leave_treasure` actions. Each step settles through a distinct decision revision instead of chaining native mutations.
+
+The final M7 source pass adds merchant inventory and affordability snapshots, explicit open/buy/remove/leave actions, non-blocking native purchase invocation, and a mouse-operated shop renderer. Card removal hands off to the existing deck-selection state machine. M7 is now `implemented_unverified`; unsupported multiplayer rest targeting and selection skipping remain explicit limitations rather than silent guesses.
 
 Each phase follows the same delivery gate:
 
@@ -473,7 +475,7 @@ Exit criteria:
 | v0.6-alpha.1 | Playable Backend | M1–M4 core chain validated | `runtime_pass` |
 | v0.6-alpha.2 | Overlay Prototype | Live translucent mouse-operated combat overlay | `implemented_unverified` |
 | v0.6-alpha.3 | Map Controller | Map display and native route selection | `implemented_unverified` |
-| v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `not_implemented` |
+| v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `implemented_unverified` |
 | v0.6-beta | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `not_implemented` |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
 

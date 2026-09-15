@@ -203,6 +203,8 @@ internal sealed class ActionInbox
                 string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal),
             "open_treasure" or "choose_treasure_relic" or "skip_treasure_relic" or "leave_treasure" =>
                 string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal),
+            "open_shop" or "buy_shop_item" or "request_card_removal" or "leave_shop" =>
+                string.Equals(phase, PhaseNames.Shop, StringComparison.Ordinal),
             _ => string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
         };
     }

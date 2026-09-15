@@ -197,6 +197,17 @@ When `phase="treasure"`, `screen` exposes `chest_opened`, `is_picking`, `can_lea
 
 Opening, voting, and leaving are intentionally separate requests and revision boundaries. Relic selection uses the native treasure synchronizer so multiplayer voting remains game-authoritative.
 
+## M7 shop actions
+
+When `phase="shop"`, `screen.items` contains category-local indexes, prices, stock and affordability. Card removal is exposed separately with its current price.
+
+- `open_shop`: `{}`
+- `buy_shop_item`: `{ "category": "relic", "item_index": 1 }`
+- `request_card_removal`: `{}`
+- `leave_shop`: `{}`
+
+Purchases use the native asynchronous merchant path without blocking the Godot thread. Card removal starts the native purchase/selection flow; the resulting deck selector is completed through `choose_card_option`.
+
 ## Action response and status
 
 `action_result` retains the v1 response shape:
@@ -237,6 +248,8 @@ A request can become rejected after `queued` if the state changes before the mai
 - `unreachable_node`
 - `option_locked`
 - `unsupported_state`
+- `out_of_stock`
+- `insufficient_gold`
 - `not_playable`
 - `unsupported_action`
 - `dispatch_exception`

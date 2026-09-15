@@ -63,6 +63,8 @@ Ordinary rest-site choices and leaving are implemented in source, with smith/rem
 
 Treasure rooms now have source support for opening, authoritative relic choice/skip, predicted local vote display, and leaving. Live game behavior remains unverified.
 
+The alpha.4 source now covers the planned M7 run decisions, including merchant browsing, purchases, card-removal initiation, and leaving. M7 is `implemented_unverified`, not runtime-complete.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

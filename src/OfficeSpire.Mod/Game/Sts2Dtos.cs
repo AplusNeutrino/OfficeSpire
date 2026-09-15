@@ -158,3 +158,21 @@ internal sealed record TreasureRelicSnapshotDto(
     string Id,
     string Name,
     string Description);
+
+internal sealed record ShopScreenDto(
+    bool WaitingForInput,
+    bool InventoryOpen,
+    int Gold,
+    IReadOnlyList<ShopItemSnapshotDto> Items,
+    bool CardRemovalAvailable,
+    int CardRemovalCost,
+    bool CanLeave);
+
+internal sealed record ShopItemSnapshotDto(
+    string Category,
+    int ItemIndex,
+    string Name,
+    int Price,
+    string Description,
+    bool IsStocked,
+    bool EnoughGold);

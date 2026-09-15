@@ -144,6 +144,24 @@ export interface TreasureScreen {
   relics: TreasureRelicState[];
   selected_relic_index: number | null;
 }
+export interface ShopItemState {
+  category: "character_card" | "colorless_card" | "relic" | "potion";
+  item_index: number;
+  name: string;
+  price: number;
+  description: string;
+  is_stocked: boolean;
+  enough_gold: boolean;
+}
+export interface ShopScreen {
+  waiting_for_input: boolean;
+  inventory_open: boolean;
+  gold: number;
+  items: ShopItemState[];
+  card_removal_available: boolean;
+  card_removal_cost: number;
+  can_leave: boolean;
+}
 export interface RunState {
   ascension_level: number;
   current_act: number;
@@ -186,6 +204,10 @@ export interface TreasureStateSnapshot extends BaseStateSnapshot {
   phase: "treasure";
   screen: TreasureScreen;
 }
+export interface ShopStateSnapshot extends BaseStateSnapshot {
+  phase: "shop";
+  screen: ShopScreen;
+}
 export type StateSnapshot =
   | CombatStateSnapshot
   | MapStateSnapshot
@@ -194,6 +216,7 @@ export type StateSnapshot =
   | EventStateSnapshot
   | RestStateSnapshot
   | TreasureStateSnapshot
+  | ShopStateSnapshot
   | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
   type: string;
@@ -224,7 +247,11 @@ export interface OverlayAction {
     | "open_treasure"
     | "choose_treasure_relic"
     | "skip_treasure_relic"
-    | "leave_treasure";
+    | "leave_treasure"
+    | "open_shop"
+    | "buy_shop_item"
+    | "request_card_removal"
+    | "leave_shop";
   expected_revision: number;
   payload: Record<string, unknown>;
 }
@@ -252,6 +279,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "event" || Array.isArray((c.screen as EventScreen).options)) &&
     (c.phase !== "rest" || Array.isArray((c.screen as RestScreen).options)) &&
     (c.phase !== "treasure" ||
-      Array.isArray((c.screen as TreasureScreen).relics))
+      Array.isArray((c.screen as TreasureScreen).relics)) &&
+    (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items))
   );
 }

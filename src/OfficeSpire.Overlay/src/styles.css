@@ -272,6 +272,53 @@ footer,
   opacity: 0.45;
   cursor: not-allowed;
 }
+.shop-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.shop-open,
+.shop-item,
+.shop-remove,
+.shop-leave {
+  border: 1px solid rgba(126, 151, 190, 0.48);
+  border-radius: 8px;
+  padding: 10px;
+  color: inherit;
+  background: rgba(82, 106, 148, 0.13);
+  text-align: left;
+  cursor: pointer;
+}
+.shop-open,
+.shop-remove,
+.shop-leave {
+  width: 100%;
+  margin-top: 8px;
+}
+.shop-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+}
+.shop-item small,
+.shop-item span {
+  grid-column: 1 / -1;
+  color: #aaa;
+  font-size: 10px;
+}
+.shop-item small {
+  text-transform: capitalize;
+}
+.shop-leave {
+  text-align: center;
+}
+.shop-open:disabled,
+.shop-item:disabled,
+.shop-remove:disabled,
+.shop-leave:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .reward-item,
 .reward-card {
   display: grid;

@@ -9,6 +9,8 @@ import type {
   RestStateSnapshot,
   TreasureRelicState,
   TreasureStateSnapshot,
+  ShopItemState,
+  ShopStateSnapshot,
   CombatStateSnapshot,
   ConnectionStatus,
   EnemyState,
@@ -33,6 +35,8 @@ import {
   createLeaveRestSiteAction,
   createTreasureAction,
   createTreasureRelicAction,
+  createShopAction,
+  createBuyShopItemAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
@@ -41,6 +45,7 @@ import { CardSelectionPanel } from "./components/CardSelectionPanel";
 import { EventPanel } from "./components/EventPanel";
 import { RestPanel } from "./components/RestPanel";
 import { TreasurePanel } from "./components/TreasurePanel";
+import { ShopPanel } from "./components/ShopPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 const terminalCodes = new Set([
@@ -54,6 +59,8 @@ const terminalCodes = new Set([
   "unreachable_node",
   "option_locked",
   "unsupported_state",
+  "out_of_stock",
+  "insufficient_gold",
   "not_playable",
   "not_ready",
   "action_pending",
@@ -222,6 +229,16 @@ export default function App() {
         createTreasureRelicAction(relic.choice_index, snapshot.state_revision),
       );
   };
+  const buyShopItem = (item: ShopItemState) => {
+    if (snapshot?.phase === "shop")
+      submit(
+        createBuyShopItemAction(
+          item.category,
+          item.item_index,
+          snapshot.state_revision,
+        ),
+      );
+  };
   const actionInFlight = !!(
     actionResult &&
     actionResult.accepted &&
@@ -316,6 +333,23 @@ export default function App() {
             submit(
               createTreasureAction("leave_treasure", snapshot.state_revision),
             )
+          }
+        />
+      ) : snapshot.phase === "shop" ? (
+        <ShopPanel
+          snapshot={snapshot as ShopStateSnapshot}
+          disabled={disabled}
+          onOpen={() =>
+            submit(createShopAction("open_shop", snapshot.state_revision))
+          }
+          onBuy={buyShopItem}
+          onRemove={() =>
+            submit(
+              createShopAction("request_card_removal", snapshot.state_revision),
+            )
+          }
+          onLeave={() =>
+            submit(createShopAction("leave_shop", snapshot.state_revision))
           }
         />
       ) : (

@@ -139,6 +139,15 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 return CreateEnvelope(PhaseNames.Treasure, run, BuildTreasureSnapshot());
             }
 
+            if (NRun.Instance?.MerchantRoom is not null)
+            {
+                ShopScreenDto? shop = BuildShopSnapshot(player);
+                return CreateEnvelope(
+                    PhaseNames.Shop,
+                    run,
+                    shop ?? new ShopScreenDto(false, false, player?.Gold ?? 0, [], false, 0, false));
+            }
+
             if (!CombatManager.Instance.IsInProgress || player?.PlayerCombatState is null)
             {
                 return CreateEnvelope(
@@ -313,6 +322,43 @@ public sealed class Sts2GameAdapter : IGameAdapter
             canLeave,
             relics,
             selectedIndex);
+    }
+
+    private static ShopScreenDto? BuildShopSnapshot(Player? player)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        var inventory = room?.Room.GetLocalInventory();
+        if (room is null || inventory is null)
+        {
+            return null;
+        }
+
+        var items = new List<ShopItemSnapshotDto>();
+        items.AddRange(inventory.CharacterCardEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "character_card", index, entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card",
+            entry.Cost, GetCardDescription(entry.CreationResult?.Card), entry.IsStocked, entry.EnoughGold)));
+        items.AddRange(inventory.ColorlessCardEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "colorless_card", index, entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card",
+            entry.Cost, GetCardDescription(entry.CreationResult?.Card), entry.IsStocked, entry.EnoughGold)));
+        items.AddRange(inventory.RelicEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "relic", index, entry.Model is null ? "Unknown relic" : SafeFormat(entry.Model.Title),
+            entry.Cost, entry.Model is null ? string.Empty : SafeFormat(entry.Model.DynamicDescription), entry.IsStocked, entry.EnoughGold)));
+        items.AddRange(inventory.PotionEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "potion", index, entry.Model is null ? "Unknown potion" : SafeFormat(entry.Model.Title),
+            entry.Cost, entry.Model is null ? string.Empty : SafeFormat(entry.Model.DynamicDescription), entry.IsStocked, entry.EnoughGold)));
+
+        bool removalAvailable = inventory.CardRemovalEntry is { IsStocked: true };
+        int removalCost = removalAvailable ? inventory.CardRemovalEntry!.Cost : 0;
+        bool inventoryOpen = room.Inventory.IsOpen;
+        bool canLeave = room.ProceedButton.IsEnabled || inventoryOpen;
+        return new ShopScreenDto(
+            true,
+            inventoryOpen,
+            player?.Gold ?? 0,
+            items,
+            removalAvailable,
+            removalCost,
+            canLeave);
     }
 
     private static CardSelectionScreenDto BuildHandSelectionSnapshot(NPlayerHand playerHand)
@@ -674,6 +720,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is TreasureScreenDto treasure && treasure.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.Shop, StringComparison.Ordinal))
+        {
+            return screenValue is ShopScreenDto shop && shop.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -727,7 +778,29 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.Shop, StringComparison.Ordinal) &&
+            screenValue is ShopScreenDto shop)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                shop.InventoryOpen,
+                shop.Gold,
+                Items = shop.Items.Select(item => new
+                {
+                    item.Category,
+                    item.ItemIndex,
+                    item.Price,
+                    item.IsStocked,
+                    item.EnoughGold
+                }).ToArray(),
+                shop.CardRemovalAvailable,
+                shop.CardRemovalCost,
+                shop.CanLeave
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal) &&
             screenValue is TreasureScreenDto treasure)
         {
             projection = new
@@ -948,14 +1021,15 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
     }
 
-    private static string GetCardDescription(CardModel card)
+    private static string GetCardDescription(CardModel? card)
     {
+        if (card is null) return string.Empty;
         try
         {
             LocString description = card.Description;
             card.DynamicVars.AddTo(description);
             description.Add(new IfUpgradedVar(card.IsUpgraded ? UpgradeDisplay.Upgraded : UpgradeDisplay.Normal));
-            description.Add("InCombat", true);
+            description.Add("InCombat", CombatManager.Instance.IsInProgress);
             description.Add("OnTable", false);
             description.Add("IsTargeting", false);
             description.Add("energyPrefix", EnergyIconHelper.GetPrefix(card));

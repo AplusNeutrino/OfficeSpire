@@ -75,6 +75,10 @@ The same exact reference commit was inspected for `NRestSiteRoom.Options`, `NRes
 
 The same exact reference commit was inspected for `NTreasureRoom`, its chest/picking fields, `TreasureRoomRelicSynchronizer`, local pick/skip methods, and native chest/proceed controls. OfficeSpire independently separates these into revision-guarded protocol actions and does not auto-chain opening with relic voting.
 
+### M7 shop reference
+
+The same exact reference commit was inspected for merchant inventory entries, category lists, stock/affordability, `OnTryPurchaseWrapper`, `NMerchantCardRemoval`, inventory/back controls, and the proceed path. OfficeSpire independently exposes a flat typed inventory, invokes purchases without synchronously blocking the main thread, and delegates removal selection to its existing card-selection protocol.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

@@ -16,6 +16,9 @@ using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.RestSite;
+using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
@@ -61,6 +64,10 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_treasure_relic" => ExecuteChooseTreasureRelic(request),
                 "skip_treasure_relic" => ExecuteSkipTreasureRelic(request),
                 "leave_treasure" => ExecuteLeaveTreasure(request),
+                "open_shop" => ExecuteOpenShop(request),
+                "buy_shop_item" => ExecuteBuyShopItem(request),
+                "request_card_removal" => ExecuteRequestCardRemoval(request),
+                "leave_shop" => ExecuteLeaveShop(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -74,6 +81,82 @@ public sealed class M4GameAdapter : IGameAdapter
                 "dispatch_exception",
                 $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static ActionResponse ExecuteOpenShop(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "A merchant room is not active.");
+        }
+        if (!room.Inventory.IsOpen) room.MerchantButton.ForceClick();
+        return Accept(request, "accepted", "Opened the merchant inventory.");
+    }
+
+    private static ActionResponse ExecuteBuyShopItem(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        var inventory = room?.Room.GetLocalInventory();
+        if (room is null || inventory is null)
+        {
+            return Reject(request, "bad_phase", "A merchant inventory is not available.");
+        }
+        if (!TryReadRequiredString(request.Payload, "category", out string? category) ||
+            !TryReadRequiredInt(request.Payload, "item_index", out int index) || index < 0)
+        {
+            return Reject(request, "bad_request", "buy_shop_item requires payload.category and non-negative payload.item_index.");
+        }
+        MerchantEntry? entry = category switch
+        {
+            "character_card" when index < inventory.CharacterCardEntries.Count => inventory.CharacterCardEntries[index],
+            "colorless_card" when index < inventory.ColorlessCardEntries.Count => inventory.ColorlessCardEntries[index],
+            "relic" when index < inventory.RelicEntries.Count => inventory.RelicEntries[index],
+            "potion" when index < inventory.PotionEntries.Count => inventory.PotionEntries[index],
+            _ => null
+        };
+        if (entry is null) return Reject(request, "bad_index", $"Shop item {category}[{index}] is unavailable.");
+        if (!entry.IsStocked) return Reject(request, "out_of_stock", "The selected shop item is out of stock.");
+        if (!entry.EnoughGold) return Reject(request, "insufficient_gold", "There is not enough gold for this item.");
+        if (!room.Inventory.IsOpen) room.OpenInventory();
+        TaskHelper.RunSafely(entry.OnTryPurchaseWrapper(inventory));
+        return Accept(request, "accepted", $"Started purchase for {category}[{index}].");
+    }
+
+    private static ActionResponse ExecuteRequestCardRemoval(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        var inventory = room?.Room.GetLocalInventory();
+        if (room is null || inventory?.CardRemovalEntry is not { IsStocked: true, EnoughGold: true })
+        {
+            return Reject(request, "not_ready", "Merchant card removal is unavailable or unaffordable.");
+        }
+        if (!room.Inventory.IsOpen) room.OpenInventory();
+        NMerchantCardRemoval? slot = room.Inventory.GetAllSlots().OfType<NMerchantCardRemoval>().FirstOrDefault();
+        var method = typeof(NMerchantCardRemoval).GetMethod(
+            "OnTryPurchase",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (slot is null || method?.Invoke(slot, [inventory]) is not Task task)
+        {
+            return Reject(request, "not_ready", "The native card-removal control is unavailable.");
+        }
+        TaskHelper.RunSafely(task);
+        return Accept(request, "accepted", "Started merchant card removal.");
+    }
+
+    private static ActionResponse ExecuteLeaveShop(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        if (room is null) return Reject(request, "bad_phase", "A merchant room is not active.");
+        if (room.Inventory.IsOpen)
+        {
+            NBackButton? back = FindNodesRecursive<NBackButton>(room.Inventory).FirstOrDefault();
+            if (back is null) return Reject(request, "not_ready", "The merchant back control is unavailable.");
+            back.ForceClick();
+        }
+        if (!room.ProceedButton.IsEnabled) return Reject(request, "not_ready", "The merchant proceed control is unavailable.");
+        room.ProceedButton.ForceClick();
+        return Accept(request, "accepted", "Left the merchant room.");
     }
 
     private static ActionResponse ExecuteOpenTreasure(ActionRequest request)
@@ -683,6 +766,19 @@ public sealed class M4GameAdapter : IGameAdapter
                payload.TryGetProperty(name, out JsonElement element) &&
                element.ValueKind == JsonValueKind.Number &&
                element.TryGetInt32(out value);
+    }
+
+    private static bool TryReadRequiredString(JsonElement payload, string name, out string? value)
+    {
+        value = null;
+        if (payload.ValueKind != JsonValueKind.Object ||
+            !payload.TryGetProperty(name, out JsonElement element) ||
+            element.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+        value = element.GetString();
+        return !string.IsNullOrWhiteSpace(value);
     }
 
     private static bool TryReadRequiredIntEither(
