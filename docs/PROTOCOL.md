@@ -124,13 +124,14 @@ Rules:
 ```json
 {
   "hand_index": 0,
+  "card_id": "strike",
   "target_id": "enemy-12"
 }
 ```
 
 `target_id` can be an integer combat id or `enemy-<combatId>`. It may be omitted for untargeted/AOE/self actions. For an enemy-targeted action, M4 auto-targets only when exactly one hittable enemy exists; otherwise an explicit target is required.
 
-The game thread rechecks the current hand index, STS2 `CanPlay`, player-turn readiness and target legality before enqueueing `PlayCardAction`.
+The game thread requires the card's native ID to still match the current hand index, then rechecks STS2 `CanPlay`, player-turn readiness and target legality before enqueueing `PlayCardAction`.
 
 ### `end_turn`
 
@@ -141,11 +142,12 @@ Payload may be `{}`. The game thread enqueues `EndPlayerTurnAction` using the cu
 ```json
 {
   "slot_index": 0,
+  "potion_id": "fire_potion",
   "target_id": "enemy-12"
 }
 ```
 
-`slot` is accepted as an alias for `slot_index`. Enemy targeting follows the same rule as cards. Self/player-targeted potions use the local player creature; untargeted/AOE/random-target potions leave target resolution to STS2.
+`slot` is accepted as an alias for `slot_index`. The current slot must still contain the requested native potion ID. Enemy targeting follows the same rule as cards. Self/player-targeted potions use the local player creature; untargeted/AOE/random-target potions leave target resolution to STS2.
 
 Combat potion snapshots include `id`, `can_use`, `can_discard`, `needs_target`, and `valid_target_ids`. Clients should use these authoritative fields to enable controls and target selection.
 
@@ -153,11 +155,12 @@ Combat potion snapshots include `id`, `can_use`, `can_discard`, `needs_target`, 
 
 ```json
 {
-  "slot_index": 0
+  "slot_index": 0,
+  "potion_id": "swift_potion"
 }
 ```
 
-`slot` is accepted as an alias. The game thread rechecks the current slot and removal permission, then enqueues `DiscardPotionGameAction` through STS2's action queue. This action is currently combat-only.
+`slot` is accepted as an alias. The game thread rechecks the current slot, native potion ID, and removal permission, then enqueues `DiscardPotionGameAction` through STS2's action queue. This action is currently combat-only.
 
 ## M6 map action
 

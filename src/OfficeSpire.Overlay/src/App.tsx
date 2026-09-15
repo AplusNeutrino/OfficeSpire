@@ -237,7 +237,9 @@ export default function App() {
       setSelectedCard(card);
       return;
     }
-    submit(createPlayCardAction(card.hand_index, snapshot.state_revision));
+    submit(
+      createPlayCardAction(card.hand_index, card.id, snapshot.state_revision),
+    );
   };
   const choosePotion = (potion: PotionState) => {
     if (snapshot?.phase !== "combat") return;
@@ -245,7 +247,13 @@ export default function App() {
       setSelectedPotion(potion);
       return;
     }
-    submit(createUsePotionAction(potion.slot_index, snapshot.state_revision));
+    submit(
+      createUsePotionAction(
+        potion.slot_index,
+        potion.id,
+        snapshot.state_revision,
+      ),
+    );
   };
   const discardPotion = (potion: PotionState) => {
     if (
@@ -253,7 +261,11 @@ export default function App() {
       window.confirm(`Discard ${potion.name}? This cannot be undone.`)
     )
       submit(
-        createDiscardPotionAction(potion.slot_index, snapshot.state_revision),
+        createDiscardPotionAction(
+          potion.slot_index,
+          potion.id,
+          snapshot.state_revision,
+        ),
       );
   };
   const chooseTarget = (enemy: EnemyState) => {
@@ -262,6 +274,7 @@ export default function App() {
       submit(
         createPlayCardAction(
           selectedCard.hand_index,
+          selectedCard.id,
           snapshot.state_revision,
           enemy.combat_id,
         ),
@@ -270,6 +283,7 @@ export default function App() {
       submit(
         createUsePotionAction(
           selectedPotion.slot_index,
+          selectedPotion.id,
           snapshot.state_revision,
           enemy.combat_id,
         ),

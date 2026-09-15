@@ -19,6 +19,7 @@ import {
   createTreasureRelicAction,
   createShopAction,
   createBuyShopItemAction,
+  createPlayCardAction,
   createUsePotionAction,
   createDiscardPotionAction,
 } from "../actions/actionDispatcher";
@@ -520,15 +521,20 @@ describe("OfficeSpire wire protocol", () => {
     ).toBe(true);
   });
   it("creates targeted potion use and discard actions", () => {
-    expect(createUsePotionAction(1, 110, 7)).toMatchObject({
+    expect(createPlayCardAction(0, "strike", 109, 7)).toMatchObject({
+      action: "play_card",
+      expected_revision: 109,
+      payload: { hand_index: 0, card_id: "strike", target_id: 7 },
+    });
+    expect(createUsePotionAction(1, "fire_potion", 110, 7)).toMatchObject({
       action: "use_potion",
       expected_revision: 110,
-      payload: { slot_index: 1, target_id: 7 },
+      payload: { slot_index: 1, potion_id: "fire_potion", target_id: 7 },
     });
-    expect(createDiscardPotionAction(2, 111)).toMatchObject({
+    expect(createDiscardPotionAction(2, "swift_potion", 111)).toMatchObject({
       action: "discard_potion",
       expected_revision: 111,
-      payload: { slot_index: 2 },
+      payload: { slot_index: 2, potion_id: "swift_potion" },
     });
   });
   it("maps combat keyboard shortcuts without browser key-layout ambiguity", () => {

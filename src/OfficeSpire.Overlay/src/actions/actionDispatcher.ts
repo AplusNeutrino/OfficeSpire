@@ -2,6 +2,7 @@ import type { OverlayAction } from "../types";
 const requestId = () => crypto.randomUUID();
 export function createPlayCardAction(
   handIndex: number,
+  cardId: string,
   revision: number,
   targetId?: number,
 ): OverlayAction {
@@ -11,8 +12,8 @@ export function createPlayCardAction(
     expected_revision: revision,
     payload:
       targetId === undefined
-        ? { hand_index: handIndex }
-        : { hand_index: handIndex, target_id: targetId },
+        ? { hand_index: handIndex, card_id: cardId }
+        : { hand_index: handIndex, card_id: cardId, target_id: targetId },
   };
 }
 export function createEndTurnAction(revision: number): OverlayAction {
@@ -25,6 +26,7 @@ export function createEndTurnAction(revision: number): OverlayAction {
 }
 export function createUsePotionAction(
   slotIndex: number,
+  potionId: string,
   revision: number,
   targetId?: number,
 ): OverlayAction {
@@ -34,20 +36,21 @@ export function createUsePotionAction(
     expected_revision: revision,
     payload:
       targetId === undefined
-        ? { slot_index: slotIndex }
-        : { slot_index: slotIndex, target_id: targetId },
+        ? { slot_index: slotIndex, potion_id: potionId }
+        : { slot_index: slotIndex, potion_id: potionId, target_id: targetId },
   };
 }
 
 export function createDiscardPotionAction(
   slotIndex: number,
+  potionId: string,
   revision: number,
 ): OverlayAction {
   return {
     request_id: requestId(),
     action: "discard_potion",
     expected_revision: revision,
-    payload: { slot_index: slotIndex },
+    payload: { slot_index: slotIndex, potion_id: potionId },
   };
 }
 export function createChooseMapNodeAction(

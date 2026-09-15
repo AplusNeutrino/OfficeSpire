@@ -549,9 +549,10 @@ public sealed class M4GameAdapter : IGameAdapter
             return rejection!;
         }
 
-        if (!TryReadRequiredInt(request.Payload, "hand_index", out int handIndex))
+        if (!TryReadRequiredInt(request.Payload, "hand_index", out int handIndex) ||
+            !TryReadRequiredString(request.Payload, "card_id", out string? cardId))
         {
-            return Reject(request, "bad_request", "play_card requires integer payload.hand_index.");
+            return Reject(request, "bad_request", "play_card requires payload.hand_index and payload.card_id.");
         }
 
         var hand = player!.PlayerCombatState!.Hand.Cards;
@@ -564,6 +565,10 @@ public sealed class M4GameAdapter : IGameAdapter
         }
 
         CardModel card = hand[handIndex];
+        if (!string.Equals(card.Id.ToString(), cardId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The card in the selected hand slot changed before dispatch.");
+        }
         if (!card.CanPlay(out var reason, out _))
         {
             return Reject(
@@ -613,9 +618,10 @@ public sealed class M4GameAdapter : IGameAdapter
             return rejection!;
         }
 
-        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex))
+        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex) ||
+            !TryReadRequiredString(request.Payload, "potion_id", out string? potionId))
         {
-            return Reject(request, "bad_request", "use_potion requires integer payload.slot_index.");
+            return Reject(request, "bad_request", "use_potion requires payload.slot_index and payload.potion_id.");
         }
 
         var slots = player!.PotionSlots;
@@ -625,6 +631,10 @@ public sealed class M4GameAdapter : IGameAdapter
         }
 
         var potion = slots[slotIndex]!;
+        if (!string.Equals(potion.Id.ToString(), potionId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The potion in the selected slot changed before dispatch.");
+        }
         if (!player.CanUseOrRemovePotions || potion.IsQueued || potion.HasBeenRemovedFromState)
         {
             return Reject(request, "not_playable", $"Potion in slot {slotIndex} cannot be used now.");
@@ -651,9 +661,10 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return rejection!;
         }
-        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex))
+        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex) ||
+            !TryReadRequiredString(request.Payload, "potion_id", out string? potionId))
         {
-            return Reject(request, "bad_request", "discard_potion requires integer payload.slot_index.");
+            return Reject(request, "bad_request", "discard_potion requires payload.slot_index and payload.potion_id.");
         }
         var slots = player!.PotionSlots;
         if (slotIndex < 0 || slotIndex >= slots.Count || slots[slotIndex] is null)
@@ -661,6 +672,10 @@ public sealed class M4GameAdapter : IGameAdapter
             return Reject(request, "bad_index", $"No potion exists in slot {slotIndex}.");
         }
         var potion = slots[slotIndex]!;
+        if (!string.Equals(potion.Id.ToString(), potionId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The potion in the selected slot changed before dispatch.");
+        }
         if (!player.CanUseOrRemovePotions || potion.IsQueued || potion.HasBeenRemovedFromState)
         {
             return Reject(request, "not_playable", $"Potion in slot {slotIndex} cannot be discarded now.");
