@@ -5,10 +5,10 @@
 > This document is the sole authority for OfficeSpire milestone status, execution order, scope, and exit criteria.
 > If another document, commit message, or code comment conflicts with this roadmap, update this document from real code, build results, and runtime evidence before continuing development.
 
-Last updated: 2026-09-14  
-Product target: OfficeSpire v0.6  
-Current development version: v0.6-alpha.2 — Overlay Prototype  
-Current milestone: M5  
+Last updated: 2026-09-15
+Product target: OfficeSpire v0.6
+Current development version: v0.6-alpha.3 — Map Controller
+Current milestone: M6 (source development; M5 runtime validation remains deferred)
 Previous validated milestone: v0.6-alpha.1 — Playable Backend
 
 ## 1. Product objective
@@ -326,7 +326,9 @@ This becomes mandatory before the final v0.6 release, but it follows the validat
 
 ## 6. M6 Map Controller
 
-Planned after M5 passes.
+Current status: `implemented_unverified`
+
+Development began by explicit maintainer direction while game-dependent M5 validation remains unavailable. This does not promote M5 or M6 to `runtime_pass`.
 
 Goal:
 
@@ -356,6 +358,23 @@ Exit criteria:
 - combat-to-map and map-to-next-room transitions recover cleanly.
 
 No action name such as `move_to_map_coord` is considered stable until protocol design and native runtime research confirm it.
+
+### Implementation checkpoint — 2026-09-15
+
+- authoritative map phase detection through the open native map screen;
+- current, reachable, and full-act node snapshots with stable coordinate IDs;
+- `choose_map_node` protocol action with transport and main-thread phase/revision checks;
+- fresh native reachability validation immediately before dispatch;
+- route submission through `VoteForMapCoordAction` and the STS2 action queue synchronizer;
+- mouse-operated reachable-room renderer in the overlay;
+- map snapshot parsing and action-construction tests.
+
+Verified outside the game runtime:
+
+- `npm test`: PASS (7 tests);
+- `npm run build`: PASS (TypeScript + Vite production build).
+
+Still unverified: C# compilation against the installed STS2 assemblies, live map accuracy, native route execution, settlement, transition recovery, and all M6 runtime exit criteria.
 
 ## 7. M7 Run Decisions
 
@@ -426,7 +445,7 @@ Exit criteria:
 |---|---|---|---|
 | v0.6-alpha.1 | Playable Backend | M1–M4 core chain validated | `runtime_pass` |
 | v0.6-alpha.2 | Overlay Prototype | Live translucent mouse-operated combat overlay | `implemented_unverified` |
-| v0.6-alpha.3 | Map Controller | Map display and native route selection | `not_implemented` |
+| v0.6-alpha.3 | Map Controller | Map display and native route selection | `implemented_unverified` |
 | v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `not_implemented` |
 | v0.6-beta | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `not_implemented` |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
@@ -445,8 +464,9 @@ The next implementation cycle follows this order:
 6. complete safe mouse card and target interaction;
 7. complete End Turn interaction;
 8. add action lifecycle and error presentation;
-9. run the M5 validation matrix;
-10. record evidence, update status, and only then begin M6.
+9. run the M5 validation matrix when its external runtime becomes available;
+10. continue isolated M6 source work without claiming runtime completion;
+11. run the M6 validation matrix against STS2 and record evidence.
 
 ## 11. Documentation ownership
 

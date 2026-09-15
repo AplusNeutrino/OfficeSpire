@@ -2,16 +2,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ActionResponse,
   CardState,
+  CombatStateSnapshot,
   ConnectionStatus,
   EnemyState,
   OverlayAction,
   StateSnapshot,
+  MapNodeState,
+  MapStateSnapshot,
 } from "./types";
 import {
   createEndTurnAction,
   createPlayCardAction,
+  createChooseMapNodeAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
+import { MapPanel } from "./components/MapPanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 const terminalCodes = new Set([
@@ -22,6 +27,7 @@ const terminalCodes = new Set([
   "bad_phase",
   "bad_index",
   "bad_target",
+  "unreachable_node",
   "not_playable",
   "not_ready",
   "action_pending",
@@ -136,6 +142,16 @@ export default function App() {
         ),
       );
   };
+  const chooseMapNode = (node: MapNodeState) => {
+    if (snapshot?.phase === "map")
+      submit(
+        createChooseMapNodeAction(
+          node.column,
+          node.row,
+          snapshot.state_revision,
+        ),
+      );
+  };
   const actionInFlight = !!(
     actionResult &&
     actionResult.accepted &&
@@ -160,13 +176,19 @@ export default function App() {
         </section>
       ) : snapshot.phase === "combat" ? (
         <CombatPanel
-          snapshot={snapshot}
+          snapshot={snapshot as CombatStateSnapshot}
           disabled={disabled}
           selectedCard={selectedCard}
           onCard={chooseCard}
           onTarget={chooseTarget}
           onCancelTarget={() => setSelectedCard(undefined)}
           onEndTurn={() => submit(createEndTurnAction(snapshot.state_revision))}
+        />
+      ) : snapshot.phase === "map" ? (
+        <MapPanel
+          snapshot={snapshot as MapStateSnapshot}
+          disabled={disabled}
+          onChooseNode={chooseMapNode}
         />
       ) : (
         <section className="empty">

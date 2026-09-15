@@ -51,6 +51,10 @@ Observed STS2 API patterns:
 
 OfficeSpire independently implements its own `ActionInbox`, WebSocket lifecycle, revision CAS checks, target parser and `M4GameAdapter`; it does not copy autoSpire's HTTP server, request/result models, multi-action logic or source layout.
 
+### M6 map reference
+
+The same exact reference commit was inspected for map-state and native-selection API shapes. Confirmed interfaces include `IRunState.Map`, `CurrentMapPoint`, `MapPoint.Children`, `startMapPoints`, `MapCoord`, `MapVote`, and `VoteForMapCoordAction`. OfficeSpire independently implements a smaller versioned snapshot and action path with its own two-stage revision and reachability checks.
+
 ## leetingo/spirescry
 
 - Repository: https://github.com/leetingo/spirescry

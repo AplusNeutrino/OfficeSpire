@@ -23,3 +23,15 @@ export function createEndTurnAction(revision: number): OverlayAction {
     payload: {},
   };
 }
+export function createChooseMapNodeAction(
+  column: number,
+  row: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "choose_map_node",
+    expected_revision: revision,
+    payload: { column, row },
+  };
+}

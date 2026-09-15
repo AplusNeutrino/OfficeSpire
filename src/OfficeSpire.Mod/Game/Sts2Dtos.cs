@@ -72,3 +72,16 @@ internal sealed record PotionSnapshotDto(
     string Name,
     string Description,
     string TargetType);
+
+internal sealed record MapScreenDto(
+    bool WaitingForInput,
+    MapNodeSnapshotDto? CurrentNode,
+    IReadOnlyList<MapNodeSnapshotDto> ReachableNodes,
+    IReadOnlyList<MapNodeSnapshotDto> AllNodes);
+
+internal sealed record MapNodeSnapshotDto(
+    string StableId,
+    int Column,
+    int Row,
+    string NodeType,
+    bool Reachable);

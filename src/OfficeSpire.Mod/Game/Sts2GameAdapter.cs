@@ -12,6 +12,8 @@ using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
 
@@ -51,6 +53,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             Player? player = LocalContext.GetMe(runState);
             RunSnapshotDto run = BuildRunSnapshot(runState, player);
 
+            if (NMapScreen.Instance?.IsOpen == true)
+            {
+                return CreateEnvelope(PhaseNames.Map, run, BuildMapSnapshot(runState));
+            }
+
             if (!CombatManager.Instance.IsInProgress || player?.PlayerCombatState is null)
             {
                 return CreateEnvelope(
@@ -81,6 +88,40 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     adapter_error = ex.GetType().Name
                 });
         }
+    }
+
+    private static MapScreenDto BuildMapSnapshot(IRunState runState)
+    {
+        MapPoint? current = runState.CurrentMapPoint;
+        IEnumerable<MapPoint> reachable = current is null
+            ? runState.Map?.startMapPoints ?? []
+            : current.Children;
+
+        var reachableCoordinates = reachable
+            .Select(point => (point.coord.col, point.coord.row))
+            .ToHashSet();
+
+        var allPoints = new HashSet<MapPoint>(runState.Map?.GetAllMapPoints() ?? []);
+        if (runState.Map is not null)
+        {
+            foreach (MapPoint start in runState.Map.startMapPoints)
+            {
+                allPoints.Add(start);
+            }
+        }
+
+        MapNodeSnapshotDto Convert(MapPoint point) => new(
+            StableId: $"map-{point.coord.col}-{point.coord.row}",
+            Column: point.coord.col,
+            Row: point.coord.row,
+            NodeType: point.PointType.ToString(),
+            Reachable: reachableCoordinates.Contains((point.coord.col, point.coord.row)));
+
+        return new MapScreenDto(
+            WaitingForInput: reachable.Any(),
+            CurrentNode: current is null ? null : Convert(current),
+            ReachableNodes: reachable.Select(Convert).OrderBy(p => p.Column).ToList(),
+            AllNodes: allPoints.Select(Convert).OrderBy(p => p.Row).ThenBy(p => p.Column).ToList());
     }
 
     public ActionResponse Dispatch(ActionRequest request)
@@ -308,6 +349,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
     /// </summary>
     private static bool IsStableDecisionState(string phase, object screenValue)
     {
+        if (string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal))
+        {
+            return screenValue is MapScreenDto map && map.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -361,7 +407,27 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal) &&
+            screenValue is MapScreenDto map)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                Map = new
+                {
+                    Current = map.CurrentNode is null
+                        ? null
+                        : new { map.CurrentNode.Column, map.CurrentNode.Row },
+                    Reachable = map.ReachableNodes
+                        .OrderBy(node => node.Row)
+                        .ThenBy(node => node.Column)
+                        .Select(node => new { node.Column, node.Row, node.NodeType })
+                        .ToArray()
+                }
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal) &&
             screenValue is CombatScreenDto combat)
         {
             projection = new

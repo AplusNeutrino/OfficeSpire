@@ -5,6 +5,8 @@ import {
   getStateMessage,
   parseEnvelope,
 } from "./protocol";
+import { createChooseMapNodeAction } from "../actions/actionDispatcher";
+import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
   it("wraps state requests with protocol version 1", () => {
     expect(getStateMessage()).toEqual({
@@ -37,5 +39,30 @@ describe("OfficeSpire wire protocol", () => {
     expect(
       parseEnvelope('{"type":"pong","protocol_version":1,"body":{}}').type,
     ).toBe("pong");
+  });
+  it("creates a revision-guarded map choice", () => {
+    const action = createChooseMapNodeAction(2, 7, 41);
+    expect(action).toMatchObject({
+      action: "choose_map_node",
+      expected_revision: 41,
+      payload: { column: 2, row: 7 },
+    });
+  });
+  it("accepts map snapshots without combat-only arrays", () => {
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 9,
+        phase: "map",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          current_node: null,
+          reachable_nodes: [],
+          all_nodes: [],
+        },
+      }),
+    ).toBe(true);
   });
 });

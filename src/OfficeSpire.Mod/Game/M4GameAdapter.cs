@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
@@ -37,6 +38,7 @@ public sealed class M4GameAdapter : IGameAdapter
                 "play_card" => ExecutePlayCard(request),
                 "end_turn" => ExecuteEndTurn(request),
                 "use_potion" => ExecuteUsePotion(request),
+                "choose_map_node" => ExecuteChooseMapNode(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -50,6 +52,57 @@ public sealed class M4GameAdapter : IGameAdapter
                 "dispatch_exception",
                 $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private static ActionResponse ExecuteChooseMapNode(ActionRequest request)
+    {
+        if (CombatManager.Instance.IsInProgress)
+        {
+            return Reject(request, "bad_phase", "Map selection is unavailable during combat.");
+        }
+
+        IRunState? runState = RunManager.Instance.DebugOnlyGetState();
+        if (runState?.Map is null)
+        {
+            return Reject(request, "not_ready", "Authoritative map state is unavailable.");
+        }
+
+        Player? player = LocalContext.GetMe(runState);
+        if (player is null)
+        {
+            return Reject(request, "not_ready", "Local player is unavailable.");
+        }
+
+        if (RunManager.Instance.ActionExecutor?.CurrentlyRunningAction is not null)
+        {
+            return Reject(request, "not_ready", "STS2 is still executing a game action.");
+        }
+
+        if (!TryReadRequiredInt(request.Payload, "column", out int column) ||
+            !TryReadRequiredInt(request.Payload, "row", out int row))
+        {
+            return Reject(request, "bad_request", "choose_map_node requires integer payload.column and payload.row.");
+        }
+
+        IEnumerable<MapPoint> legalTargets = runState.CurrentMapPoint is null
+            ? runState.Map.startMapPoints
+            : runState.CurrentMapPoint.Children;
+        var target = legalTargets.FirstOrDefault(point =>
+            point.coord.col == column && point.coord.row == row);
+        if (target is null)
+        {
+            return Reject(request, "unreachable_node", $"Map node ({column},{row}) is not currently reachable.");
+        }
+
+        var coordinate = new MapCoord(column, row);
+        var vote = new MapVote
+        {
+            mapGenerationCount = RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount,
+            coord = coordinate
+        };
+        var action = new VoteForMapCoordAction(player, runState.MapLocation, vote);
+        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
+        return Accept(request, "accepted", $"Queued map selection ({column},{row}).");
     }
 
     private static ActionResponse ExecutePlayCard(ActionRequest request)

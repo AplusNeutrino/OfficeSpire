@@ -76,6 +76,40 @@ footer,
   border-block: 1px solid rgba(255, 255, 255, 0.11);
   font-size: 13px;
 }
+.map-summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-block: 1px solid rgba(255, 255, 255, 0.11);
+}
+.map-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.map-node {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(212, 169, 94, 0.45);
+  border-radius: 8px;
+  padding: 10px;
+  color: inherit;
+  background: rgba(212, 169, 94, 0.1);
+  text-align: left;
+  cursor: pointer;
+}
+.map-node:hover:not(:disabled) {
+  border-color: #d4a95e;
+  background: rgba(212, 169, 94, 0.18);
+}
+.map-node:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.map-node small,
+.map-empty {
+  color: #aaa;
+}
 .stats strong {
   font-size: 15px;
 }

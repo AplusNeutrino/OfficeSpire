@@ -27,7 +27,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 | M3 | State Observation | `runtime_pass` |
 | M4 | Action Control Core | `runtime_pass` |
 | M5 | Overlay Prototype | `implemented_unverified` |
-| M6 | Map Controller | `not_implemented` |
+| M6 | Map Controller | `implemented_unverified` |
 | M7 | Run Decisions | `not_implemented` |
 | M8 | Advanced Combat / Hardening | `not_implemented` |
 
@@ -221,6 +221,22 @@ None of the following is a runtime pass yet:
 - End Turn from the overlay;
 - stale/pending UI recovery;
 - unfocused/minimized behavior through the overlay.
+
+## M6 — Map Controller
+
+Current status: `implemented_unverified`
+
+Source exists for authoritative map snapshots, reachable-node rendering, revision-guarded `choose_map_node`, fresh main-thread reachability checks, and native `VoteForMapCoordAction` submission.
+
+Current non-runtime verification:
+
+| Check | Result |
+|---|---|
+| `npm test` | PASS — 7 protocol/action tests |
+| `npm run build` | PASS — TypeScript and Vite production build |
+| Mod compilation against STS2 | Not run — installed game assemblies unavailable |
+
+No live map snapshot, route choice, native settlement, or room transition is a runtime pass yet.
 
 Use the M5 matrix in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for the next probes.
 

@@ -4,7 +4,7 @@ OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**
 
 It pairs a C#/.NET game mod with a compact Tauri/React desktop overlay. STS2 remains authoritative for rules, RNG, saves, actions, and progression; OfficeSpire reads state and submits explicit user choices through an authenticated loopback protocol.
 
-> **Current status:** v0.6-alpha.1 “Playable Backend” is runtime-validated. Development is now focused on v0.6-alpha.2 “Overlay Prototype”.
+> **Current status:** v0.6-alpha.1 “Playable Backend” is runtime-validated. The M5 overlay and M6 map controller source are implemented but still require live runtime validation.
 
 ## Validated baseline
 
@@ -50,6 +50,8 @@ v0.6-alpha.2 targets the first usable **semi-transparent text overlay**:
 - pending, stale, reconnect, and error handling.
 
 The first M5 source implementation is now present and its TypeScript/Vite production build and protocol tests pass. Tauri native compilation, Windows window behavior, live STS2 integration, and combat interaction remain `implemented_unverified` until runtime evidence is recorded.
+
+The v0.6-alpha.3 source adds authoritative map snapshots, reachable-node display, and revision-guarded native route selection. It remains `implemented_unverified`; code presence and frontend builds are not live STS2 proof.
 
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 

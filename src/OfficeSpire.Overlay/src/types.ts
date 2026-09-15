@@ -58,6 +58,19 @@ export interface CombatScreen {
   enemies: EnemyState[];
   potions: unknown[];
 }
+export interface MapNodeState {
+  stable_id: string;
+  column: number;
+  row: number;
+  node_type: string;
+  reachable: boolean;
+}
+export interface MapScreen {
+  waiting_for_input: boolean;
+  current_node: MapNodeState | null;
+  reachable_nodes: MapNodeState[];
+  all_nodes: MapNodeState[];
+}
 export interface RunState {
   ascension_level: number;
   current_act: number;
@@ -65,14 +78,25 @@ export interface RunState {
   gold: number;
   relics: unknown[];
 }
-export interface StateSnapshot {
+interface BaseStateSnapshot {
   protocol_version: number;
   state_revision: number;
   phase: string;
   action_pending: boolean;
   run: RunState;
+}
+export interface CombatStateSnapshot extends BaseStateSnapshot {
+  phase: "combat";
   screen: CombatScreen;
 }
+export interface MapStateSnapshot extends BaseStateSnapshot {
+  phase: "map";
+  screen: MapScreen;
+}
+export type StateSnapshot =
+  | CombatStateSnapshot
+  | MapStateSnapshot
+  | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
   type: string;
   protocol_version: number;
@@ -87,7 +111,7 @@ export interface ActionResponse {
 }
 export interface OverlayAction {
   request_id: string;
-  action: "play_card" | "end_turn";
+  action: "play_card" | "end_turn" | "choose_map_node";
   expected_revision: number;
   payload: Record<string, unknown>;
 }
@@ -101,7 +125,11 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     typeof c.action_pending === "boolean" &&
     !!c.run &&
     !!c.screen &&
-    Array.isArray((c.screen as CombatScreen).hand) &&
-    Array.isArray((c.screen as CombatScreen).enemies)
+    (c.phase !== "combat" ||
+      (Array.isArray((c.screen as CombatScreen).hand) &&
+        Array.isArray((c.screen as CombatScreen).enemies))) &&
+    (c.phase !== "map" ||
+      (Array.isArray((c.screen as MapScreen).reachable_nodes) &&
+        Array.isArray((c.screen as MapScreen).all_nodes)))
   );
 }

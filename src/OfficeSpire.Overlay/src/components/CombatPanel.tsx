@@ -1,7 +1,7 @@
-import type { CardState, EnemyState, StateSnapshot } from "../types";
+import type { CardState, CombatStateSnapshot, EnemyState } from "../types";
 import { CardButton } from "./CardButton";
 interface Props {
-  snapshot: StateSnapshot;
+  snapshot: CombatStateSnapshot;
   disabled: boolean;
   selectedCard?: CardState;
   onCard: (card: CardState) => void;

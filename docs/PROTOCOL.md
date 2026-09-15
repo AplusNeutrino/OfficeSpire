@@ -137,6 +137,19 @@ Payload may be `{}`. The game thread enqueues `EndPlayerTurnAction` using the cu
 
 Potion discard is not yet enabled in the M4 source baseline.
 
+## M6 map action
+
+### `choose_map_node`
+
+```json
+{
+  "column": 2,
+  "row": 7
+}
+```
+
+When `phase="map"`, `screen.reachable_nodes` contains the authoritative choices. Each node has `stable_id`, `column`, `row`, `node_type`, and `reachable`. The backend validates the coordinate against the current native map immediately before submitting `VoteForMapCoordAction`; stale or unreachable choices fail without mutation.
+
 ## Action response and status
 
 `action_result` retains the v1 response shape:
@@ -174,6 +187,7 @@ A request can become rejected after `queued` if the state changes before the mai
 - `bad_request`
 - `bad_index`
 - `bad_target`
+- `unreachable_node`
 - `not_playable`
 - `unsupported_action`
 - `dispatch_exception`

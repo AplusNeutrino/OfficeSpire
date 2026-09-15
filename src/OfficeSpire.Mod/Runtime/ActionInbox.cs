@@ -74,12 +74,12 @@ internal sealed class ActionInbox
                 return false;
             }
 
-            if (!string.Equals(current.Phase, PhaseNames.Combat, StringComparison.Ordinal))
+            if (!IsActionAllowedInPhase(request.Action, current.Phase))
             {
                 response = Reject(
                     request,
                     "bad_phase",
-                    $"Combat action requested while phase='{current.Phase}'.",
+                    $"Action '{request.Action}' is unavailable while phase='{current.Phase}'.",
                     current.StateRevision);
                 Remember(response);
                 return false;
@@ -142,12 +142,12 @@ internal sealed class ActionInbox
                     "STS2 decision state became pending before main-thread dispatch.",
                     freshState.StateRevision);
             }
-            else if (!string.Equals(freshState.Phase, PhaseNames.Combat, StringComparison.Ordinal))
+            else if (!IsActionAllowedInPhase(request.Action, freshState.Phase))
             {
                 result = Reject(
                     request,
                     "bad_phase",
-                    $"Combat ended or changed phase before dispatch: phase='{freshState.Phase}'.",
+                    $"Action phase changed before dispatch: phase='{freshState.Phase}'.",
                     freshState.StateRevision);
             }
             else
@@ -187,6 +187,15 @@ internal sealed class ActionInbox
 
             Remember(result);
         }
+    }
+
+    private static bool IsActionAllowedInPhase(string action, string phase)
+    {
+        return action switch
+        {
+            "choose_map_node" => string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal),
+            _ => string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
+        };
     }
 
     /// <summary>
