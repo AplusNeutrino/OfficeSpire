@@ -51,6 +51,7 @@ public sealed class M4GameAdapter : IGameAdapter
                 "play_card" => ExecutePlayCard(request),
                 "end_turn" => ExecuteEndTurn(request),
                 "use_potion" => ExecuteUsePotion(request),
+                "discard_potion" => ExecuteDiscardPotion(request),
                 "choose_map_node" => ExecuteChooseMapNode(request),
                 "choose_reward" => ExecuteChooseReward(request),
                 "choose_reward_card" => ExecuteChooseRewardCard(request),
@@ -552,6 +553,10 @@ public sealed class M4GameAdapter : IGameAdapter
         }
 
         var potion = slots[slotIndex]!;
+        if (!player.CanUseOrRemovePotions || potion.IsQueued || potion.HasBeenRemovedFromState)
+        {
+            return Reject(request, "not_playable", $"Potion in slot {slotIndex} cannot be used now.");
+        }
         if (!TryResolveTarget(
                 request,
                 request.Payload,
@@ -566,6 +571,31 @@ public sealed class M4GameAdapter : IGameAdapter
 
         potion.EnqueueManualUse(target);
         return Accept(request, "accepted", $"Queued use_potion for slot {slotIndex}.");
+    }
+
+    private static ActionResponse ExecuteDiscardPotion(ActionRequest request)
+    {
+        if (!TryGetCombatContext(request, out Player? player, out _, out ActionResponse? rejection))
+        {
+            return rejection!;
+        }
+        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex))
+        {
+            return Reject(request, "bad_request", "discard_potion requires integer payload.slot_index.");
+        }
+        var slots = player!.PotionSlots;
+        if (slotIndex < 0 || slotIndex >= slots.Count || slots[slotIndex] is null)
+        {
+            return Reject(request, "bad_index", $"No potion exists in slot {slotIndex}.");
+        }
+        var potion = slots[slotIndex]!;
+        if (!player.CanUseOrRemovePotions || potion.IsQueued || potion.HasBeenRemovedFromState)
+        {
+            return Reject(request, "not_playable", $"Potion in slot {slotIndex} cannot be discarded now.");
+        }
+        var action = new DiscardPotionGameAction(player, checked((uint)slotIndex), inCombat: true);
+        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
+        return Accept(request, "accepted", $"Queued discard_potion for slot {slotIndex}.");
     }
 
     private static bool TryGetCombatContext(

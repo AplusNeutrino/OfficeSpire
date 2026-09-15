@@ -18,6 +18,7 @@ import type {
   StateSnapshot,
   MapNodeState,
   MapStateSnapshot,
+  PotionState,
   RewardCardState,
   RewardItemState,
   RewardsStateSnapshot,
@@ -37,6 +38,8 @@ import {
   createTreasureRelicAction,
   createShopAction,
   createBuyShopItemAction,
+  createUsePotionAction,
+  createDiscardPotionAction,
 } from "./actions/actionDispatcher";
 import { CombatPanel } from "./components/CombatPanel";
 import { MapPanel } from "./components/MapPanel";
@@ -75,6 +78,7 @@ export default function App() {
   );
   const [actionResult, setActionResult] = useState<ActionResponse>();
   const [selectedCard, setSelectedCard] = useState<CardState>();
+  const [selectedPotion, setSelectedPotion] = useState<PotionState>();
   const clientRef = useRef<OfficeSpireWebSocketClient | undefined>(undefined);
   const retryRef = useRef<number | undefined>(undefined);
   const pollRef = useRef<number | undefined>(undefined);
@@ -130,8 +134,10 @@ export default function App() {
         if (
           revisionRef.current !== undefined &&
           revisionRef.current !== next.state_revision
-        )
+        ) {
           setSelectedCard(undefined);
+          setSelectedPotion(undefined);
+        }
         revisionRef.current = next.state_revision;
         setSnapshot(next);
       },
@@ -152,6 +158,7 @@ export default function App() {
   }, [clearPoll, connect, handleActionResult]);
   const submit = (action: OverlayAction) => {
     setSelectedCard(undefined);
+    setSelectedPotion(undefined);
     setActionResult(undefined);
     setMessage(`Sending ${action.action}…`);
     if (!clientRef.current?.sendAction(action))
@@ -165,11 +172,37 @@ export default function App() {
     }
     submit(createPlayCardAction(card.hand_index, snapshot.state_revision));
   };
+  const choosePotion = (potion: PotionState) => {
+    if (snapshot?.phase !== "combat") return;
+    if (potion.needs_target) {
+      setSelectedPotion(potion);
+      return;
+    }
+    submit(createUsePotionAction(potion.slot_index, snapshot.state_revision));
+  };
+  const discardPotion = (potion: PotionState) => {
+    if (
+      snapshot?.phase === "combat" &&
+      window.confirm(`Discard ${potion.name}? This cannot be undone.`)
+    )
+      submit(
+        createDiscardPotionAction(potion.slot_index, snapshot.state_revision),
+      );
+  };
   const chooseTarget = (enemy: EnemyState) => {
-    if (snapshot && selectedCard)
+    if (!snapshot) return;
+    if (selectedCard)
       submit(
         createPlayCardAction(
           selectedCard.hand_index,
+          snapshot.state_revision,
+          enemy.combat_id,
+        ),
+      );
+    else if (selectedPotion)
+      submit(
+        createUsePotionAction(
+          selectedPotion.slot_index,
           snapshot.state_revision,
           enemy.combat_id,
         ),
@@ -266,9 +299,15 @@ export default function App() {
           snapshot={snapshot as CombatStateSnapshot}
           disabled={disabled}
           selectedCard={selectedCard}
+          selectedPotion={selectedPotion}
           onCard={chooseCard}
           onTarget={chooseTarget}
-          onCancelTarget={() => setSelectedCard(undefined)}
+          onPotion={choosePotion}
+          onDiscardPotion={discardPotion}
+          onCancelTarget={() => {
+            setSelectedCard(undefined);
+            setSelectedPotion(undefined);
+          }}
           onEndTurn={() => submit(createEndTurnAction(snapshot.state_revision))}
         />
       ) : snapshot.phase === "map" ? (

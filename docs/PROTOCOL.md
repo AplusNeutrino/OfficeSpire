@@ -135,7 +135,17 @@ Payload may be `{}`. The game thread enqueues `EndPlayerTurnAction` using the cu
 
 `slot` is accepted as an alias for `slot_index`. Enemy targeting follows the same rule as cards. Self/player-targeted potions use the local player creature; untargeted/AOE/random-target potions leave target resolution to STS2.
 
-Potion discard is not yet enabled in the M4 source baseline.
+Combat potion snapshots include `id`, `can_use`, `can_discard`, `needs_target`, and `valid_target_ids`. Clients should use these authoritative fields to enable controls and target selection.
+
+### `discard_potion`
+
+```json
+{
+  "slot_index": 0
+}
+```
+
+`slot` is accepted as an alias. The game thread rechecks the current slot and removal permission, then enqueues `DiscardPotionGameAction` through STS2's action queue. This action is currently combat-only.
 
 ## M6 map action
 

@@ -29,7 +29,7 @@ OfficeSpire commit for the final M4 probe: not captured in the submitted runtime
 | M5 | Overlay Prototype | `implemented_unverified` |
 | M6 | Map Controller | `implemented_unverified` |
 | M7 | Run Decisions | `implemented_unverified` |
-| M8 | Advanced Combat / Hardening | `not_implemented` |
+| M8 | Advanced Combat / Hardening | `not_implemented` (potion slice `implemented_unverified`) |
 
 M4 passes as a core control-chain milestone. Potion use/discard and the extreme main-thread race probe remain separately tracked and do not invalidate that core milestone.
 
@@ -146,7 +146,7 @@ Completed
 | Revision settlement | `runtime_pass` | Completion occurs at a newer settled decision revision. |
 | Stale guard | `runtime_pass` | Old revision is rejected without game mutation. |
 | `use_potion` | `implemented_unverified` | Source exists; no qualifying live result recorded. |
-| `potion_discard` | `not_implemented` | Deferred. |
+| `potion_discard` | `implemented_unverified` | Native action and overlay control exist; no qualifying live result recorded. |
 | Main-thread extreme race window | `implemented_unverified` | No dedicated stress probe recorded. |
 
 ### Core acceptance result

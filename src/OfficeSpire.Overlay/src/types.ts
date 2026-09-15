@@ -46,6 +46,17 @@ export interface CardState {
   needs_target: boolean;
   valid_target_ids: number[];
 }
+export interface PotionState {
+  slot_index: number;
+  id: string;
+  name: string;
+  description: string;
+  target_type: string;
+  can_use: boolean;
+  can_discard: boolean;
+  needs_target: boolean;
+  valid_target_ids: number[];
+}
 export interface CombatScreen {
   waiting_for_input: boolean;
   round_number: number;
@@ -56,7 +67,7 @@ export interface CombatScreen {
   hand: CardState[];
   piles: { draw: number; discard: number; exhaust: number };
   enemies: EnemyState[];
-  potions: unknown[];
+  potions: PotionState[];
 }
 export interface MapNodeState {
   stable_id: string;
@@ -235,6 +246,8 @@ export interface OverlayAction {
   action:
     | "play_card"
     | "end_turn"
+    | "use_potion"
+    | "discard_potion"
     | "choose_map_node"
     | "choose_reward"
     | "choose_reward_card"

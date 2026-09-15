@@ -517,9 +517,19 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 ? null
                 : new PotionSnapshotDto(
                     index,
+                    potion.Id.ToString(),
                     SafeFormat(potion.Title),
                     SafeFormat(potion.DynamicDescription),
-                    potion.TargetType.ToString()))
+                    potion.TargetType.ToString(),
+                    player.CanUseOrRemovePotions && !potion.IsQueued && !potion.HasBeenRemovedFromState,
+                    player.CanUseOrRemovePotions && !potion.IsQueued && !potion.HasBeenRemovedFromState,
+                    NeedsExplicitTarget(potion.TargetType),
+                    NeedsExplicitTarget(potion.TargetType)
+                        ? combatState.HittableEnemies
+                            .Where(enemy => enemy.IsAlive && enemy.CombatId.HasValue)
+                            .Select(enemy => checked((int)enemy.CombatId!.Value))
+                            .ToList()
+                        : []))
             .Where(potion => potion is not null)
             .Cast<PotionSnapshotDto>()
             .ToList();
@@ -960,8 +970,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
                         .Select(potion => new
                         {
                             potion.SlotIndex,
-                            potion.Name,
-                            potion.TargetType
+                            potion.Id,
+                            potion.TargetType,
+                            potion.CanUse,
+                            potion.CanDiscard,
+                            ValidTargetIds = potion.ValidTargetIds.OrderBy(id => id).ToArray()
                         })
                         .ToArray()
                 }

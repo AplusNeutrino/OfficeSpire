@@ -69,9 +69,14 @@ internal sealed record PowerSnapshotDto(
 
 internal sealed record PotionSnapshotDto(
     int SlotIndex,
+    string Id,
     string Name,
     string Description,
-    string TargetType);
+    string TargetType,
+    bool CanUse,
+    bool CanDiscard,
+    bool NeedsTarget,
+    IReadOnlyList<int> ValidTargetIds);
 
 internal sealed record MapScreenDto(
     bool WaitingForInput,

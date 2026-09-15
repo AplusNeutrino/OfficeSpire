@@ -23,6 +23,33 @@ export function createEndTurnAction(revision: number): OverlayAction {
     payload: {},
   };
 }
+export function createUsePotionAction(
+  slotIndex: number,
+  revision: number,
+  targetId?: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "use_potion",
+    expected_revision: revision,
+    payload:
+      targetId === undefined
+        ? { slot_index: slotIndex }
+        : { slot_index: slotIndex, target_id: targetId },
+  };
+}
+
+export function createDiscardPotionAction(
+  slotIndex: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "discard_potion",
+    expected_revision: revision,
+    payload: { slot_index: slotIndex },
+  };
+}
 export function createChooseMapNodeAction(
   column: number,
   row: number,

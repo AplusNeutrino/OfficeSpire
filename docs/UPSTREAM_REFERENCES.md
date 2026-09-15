@@ -125,7 +125,7 @@ Observed concepts:
 - when exactly one legal enemy exists, an implementation may safely auto-target it; otherwise an explicit target is required;
 - an accepted action should be followed until a later authoritative decision boundary rather than treated as complete when merely enqueued.
 
-Spirescry's `DecisionSurface`, settlement module, headless support and direct potion-discard abstraction were **not copied**. In particular, OfficeSpire intentionally leaves potion discard unimplemented until an appropriate direct STS2 path for its own architecture is verified.
+Spirescry's `DecisionSurface`, settlement module, and headless support were **not copied**. For the M8 potion pass, commit `cc1629845d1ed35ea03abc28adf7b35dfa5dcd8d` was inspected to verify the native `DiscardPotionGameAction(run.Player, slot, inCombat)` plus `ActionQueueSynchronizer` path. OfficeSpire independently integrates that API behind its existing revision, main-thread, and settlement guards.
 
 ## Alchyr/ModTemplate-StS2
 

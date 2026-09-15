@@ -7,8 +7,8 @@
 
 Last updated: 2026-09-15
 Product target: OfficeSpire v0.6
-Current development version: v0.6-alpha.4 — Run Decisions
-Current milestone: M7 (partial source development; M5/M6 runtime validation remains deferred)
+Current development version: v0.6-beta.1 — Full Run Hardening
+Current milestone: M8 (partial source development; live runtime validation remains deferred)
 Previous validated milestone: v0.6-alpha.1 — Playable Backend
 
 ## 1. Product objective
@@ -104,7 +104,7 @@ M4 “runtime_pass” refers to the first core control chain. It does not promot
 | Revision settlement | `runtime_pass` | Completion waits for a newer authoritative settled revision. |
 | Stale guard | `runtime_pass` | Old expected revisions are rejected without mutation. |
 | `use_potion` | `implemented_unverified` | Deferred until after the first overlay prototype. |
-| `potion_discard` | `not_implemented` | Deferred to advanced combat work. |
+| `potion_discard` | `implemented_unverified` | Native discard action and overlay control exist; live validation is pending. |
 | Main-thread extreme race window | `implemented_unverified` | Requires a dedicated stress probe. |
 
 This baseline proves that OfficeSpire is no longer only a state reader: an external client can reliably control the STS2 native action path for the validated core actions.
@@ -444,6 +444,16 @@ M7 exit criteria:
 
 Planned after the ordinary run-decision loop is established.
 
+Status: `not_implemented` overall; potion controls are the first `implemented_unverified` slice.
+
+Implementation checkpoint — 2026-09-15:
+
+- potion snapshots expose stable identity, current use/discard availability, targeting requirements, and legal enemy IDs;
+- the overlay supports untargeted and targeted potion use plus confirmed discard;
+- dispatch revalidates the live slot and potion state on the game thread;
+- discard uses `DiscardPotionGameAction` through the native action queue synchronizer;
+- frontend protocol tests and production build pass; live STS2 behavior remains unverified.
+
 Scope:
 
 - `use_potion` runtime validation;
@@ -476,7 +486,7 @@ Exit criteria:
 | v0.6-alpha.2 | Overlay Prototype | Live translucent mouse-operated combat overlay | `implemented_unverified` |
 | v0.6-alpha.3 | Map Controller | Map display and native route selection | `implemented_unverified` |
 | v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `implemented_unverified` |
-| v0.6-beta | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `not_implemented` |
+| v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `not_implemented` (potion slice `implemented_unverified`) |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
 
 Version numbers may be adjusted before release, but milestone scope and evidence gates must be updated here first.

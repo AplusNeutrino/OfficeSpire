@@ -32,7 +32,7 @@ The validated M4 core includes:
 Deferred M4-adjacent work:
 
 - `use_potion`: `implemented_unverified`;
-- `potion_discard`: `not_implemented`;
+- `potion_discard`: `implemented_unverified`;
 - main-thread extreme race-window stress probe: not yet performed.
 
 See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md) for the evidence record.
@@ -64,6 +64,8 @@ Ordinary rest-site choices and leaving are implemented in source, with smith/rem
 Treasure rooms now have source support for opening, authoritative relic choice/skip, predicted local vote display, and leaving. Live game behavior remains unverified.
 
 The alpha.4 source now covers the planned M7 run decisions, including merchant browsing, purchases, card-removal initiation, and leaving. M7 is `implemented_unverified`, not runtime-complete.
+
+Development has entered the v0.6-beta.1 hardening phase. Combat snapshots now expose authoritative potion availability and legal targets; the overlay supports use, enemy targeting, and confirmed discard through native STS2 action paths. This M8 slice is `implemented_unverified` pending live STS2 validation.
 
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 

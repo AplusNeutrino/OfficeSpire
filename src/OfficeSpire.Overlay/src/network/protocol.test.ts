@@ -18,6 +18,8 @@ import {
   createTreasureRelicAction,
   createShopAction,
   createBuyShopItemAction,
+  createUsePotionAction,
+  createDiscardPotionAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot } from "../types";
 describe("OfficeSpire wire protocol", () => {
@@ -241,5 +243,17 @@ describe("OfficeSpire wire protocol", () => {
         },
       }),
     ).toBe(true);
+  });
+  it("creates targeted potion use and discard actions", () => {
+    expect(createUsePotionAction(1, 110, 7)).toMatchObject({
+      action: "use_potion",
+      expected_revision: 110,
+      payload: { slot_index: 1, target_id: 7 },
+    });
+    expect(createDiscardPotionAction(2, 111)).toMatchObject({
+      action: "discard_potion",
+      expected_revision: 111,
+      payload: { slot_index: 2 },
+    });
   });
 });

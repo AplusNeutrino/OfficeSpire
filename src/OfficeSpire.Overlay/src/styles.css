@@ -413,6 +413,39 @@ h2 {
   opacity: 0.48;
   cursor: not-allowed;
 }
+.potion-list {
+  display: grid;
+  gap: 6px;
+}
+.potion {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px;
+}
+.potion button {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(88, 111, 80, 0.22);
+  padding: 8px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.potion button small {
+  color: #bbb7ae;
+}
+.potion .potion-discard {
+  place-items: center;
+  min-width: 34px;
+  background: rgba(111, 59, 53, 0.35);
+  font-size: 18px;
+}
+.potion button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .card-index {
   color: #bca66f;
 }

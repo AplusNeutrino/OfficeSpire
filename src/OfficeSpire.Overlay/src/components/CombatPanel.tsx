@@ -1,11 +1,19 @@
-import type { CardState, CombatStateSnapshot, EnemyState } from "../types";
+import type {
+  CardState,
+  CombatStateSnapshot,
+  EnemyState,
+  PotionState,
+} from "../types";
 import { CardButton } from "./CardButton";
 interface Props {
   snapshot: CombatStateSnapshot;
   disabled: boolean;
   selectedCard?: CardState;
+  selectedPotion?: PotionState;
   onCard: (card: CardState) => void;
   onTarget: (enemy: EnemyState) => void;
+  onPotion: (potion: PotionState) => void;
+  onDiscardPotion: (potion: PotionState) => void;
   onCancelTarget: () => void;
   onEndTurn: () => void;
 }
@@ -13,8 +21,11 @@ export function CombatPanel({
   snapshot,
   disabled,
   selectedCard,
+  selectedPotion,
   onCard,
   onTarget,
+  onPotion,
+  onDiscardPotion,
   onCancelTarget,
   onEndTurn,
 }: Props) {
@@ -52,10 +63,12 @@ export function CombatPanel({
             .map((enemy) => (
               <button
                 key={enemy.stable_id}
-                className={`enemy ${selectedCard && selectedCard.valid_target_ids.includes(enemy.combat_id) ? "targetable" : ""}`}
+                className={`enemy ${selectedCard?.valid_target_ids.includes(enemy.combat_id) || selectedPotion?.valid_target_ids.includes(enemy.combat_id) ? "targetable" : ""}`}
                 disabled={
-                  !selectedCard ||
-                  !selectedCard.valid_target_ids.includes(enemy.combat_id)
+                  !(
+                    selectedCard?.valid_target_ids.includes(enemy.combat_id) ||
+                    selectedPotion?.valid_target_ids.includes(enemy.combat_id)
+                  )
                 }
                 onClick={() => onTarget(enemy)}
               >
@@ -76,13 +89,51 @@ export function CombatPanel({
             ))}
         </div>
       </section>
-      {selectedCard && (
+      {(selectedCard || selectedPotion) && (
         <div className="target-prompt">
           <span>
-            Select target for <strong>{selectedCard.name}</strong>
+            Select target for{" "}
+            <strong>{selectedCard?.name ?? selectedPotion?.name}</strong>
           </span>
           <button onClick={onCancelTarget}>Cancel</button>
         </div>
+      )}
+      {screen.potions.length > 0 && (
+        <section>
+          <h2>Potions</h2>
+          <div className="potion-list">
+            {screen.potions.map((potion) => (
+              <div className="potion" key={`${potion.id}-${potion.slot_index}`}>
+                <button
+                  disabled={
+                    disabled ||
+                    !!selectedCard ||
+                    !!selectedPotion ||
+                    !potion.can_use
+                  }
+                  onClick={() => onPotion(potion)}
+                  title={potion.description}
+                >
+                  <strong>{potion.name}</strong>
+                  <small>{potion.description}</small>
+                </button>
+                <button
+                  className="potion-discard"
+                  disabled={
+                    disabled ||
+                    !!selectedCard ||
+                    !!selectedPotion ||
+                    !potion.can_discard
+                  }
+                  onClick={() => onDiscardPotion(potion)}
+                  title="Discard potion"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
       <section>
         <h2>Hand</h2>
@@ -91,7 +142,7 @@ export function CombatPanel({
             <CardButton
               key={`${card.id}-${card.hand_index}`}
               card={card}
-              disabled={disabled || !!selectedCard}
+              disabled={disabled || !!selectedCard || !!selectedPotion}
               onPlay={onCard}
             />
           ))}
@@ -107,6 +158,7 @@ export function CombatPanel({
           disabled={
             disabled ||
             !!selectedCard ||
+            !!selectedPotion ||
             !screen.waiting_for_input ||
             !screen.is_play_phase
           }
