@@ -497,6 +497,8 @@ Implementation checkpoint — 2026-09-15:
 - a passive, cross-platform runtime-log analyzer reports revision regressions, same-revision phase changes, pending cycles, unresolved pending state, and observed phases without sending game actions;
 - the documented extreme-race procedure uses exactly one deliberately stale request after a manual native state change and explicitly forbids retrying ambiguous/timed-out requests;
 - analyzer tests pass, but the main-thread race/stress criterion remains `implemented_unverified` until the procedure is performed against STS2 and manually judged.
+- passive evidence reports now include a SHA-256 fingerprint and observed timestamp bounds, and fail visibly on malformed state records, invalid timestamps, or time regressions instead of silently omitting suspect evidence;
+- diagnostic-report traceability is source-tested; collection from supported and incompatible live builds remains `implemented_unverified`.
 
 Scope:
 
@@ -528,7 +530,7 @@ The following work packages are the authoritative path from the current branch t
 | M8.6 | Presentation text | Normalize color/BBCode, icons, breaks, and unresolved variables without touching protocol identities; cover localized text and malformed markup | Unit corpus plus live cards, powers, intents, events, campfires, rewards, relics, potions, and non-English samples | `implemented_unverified` — source corpus complete; live localized samples remain |
 | M8.7 | Combat/action safety | Validate card/potion slot identity, potion targeting/discard, pending settlement, revision races, timeouts, reconnect, and never-replay semantics | Recorded targeted/untargeted potion and one-shot stale-window probes with manual judgment | `implemented_unverified` — source identity/recovery paths complete; runtime probes remain |
 | M8.8 | Keyboard/accessibility | Complete keyboard paths, focus management, readable scaling, contrast, reduced motion, and screen-reader labels | Windows/Tauri keyboard-only and assistive-technology checklist | `implemented_unverified` — source focus/announcement paths complete; native checklist remains |
-| M8.9 | Compatibility and diagnostics | Maintain protocol/release metadata checks, passive runtime analyzer, actionable logs, and fail-closed version drift | Supported and incompatible-version observations with traceable logs | `implemented_unverified` |
+| M8.9 | Compatibility and diagnostics | Maintain protocol/release metadata checks, passive runtime analyzer, actionable logs, and fail-closed version drift | Supported and incompatible-version observations with traceable logs | `implemented_unverified` — source traceability/integrity checks complete; live observations remain |
 | M8.10 | Workshop candidate | Keep manifest/dependencies explicit, build an unsigned traceable candidate, document framework coexistence, install/upgrade/uninstall, and policy checks; never publish automatically | Windows artifact/checksum plus private manual subscription lifecycle and current Steam policy review | `implemented_unverified` |
 | M8.11 | Full-run qualification | Execute repeated supported runs spanning all implemented surfaces and collect exact game/mod/app versions | Completed evidence matrix with no silent unsupported transitions or replayed writes | `implemented_unverified` |
 

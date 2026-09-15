@@ -81,6 +81,9 @@ describe("OfficeSpire wire protocol", () => {
 [2026-09-15T01:00:02Z] [OfficeSpire] state_changed | rev=9 phase=combat pending=False
 `);
     expect(report.samples).toBe(3);
+    expect(report.source_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(report.first_timestamp).toBe("2026-09-15T01:00:00Z");
+    expect(report.last_timestamp).toBe("2026-09-15T01:00:02Z");
     expect(report.pending_cycles).toHaveLength(1);
     expect(report.pending_cycles[0].revision_advanced).toBe(true);
     expect(report.revision_regressions).toEqual([]);
@@ -97,6 +100,18 @@ describe("OfficeSpire wire protocol", () => {
     expect(report.same_revision_phase_changes).toHaveLength(1);
     expect(report.revision_regressions).toHaveLength(1);
     expect(report.invariant_warnings).toBe(2);
+  });
+  it("flags malformed state records and non-monotonic timestamps", () => {
+    const report = analyzeRuntimeLog(`
+[2026-09-15T01:00:02Z] [OfficeSpire] state_changed | rev=8 phase=map pending=False
+[2026-09-15T01:00:01Z] [OfficeSpire] state_changed | rev=9 phase=map pending=False
+[not-a-date] [OfficeSpire] state_changed | rev=10 phase=map pending=False
+[2026-09-15T01:00:03Z] [OfficeSpire] state_changed | broken
+`);
+    expect(report.invalid_timestamp_lines).toEqual([4]);
+    expect(report.timestamp_regressions).toHaveLength(1);
+    expect(report.malformed_state_lines).toEqual([5]);
+    expect(report.invariant_warnings).toBe(3);
   });
   it("wraps state requests with protocol version 1", () => {
     expect(getStateMessage()).toEqual({
