@@ -1173,6 +1173,16 @@ public sealed class Sts2GameAdapter : IGameAdapter
             @"\[/?[a-z][a-z0-9_-]*(?:[=\s][^\]]*)?\]",
             string.Empty,
             RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"\[/?[a-z][a-z0-9_-]*(?:=[^\]\s]+)?(?=\s|$|[.,;:!?])",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"/(?:gold|red|green|blue|purple|orange|grey|gray|white)\b",
+            string.Empty,
+            RegexOptions.IgnoreCase);
         normalized = Regex.Replace(normalized, @"\{[^{}]+\}", string.Empty);
         normalized = Regex.Replace(normalized, @"[ \t]+", " ");
         normalized = Regex.Replace(normalized, @" *\r?\n *", "\n");

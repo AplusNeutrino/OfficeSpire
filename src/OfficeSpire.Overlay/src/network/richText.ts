@@ -11,6 +11,10 @@ const presentationKeys = new Set([
 
 const iconPattern = /\[img[^\]]*\]([^[]*)\[\/img\]/gi;
 const bbCodePattern = /\[\/?[a-z][a-z0-9_-]*(?:[=\s][^\]]*)?\]/gi;
+const malformedBbCodePattern =
+  /\[\/?[a-z][a-z0-9_-]*(?:=[^\]\s]+)?(?=\s|$|[.,;:!?])/gi;
+const bareClosingColorPattern =
+  /\/(?:gold|red|green|blue|purple|orange|grey|gray|white)\b/gi;
 const unresolvedVariablePattern = /\{[^{}]+\}/g;
 
 function iconLabel(path: string): string {
@@ -29,6 +33,8 @@ export function normalizeGameText(value: string): string {
     .replace(/\[br\s*\/?\]/gi, "\n")
     .replace(iconPattern, (_, path: string) => iconLabel(path))
     .replace(bbCodePattern, "")
+    .replace(malformedBbCodePattern, "")
+    .replace(bareClosingColorPattern, "")
     .replace(unresolvedVariablePattern, "")
     .replace(/\r\n?/g, "\n")
     .replace(/[ \t]+/g, " ")

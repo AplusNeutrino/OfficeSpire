@@ -83,7 +83,7 @@ A visible native game-over screen now produces a read-only `run_end` snapshot cl
 
 M8 runtime evidence preparation includes a passive log analyzer for revision monotonicity, phase/revision conflicts, and pending-action cycles. It never submits a game action and never labels its own report as a runtime pass; see [docs/M8_RUNTIME_PROBES.md](docs/M8_RUNTIME_PROBES.md).
 
-Game-originated display text is normalized at both the Mod and Overlay boundaries so color/BBCode markers such as `[gold]...[/gold]`, icon markup, line-break tags, and unresolved variables do not leak into the plain-text interface. Live localized strings remain `implemented_unverified`.
+Game-originated display text is normalized at both the Mod and Overlay boundaries so color/BBCode markers such as `[gold]...[/gold]`, malformed `/gold` closers, icon markup, line-break tags, and unresolved variables do not leak into the plain-text interface. Unicode text is preserved and protocol identities are excluded from normalization. Live localized strings remain `implemented_unverified`.
 
 M8's source audit remains active. Map and ordinary rest/campfire paths exist, but multiplayer campfire target selection is not implemented; menu/start/resume stays in the original STS2 UI by design; run-end is read-only. These boundaries and remaining runtime checks are tracked explicitly in the roadmap.
 
