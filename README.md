@@ -77,6 +77,8 @@ Protocol ingestion now fails closed on ambiguous actionable identities, includin
 
 Protocol compatibility checks now distinguish a structurally valid future envelope from an exactly compatible protocol-v1 connection. A release preflight verifies npm lockfile, Cargo, Tauri, Mod compatibility line, application identity, and bundle activation before packaging.
 
+When STS2 exposes no active run, the backend now reports an explicit read-only menu lifecycle state. The overlay directs the user back to the original game UI and never starts, resumes, or replays a run automatically. Authoritative run-end detection remains unverified and is not inferred.
+
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
 **[docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)**

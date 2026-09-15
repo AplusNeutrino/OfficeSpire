@@ -7,6 +7,12 @@ internal sealed record RunSnapshotDto(
     int Gold,
     IReadOnlyList<RelicSnapshotDto> Relics);
 
+internal sealed record LifecycleScreenDto(
+    bool WaitingForInput,
+    string Status,
+    string Message,
+    bool CanStartRun);
+
 internal sealed record RelicSnapshotDto(
     string Id,
     string Name,

@@ -59,9 +59,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
             if (runState is null)
             {
                 return CreateEnvelope(
-                    PhaseNames.Unknown,
+                    PhaseNames.Menu,
                     new RunSnapshotDto(0, 0, 0, 0, []),
-                    new { waiting_for_input = false });
+                    new LifecycleScreenDto(
+                        false,
+                        "no_active_run",
+                        "Start or resume a run through the original STS2 menu.",
+                        false));
             }
 
             Player? player = LocalContext.GetMe(runState);

@@ -181,6 +181,12 @@ export interface RunState {
   gold: number;
   relics: unknown[];
 }
+export interface LifecycleScreen {
+  waiting_for_input: false;
+  status: string;
+  message: string;
+  can_start_run: false;
+}
 interface BaseStateSnapshot {
   protocol_version: number;
   state_revision: number;
@@ -220,6 +226,10 @@ export interface ShopStateSnapshot extends BaseStateSnapshot {
   phase: "shop";
   screen: ShopScreen;
 }
+export interface LifecycleStateSnapshot extends BaseStateSnapshot {
+  phase: "menu" | "run_end";
+  screen: LifecycleScreen;
+}
 export type StateSnapshot =
   | CombatStateSnapshot
   | MapStateSnapshot
@@ -229,6 +239,7 @@ export type StateSnapshot =
   | RestStateSnapshot
   | TreasureStateSnapshot
   | ShopStateSnapshot
+  | LifecycleStateSnapshot
   | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
   type: string;
@@ -296,6 +307,16 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "treasure" ||
       Array.isArray((c.screen as TreasureScreen).relics)) &&
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
+    (c.phase !== "menu" ||
+      ((c.screen as LifecycleScreen).waiting_for_input === false &&
+        typeof (c.screen as LifecycleScreen).status === "string" &&
+        typeof (c.screen as LifecycleScreen).message === "string" &&
+        (c.screen as LifecycleScreen).can_start_run === false)) &&
+    (c.phase !== "run_end" ||
+      ((c.screen as LifecycleScreen).waiting_for_input === false &&
+        typeof (c.screen as LifecycleScreen).status === "string" &&
+        typeof (c.screen as LifecycleScreen).message === "string" &&
+        (c.screen as LifecycleScreen).can_start_run === false)) &&
     hasStableSnapshotIdentities(c as StateSnapshot)
   );
 }

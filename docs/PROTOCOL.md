@@ -84,6 +84,8 @@ Known phase names:
 - `menu`
 - `run_end`
 
+When no authoritative run state exists, the backend reports `phase="menu"` with a read-only lifecycle screen. Protocol v1 sets `waiting_for_input=false` and `can_start_run=false`: clients must direct the user to the original STS2 UI and must not synthesize a run-start action. `run_end` is reserved for a future authoritative end-state adapter and follows the same fail-closed lifecycle shape until its native state is verified.
+
 ## Action request
 
 The body of an `action` message is:

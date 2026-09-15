@@ -105,6 +105,28 @@ describe("OfficeSpire wire protocol", () => {
       }),
     ).toBe(true);
   });
+  it("accepts read-only menu lifecycle snapshots", () => {
+    const menu = {
+      protocol_version: 1,
+      state_revision: 0,
+      phase: "menu",
+      action_pending: false,
+      run: {},
+      screen: {
+        waiting_for_input: false,
+        status: "no_active_run",
+        message: "Start or resume a run through the original STS2 menu.",
+        can_start_run: false,
+      },
+    };
+    expect(isStateSnapshot(menu)).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...menu,
+        screen: { ...menu.screen, can_start_run: true },
+      }),
+    ).toBe(false);
+  });
   it("rejects snapshots with ambiguous actionable identities", () => {
     expect(
       isStateSnapshot({

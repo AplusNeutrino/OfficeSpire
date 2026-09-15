@@ -28,6 +28,7 @@ import type {
   RewardCardState,
   RewardItemState,
   RewardsStateSnapshot,
+  LifecycleStateSnapshot,
 } from "./types";
 import {
   createEndTurnAction,
@@ -58,6 +59,7 @@ import { RestPanel } from "./components/RestPanel";
 import { TreasurePanel } from "./components/TreasurePanel";
 import { ShopPanel } from "./components/ShopPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { LifecyclePanel } from "./components/LifecyclePanel";
 import { OfficeSpireWebSocketClient } from "./network/WebSocketClient";
 import { discoverSession } from "./network/session";
 import { ReconnectController } from "./network/reconnect";
@@ -683,6 +685,8 @@ export default function App() {
             submit(createShopAction("leave_shop", snapshot.state_revision))
           }
         />
+      ) : snapshot.phase === "menu" || snapshot.phase === "run_end" ? (
+        <LifecyclePanel snapshot={snapshot as LifecycleStateSnapshot} />
       ) : (
         <section className="empty">
           <h1>{snapshot.phase.replace("_", " ")}</h1>

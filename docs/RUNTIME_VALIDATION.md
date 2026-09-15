@@ -45,6 +45,8 @@ Compatibility/release source checkpoint: exact protocol-v1 negotiation, malforme
 
 Workshop-preparation source checkpoint: a manual-only Windows bundle workflow, DLL-only manifest/dependency checks, a non-publishing PowerShell candidate packager, checksum generation, and a clean-install checklist are implemented. Current declared third-party Mod dependencies remain empty because no external framework API is used. The workflow and PowerShell script were not run in this Linux environment; Windows artifact creation, Workshop executable/content-root policy, clean subscription, dependency coexistence, signing, install, upgrade, and uninstall behavior remain `implemented_unverified`.
 
+Menu-lifecycle source checkpoint: a missing native run state is represented as a typed `menu` snapshot, protocol validation enforces its read-only shape, and the overlay directs users to the original STS2 menu without exposing or replaying a write action. Unit/build evidence exists; live startup/menu transitions remain `implemented_unverified`. `run_end` remains reserved and authoritative victory/defeat detection is `not_implemented` rather than inferred from transient missing state.
+
 ## M1 — Mod Runtime
 
 Status: `runtime_pass`

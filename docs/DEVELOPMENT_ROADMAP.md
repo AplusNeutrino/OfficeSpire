@@ -474,6 +474,9 @@ Implementation checkpoint — 2026-09-15:
 - a local PowerShell packager validates the DLL-only Mod manifest and declared dependency shape, stages a traceable Workshop candidate, and writes a SHA-256 checksum without invoking SteamCMD or a Workshop API;
 - OfficeSpire currently has no third-party Mod-framework dependency, so the manifest retains `dependencies: []`; any future required framework must be declared by stable ID and minimum version rather than bundled;
 - Windows workflow execution, PowerShell packaging, Workshop content-root/executable policy, clean subscription, install, upgrade, and signing remain `implemented_unverified`.
+- absence of an authoritative run now produces a typed, read-only `menu` snapshot instead of the ambiguous `unknown` phase;
+- the overlay presents explicit original-UI guidance and exposes no run-start/resume action, preventing accidental automation or replay;
+- menu classification and rendering are source-tested; authoritative victory/defeat detection and all live menu/run-end behavior remain `implemented_unverified` or `not_implemented` as applicable.
 
 Scope:
 
