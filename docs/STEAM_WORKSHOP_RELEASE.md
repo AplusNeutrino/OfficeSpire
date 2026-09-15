@@ -18,16 +18,19 @@ OfficeSpire currently compiles directly against STS2/Godot/Harmony assemblies su
 OfficeSpire/
 ├── OfficeSpire.json
 ├── OfficeSpire.dll
+├── CANDIDATE.json
 ├── LICENSE
 ├── THIRD_PARTY_NOTICES.md
 ├── INSTALL.md
-└── overlay/
+└── overlay/                         # optional; only after policy confirmation
     └── <unsigned Windows Tauri installer or bundle>
 ```
 
 The manifest and DLL remain at the Mod content root so the STS2 loader can discover them. The desktop overlay is separate from the in-game DLL and must be installed or launched by the user. Do not place development files, local game paths, session tokens, PDBs, or `OfficeSpire.Local.props` in the Workshop payload.
 
-The candidate currently carries the unsigned overlay installer beside the Mod. Whether STS2's final Workshop policy accepts an executable payload is `implemented_unverified`. If executables are prohibited, publish only the manifest/DLL/notices as Workshop content and distribute the matching overlay installer separately; do not work around a platform restriction.
+The packager defaults to a Mod-only candidate. Passing `-OverlayBundle` explicitly adds an unsigned `.exe`, `.msi`, or `.zip` beside the Mod. Whether STS2's final Workshop policy accepts that payload is `implemented_unverified`; do not include it until the policy is confirmed. If executables are prohibited, keep only the manifest/DLL/notices as Workshop content and distribute the matching overlay installer separately; do not work around a platform restriction.
+
+`CANDIDATE.json` records the source commit, Mod/game versions, dependency declarations, generation time, whether an Overlay is present, and the size/SHA-256 of every staged payload file. It also records `publication_performed=false`; this is provenance metadata, not evidence of Workshop acceptance.
 
 ## Build a local candidate
 
@@ -38,10 +41,12 @@ The candidate currently carries the unsigned overlay installer beside the Mod. W
 ```powershell
 ./scripts/package-workshop.ps1 `
   -ModDll ./path/to/OfficeSpire.dll `
-  -OverlayBundle "./path/to/OfficeSpire Overlay installer.exe"
+  -SourceCommit 0123456789abcdef0123456789abcdef01234567
 ```
 
-The script validates the Mod manifest and declared dependency shape, stages the exact payload, creates a ZIP and writes a SHA-256 file. It never invokes SteamCMD or a Workshop API.
+Only after confirming that the current Workshop policy permits the Overlay payload, append `-OverlayBundle "./path/to/OfficeSpire Overlay installer.exe"`.
+
+The script validates the Mod manifest and declared dependency shape, rejects directory/reparse-point inputs and unexpected Overlay extensions, stages the exact payload, emits the internal provenance manifest, creates a ZIP, and writes a SHA-256 file. It never invokes SteamCMD or a Workshop API.
 
 ## Manual pre-publication checklist
 
@@ -54,12 +59,15 @@ The script validates the Mod manifest and declared dependency shape, stages the 
 - Verify unsubscribe/removal leaves no executable in the game directory and document overlay uninstall separately.
 - Scan the staged payload for credentials, session files, local paths, debug symbols, and unrelated binaries.
 - Verify ZIP SHA-256, commit SHA, game version, Mod version, Overlay version, and release notes.
+- Extract the ZIP and independently verify every `CANDIDATE.json` payload size/hash before upload; ensure the recorded source commit is the reviewed commit.
 - Prepare Workshop title, short description, long description, preview image, change notes, support links, license disclosure, compatibility tags, and an explicit note that the overlay is unsigned until signing is configured.
 - Upload as private/hidden first, perform a clean subscription test, and only then change visibility manually.
 
 ## Installation and upgrade behavior
 
 Workshop should own only the Mod content directory. The separately installed overlay must keep its settings in the WebView local store and discover the authenticated loopback session at runtime. Upgrades must preserve the stable Mod ID `OfficeSpire` and Tauri identifier `com.officespire.overlay`; changing either creates a parallel installation rather than an in-place upgrade.
+
+For upgrade testing, install the previous candidate, preserve settings, replace it through the intended subscription/update path, and confirm the Mod ID remains singular. For removal testing, unsubscribe/delete the Workshop-owned Mod directory, uninstall the separately distributed Overlay through Windows, and verify that neither executable nor DLL remains in the game directory. User settings/log removal is a separate, explicit user choice.
 
 Never bundle STS2 assemblies, game assets, Steam credentials, third-party Mod binaries, or another framework inside OfficeSpire. Declare genuine required dependencies through the manifest and Workshop UI instead.
 
