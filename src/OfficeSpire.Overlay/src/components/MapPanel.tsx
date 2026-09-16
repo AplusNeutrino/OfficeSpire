@@ -11,6 +11,9 @@ const nodeLabel = (node: MapNodeState) =>
 
 export function MapPanel({ snapshot, disabled, onChooseNode }: Props) {
   const { run, screen } = snapshot;
+  const playerName = (playerId: string) =>
+    run.party?.members.find((member) => member.id === playerId)
+      ?.character_name ?? "You";
   return (
     <>
       <header className="run-line">
@@ -44,6 +47,17 @@ export function MapPanel({ snapshot, disabled, onChooseNode }: Props) {
               <small>
                 Column {node.column + 1} · Row {node.row + 1}
               </small>
+              {screen.votes.some(
+                (vote) => vote.choice_id === node.stable_id,
+              ) && (
+                <small>
+                  Votes:{" "}
+                  {screen.votes
+                    .filter((vote) => vote.choice_id === node.stable_id)
+                    .map((vote) => playerName(vote.player_id))
+                    .join(", ")}
+                </small>
+              )}
             </button>
           ))}
           {screen.reachable_nodes.length === 0 && (
@@ -55,6 +69,10 @@ export function MapPanel({ snapshot, disabled, onChooseNode }: Props) {
       </section>
       <footer>
         <span>{screen.all_nodes.length} nodes in the current act</span>
+        <span>
+          {screen.votes.filter((vote) => vote.choice_id === null).length}{" "}
+          vote(s) pending
+        </span>
       </footer>
     </>
   );

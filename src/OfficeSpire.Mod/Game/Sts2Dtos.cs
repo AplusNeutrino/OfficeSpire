@@ -242,7 +242,13 @@ internal sealed record MapScreenDto(
     int MapGeneration,
     MapNodeSnapshotDto? CurrentNode,
     IReadOnlyList<MapNodeSnapshotDto> ReachableNodes,
-    IReadOnlyList<MapNodeSnapshotDto> AllNodes);
+    IReadOnlyList<MapNodeSnapshotDto> AllNodes,
+    IReadOnlyList<DecisionVoteSnapshotDto> Votes);
+
+internal sealed record DecisionVoteSnapshotDto(
+    string PlayerId,
+    int? ChoiceIndex,
+    string? ChoiceId);
 
 internal sealed record MapNodeSnapshotDto(
     string StableId,
@@ -290,7 +296,9 @@ internal sealed record EventScreenDto(
     string Name,
     string Description,
     bool IsFinished,
-    IReadOnlyList<EventOptionSnapshotDto> Options);
+    IReadOnlyList<EventOptionSnapshotDto> Options,
+    bool IsShared,
+    IReadOnlyList<DecisionVoteSnapshotDto> Votes);
 
 internal sealed record EventOptionSnapshotDto(
     int OptionIndex,
@@ -319,7 +327,8 @@ internal sealed record TreasureScreenDto(
     bool IsPicking,
     bool CanLeave,
     IReadOnlyList<TreasureRelicSnapshotDto> Relics,
-    int? SelectedRelicIndex);
+    int? SelectedRelicIndex,
+    IReadOnlyList<DecisionVoteSnapshotDto> Votes);
 
 internal sealed record TreasureRelicSnapshotDto(
     int ChoiceIndex,

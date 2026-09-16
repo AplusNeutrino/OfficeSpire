@@ -125,12 +125,18 @@ export interface MapNodeState {
   node_type: string;
   reachable: boolean;
 }
+export interface DecisionVoteState {
+  player_id: string;
+  choice_index: number | null;
+  choice_id: string | null;
+}
 export interface MapScreen {
   waiting_for_input: boolean;
   map_generation: number;
   current_node: MapNodeState | null;
   reachable_nodes: MapNodeState[];
   all_nodes: MapNodeState[];
+  votes: DecisionVoteState[];
 }
 export interface RewardCardState {
   choice_index: number;
@@ -180,6 +186,8 @@ export interface EventScreen {
   description: string;
   is_finished: boolean;
   options: EventOptionState[];
+  is_shared: boolean;
+  votes: DecisionVoteState[];
 }
 export interface RestOptionState {
   option_index: number;
@@ -207,6 +215,7 @@ export interface TreasureScreen {
   can_leave: boolean;
   relics: TreasureRelicState[];
   selected_relic_index: number | null;
+  votes: DecisionVoteState[];
 }
 export interface ShopItemState {
   category: "character_card" | "colorless_card" | "relic" | "potion";
@@ -517,6 +526,32 @@ function isValidRestScreen(screen: RestScreen): boolean {
   }
 }
 
+function hasValidDecisionVotes(
+  votes: DecisionVoteState[],
+  run: RunState,
+): boolean {
+  if (!Array.isArray(votes)) return false;
+  if (
+    votes.some(
+      (vote) =>
+        typeof vote.player_id !== "string" ||
+        vote.player_id.length === 0 ||
+        (vote.choice_index !== null &&
+          (!Number.isInteger(vote.choice_index) || vote.choice_index < 0)) ||
+        (vote.choice_id !== null &&
+          (typeof vote.choice_id !== "string" || vote.choice_id.length === 0)),
+    ) ||
+    new Set(votes.map((vote) => vote.player_id)).size !== votes.length
+  )
+    return false;
+  if (!run.party) return votes.length <= 1;
+  const partyIds = new Set(run.party.members.map((member) => member.id));
+  return (
+    votes.length === partyIds.size &&
+    votes.every((vote) => partyIds.has(vote.player_id))
+  );
+}
+
 export function isStateSnapshot(value: unknown): value is StateSnapshot {
   if (!value || typeof value !== "object") return false;
   const c = value as Partial<StateSnapshot>;
@@ -604,16 +639,34 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
       (Number.isInteger((c.screen as MapScreen).map_generation) &&
         (c.screen as MapScreen).map_generation >= 0 &&
         Array.isArray((c.screen as MapScreen).reachable_nodes) &&
-        Array.isArray((c.screen as MapScreen).all_nodes))) &&
+        Array.isArray((c.screen as MapScreen).all_nodes) &&
+        hasValidDecisionVotes(
+          (c.screen as MapScreen).votes,
+          c.run as RunState,
+        ))) &&
     (c.phase !== "rewards" ||
       (Array.isArray((c.screen as RewardsScreen).items) &&
         Array.isArray((c.screen as RewardsScreen).card_choices))) &&
     (c.phase !== "card_selection" ||
       Array.isArray((c.screen as CardSelectionScreen).options)) &&
-    (c.phase !== "event" || Array.isArray((c.screen as EventScreen).options)) &&
+    (c.phase !== "event" ||
+      (Array.isArray((c.screen as EventScreen).options) &&
+        Array.isArray((c.screen as EventScreen).votes) &&
+        typeof (c.screen as EventScreen).is_shared === "boolean" &&
+        (!(c.screen as EventScreen).is_shared ||
+          hasValidDecisionVotes(
+            (c.screen as EventScreen).votes,
+            c.run as RunState,
+          )) &&
+        ((c.screen as EventScreen).is_shared ||
+          (c.screen as EventScreen).votes.length === 0))) &&
     (c.phase !== "rest" || isValidRestScreen(c.screen as RestScreen)) &&
     (c.phase !== "treasure" ||
-      Array.isArray((c.screen as TreasureScreen).relics)) &&
+      (Array.isArray((c.screen as TreasureScreen).relics) &&
+        hasValidDecisionVotes(
+          (c.screen as TreasureScreen).votes,
+          c.run as RunState,
+        ))) &&
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
     (c.phase !== "menu" ||
       (c.action_pending === false &&

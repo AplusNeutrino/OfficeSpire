@@ -8,6 +8,9 @@ interface Props {
 
 export function EventPanel({ snapshot, disabled, onOption }: Props) {
   const { run, screen } = snapshot;
+  const playerName = (playerId: string) =>
+    run.party?.members.find((member) => member.id === playerId)
+      ?.character_name ?? "You";
   const availableOptions = screen.options.filter((option) => !option.is_locked);
   return (
     <>
@@ -51,11 +54,32 @@ export function EventPanel({ snapshot, disabled, onOption }: Props) {
                 </strong>
                 {option.description && <span>{option.description}</span>}
                 {option.is_locked && <small>Locked</small>}
+                {screen.is_shared &&
+                  screen.votes.some(
+                    (vote) => vote.choice_index === option.option_index,
+                  ) && (
+                    <small>
+                      Votes:{" "}
+                      {screen.votes
+                        .filter(
+                          (vote) => vote.choice_index === option.option_index,
+                        )
+                        .map((vote) => playerName(vote.player_id))
+                        .join(", ")}
+                    </small>
+                  )}
               </button>
             );
           })}
         </div>
       </section>
+      {screen.is_shared && (
+        <footer>
+          Shared event ·{" "}
+          {screen.votes.filter((vote) => vote.choice_index === null).length}{" "}
+          vote(s) pending
+        </footer>
+      )}
     </>
   );
 }

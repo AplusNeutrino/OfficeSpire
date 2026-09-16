@@ -159,7 +159,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
             if (NRun.Instance?.EventRoom is not null)
             {
-                EventScreenDto? eventScreen = BuildEventSnapshot();
+                EventScreenDto? eventScreen = BuildEventSnapshot(runState);
                 return CreateEnvelope(
                     PhaseNames.Event,
                     run,
@@ -173,7 +173,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
             if (NRun.Instance?.TreasureRoom is not null)
             {
-                return CreateEnvelope(PhaseNames.Treasure, run, BuildTreasureSnapshot());
+                return CreateEnvelope(PhaseNames.Treasure, run, BuildTreasureSnapshot(runState));
             }
 
             if (NRun.Instance?.MerchantRoom is not null)
@@ -718,7 +718,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return new RewardsScreenDto(items.Count > 0 || canSkip, "rewards", items, [], canSkip);
     }
 
-    private static EventScreenDto? BuildEventSnapshot()
+    private static EventScreenDto? BuildEventSnapshot(IRunState runState)
     {
         NEventRoom? room = NRun.Instance?.EventRoom;
         if (room is null)
@@ -747,12 +747,27 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         bool actionable = model.IsFinished || options.Any(option => !option.IsLocked);
+        var synchronizer = RunManager.Instance.EventSynchronizer;
+        bool isShared = synchronizer.IsShared;
+        var votes = isShared
+            ? runState.Players.Select(player =>
+            {
+                uint? vote = synchronizer.GetPlayerVote(player);
+                int? index = vote.HasValue ? checked((int)vote.Value) : null;
+                string? choiceId = index is >= 0 && index < options.Count
+                    ? options[index.Value].ActionToken
+                    : null;
+                return new DecisionVoteSnapshotDto(player.NetId.ToString(), index, choiceId);
+            }).ToList()
+            : [];
         return new EventScreenDto(
             actionable,
             SafeFormat(model.Title),
             SafeFormat(model.Description),
             model.IsFinished,
-            options);
+            options,
+            isShared,
+            votes);
     }
 
     private static RestScreenDto BuildRestSnapshot()
@@ -782,7 +797,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             targetSelectionPending);
     }
 
-    private static TreasureScreenDto BuildTreasureSnapshot()
+    private static TreasureScreenDto BuildTreasureSnapshot(IRunState runState)
     {
         var room = NRun.Instance!.TreasureRoom!;
         const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
@@ -810,13 +825,23 @@ public sealed class Sts2GameAdapter : IGameAdapter
             }
         }
 
+        var votes = runState.Players.Select(player =>
+        {
+            int? vote = synchronizer.GetPlayerVote(player);
+            string? choiceId = vote is >= 0 && vote < relics.Count
+                ? relics[vote.Value].Id
+                : null;
+            return new DecisionVoteSnapshotDto(player.NetId.ToString(), vote, choiceId);
+        }).ToList();
+
         return new TreasureScreenDto(
             !chestOpened || isPicking || canLeave,
             chestOpened,
             isPicking,
             canLeave,
             relics,
-            selectedIndex);
+            selectedIndex,
+            votes);
     }
 
     private static ShopScreenDto? BuildShopSnapshot(Player? player)
@@ -958,12 +983,22 @@ public sealed class Sts2GameAdapter : IGameAdapter
             NodeType: point.PointType.ToString(),
             Reachable: reachableCoordinates.Contains((point.coord.col, point.coord.row)));
 
+        var votes = runState.Players.Select(player =>
+        {
+            var vote = RunManager.Instance.MapSelectionSynchronizer.GetVote(player);
+            string? choiceId = vote is { } selected && selected.mapGenerationCount == mapGeneration
+                ? $"map-{mapGeneration}-{selected.coord.col}-{selected.coord.row}"
+                : null;
+            return new DecisionVoteSnapshotDto(player.NetId.ToString(), null, choiceId);
+        }).ToList();
+
         return new MapScreenDto(
             WaitingForInput: reachable.Any(),
             MapGeneration: mapGeneration,
             CurrentNode: current is null ? null : Convert(current),
             ReachableNodes: reachable.Select(Convert).OrderBy(p => p.Column).ToList(),
-            AllNodes: allPoints.Select(Convert).OrderBy(p => p.Row).ThenBy(p => p.Column).ToList());
+            AllNodes: allPoints.Select(Convert).OrderBy(p => p.Row).ThenBy(p => p.Column).ToList(),
+            Votes: votes);
     }
 
     public ActionResponse Dispatch(ActionRequest request)

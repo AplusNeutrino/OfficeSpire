@@ -198,9 +198,40 @@ describe("OfficeSpire wire protocol", () => {
           },
         ],
         all_nodes: [],
+        votes: [],
       },
     };
     expect(isStateSnapshot(map)).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...map,
+        screen: {
+          ...map.screen,
+          votes: [
+            {
+              player_id: "local-player",
+              choice_index: null,
+              choice_id: "map-3-2-7",
+            },
+          ],
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...map,
+        screen: {
+          ...map.screen,
+          votes: [
+            {
+              player_id: "local-player",
+              choice_index: -1,
+              choice_id: "map-3-2-7",
+            },
+          ],
+        },
+      }),
+    ).toBe(false);
     expect(
       isStateSnapshot({
         ...map,
@@ -667,6 +698,8 @@ describe("OfficeSpire wire protocol", () => {
           description: "",
           is_finished: false,
           options: [],
+          is_shared: false,
+          votes: [],
         },
       }),
     ).toBe(true);
@@ -739,6 +772,7 @@ describe("OfficeSpire wire protocol", () => {
           can_leave: false,
           relics: [],
           selected_relic_index: null,
+          votes: [],
         },
       }),
     ).toBe(true);

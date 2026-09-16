@@ -191,7 +191,7 @@ Combat potion snapshots include `id`, `can_use`, `can_discard`, `needs_target`, 
 }
 ```
 
-When `phase="map"`, `screen.map_generation` identifies the native generated map and `screen.reachable_nodes` contains the authoritative choices. Each node has a generation-scoped `stable_id`, `column`, `row`, `node_type`, and `reachable`. The backend validates generation, stable ID, coordinate, and live reachability immediately before submitting `VoteForMapCoordAction`; stale or unreachable choices fail without mutation.
+When `phase="map"`, `screen.map_generation` identifies the native generated map and `screen.reachable_nodes` contains the authoritative choices. Each node has a generation-scoped `stable_id`, `column`, `row`, `node_type`, and `reachable`. `screen.votes` contains one entry per run player, keyed by stable native network ID; a submitted route is represented by its generation-scoped node ID and an unsubmitted vote by `choice_id=null`. The backend validates generation, stable ID, coordinate, and live reachability immediately before submitting `VoteForMapCoordAction`; stale or unreachable choices fail without mutation.
 
 ## M7 reward actions
 
@@ -214,7 +214,7 @@ For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="ca
 
 ## M7 event action
 
-When `phase="event"`, `screen` contains `name`, `description`, `is_finished`, and authoritative `options`. Each option exposes `option_index`, title/description, `is_locked`, and `is_proceed`.
+When `phase="event"`, `screen` contains `name`, `description`, `is_finished`, and authoritative `options`. Each option exposes `option_index`, title/description, `is_locked`, and `is_proceed`. `is_shared` comes from the native event synchronizer. Shared events expose exactly one `votes` entry per run player with the native option index and current option token when resolved; non-shared events expose no vote inventory.
 
 - `choose_event_option`: `{ "option_index": 1, "action_token": "<opaque>" }`
 
@@ -235,7 +235,7 @@ When `phase="rest"`, `screen.options` contains authoritative rest choices and `c
 
 ## M7 treasure actions
 
-When `phase="treasure"`, `screen` exposes `chest_opened`, `is_picking`, `can_leave`, relic candidates, and the predicted local selected relic index when available.
+When `phase="treasure"`, `screen` exposes `chest_opened`, `is_picking`, `can_leave`, relic candidates, and the predicted local selected relic index when available. `votes` enumerates every run player's authoritative synchronizer vote and binds a submitted index to the current relic ID; `null` represents a player who has not selected a relic.
 
 - `open_treasure`: `{}`
 - `choose_treasure_relic`: `{ "choice_index": 0, "relic_id": "anchor" }`
@@ -243,6 +243,8 @@ When `phase="treasure"`, `screen` exposes `chest_opened`, `is_picking`, `can_lea
 - `leave_treasure`: `{}`
 
 Opening, voting, and leaving are intentionally separate requests and revision boundaries. Relic selection binds index to the current native relic ID and uses the native treasure synchronizer so multiplayer voting remains game-authoritative.
+
+Across map, shared-event and treasure decisions, vote identities must be unique and exactly match `run.party.members` when a multiplayer party exists. These fields are observations only: OfficeSpire never submits a vote for a remote player or treats an absent vote as consent.
 
 ## M7 shop actions
 

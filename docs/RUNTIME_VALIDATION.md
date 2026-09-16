@@ -395,6 +395,14 @@ M9.6 run-party source checkpoint:
 - the inspected native source allows existing-player rejoin but abandons the run when the host abandons it; no host-migration capability was found;
 - these are static/source checks only. Multi-machine disconnect/rejoin, host loss and simultaneous combat remain `implemented_unverified`.
 
+M9.6 shared-decision source checkpoint:
+
+- the map, shared-event and treasure state contracts now expose one native synchronizer vote per run player, keyed by stable network ID;
+- selected map coordinates are generation-bound node IDs, while event and treasure selections are cross-checked against the current option token or relic ID;
+- the Overlay renders confirmed voters and pending counts, and protocol validation rejects duplicate or party-incomplete voter inventories;
+- no remote-player mutation, inferred consent or automatic replay was introduced;
+- real 2–4 player voting, disconnect during a vote, simultaneous submission and settlement remain `implemented_unverified`; reward ownership and rest-site teammate targeting are still unimplemented.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

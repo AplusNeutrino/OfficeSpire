@@ -18,6 +18,9 @@ export function TreasurePanel({
   onLeave,
 }: Props) {
   const { run, screen } = snapshot;
+  const playerName = (playerId: string) =>
+    run.party?.members.find((member) => member.id === playerId)
+      ?.character_name ?? "You";
   return (
     <>
       <header className="run-line">
@@ -55,6 +58,19 @@ export function TreasurePanel({
                   [{index + 1}] {relic.name}
                 </strong>
                 <span>{relic.description}</span>
+                {screen.votes.some(
+                  (vote) => vote.choice_index === relic.choice_index,
+                ) && (
+                  <small>
+                    Votes:{" "}
+                    {screen.votes
+                      .filter(
+                        (vote) => vote.choice_index === relic.choice_index,
+                      )
+                      .map((vote) => playerName(vote.player_id))
+                      .join(", ")}
+                  </small>
+                )}
               </button>
             ))}
           </div>
@@ -78,6 +94,12 @@ export function TreasurePanel({
           >
             [L] Continue
           </button>
+        )}
+        {screen.is_picking && (
+          <p>
+            {screen.votes.filter((vote) => vote.choice_index === null).length}{" "}
+            player choice(s) pending
+          </p>
         )}
       </section>
     </>
