@@ -32,6 +32,14 @@ The packager defaults to a Mod-only candidate. Passing `-OverlayBundle` explicit
 
 `CANDIDATE.json` records the source commit, Mod/game versions, dependency declarations, generation time, whether an Overlay is present, and the size/SHA-256 of every staged payload file. It also records `publication_performed=false`; this is provenance metadata, not evidence of Workshop acceptance.
 
+After extracting a candidate ZIP, independently verify its allowlisted contents and every declared size/hash from the Overlay directory:
+
+```text
+npm run verify:workshop -- <path-to-extracted-OfficeSpire-directory>
+```
+
+The verifier is read-only and rejects missing, extra, tampered, duplicated, traversing, or symbolic-link payload entries. A successful result verifies package integrity only; it is not runtime or Workshop-policy evidence.
+
 ## Build a local candidate
 
 1. Build `OfficeSpire.dll` against the target STS2 version on a machine that owns the game.
@@ -59,7 +67,7 @@ The script validates the Mod manifest and declared dependency shape, rejects dir
 - Verify unsubscribe/removal leaves no executable in the game directory and document overlay uninstall separately.
 - Scan the staged payload for credentials, session files, local paths, debug symbols, and unrelated binaries.
 - Verify ZIP SHA-256, commit SHA, game version, Mod version, Overlay version, and release notes.
-- Extract the ZIP and independently verify every `CANDIDATE.json` payload size/hash before upload; ensure the recorded source commit is the reviewed commit.
+- Extract the ZIP, run `npm run verify:workshop -- <directory>`, and ensure the recorded source commit is the reviewed commit.
 - Prepare Workshop title, short description, long description, preview image, change notes, support links, license disclosure, compatibility tags, and an explicit note that the overlay is unsigned until signing is configured.
 - Upload as private/hidden first, perform a clean subscription test, and only then change visibility manually.
 

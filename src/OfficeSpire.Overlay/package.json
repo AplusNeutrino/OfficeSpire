@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
-    "check": "prettier --check src && npm test && npm run build && node scripts/verify-release.mjs",
+    "check": "prettier --check src scripts && npm test && npm run test:workshop && npm run build && node scripts/verify-release.mjs",
     "verify:release": "node scripts/verify-release.mjs",
+    "verify:workshop": "node scripts/verify-workshop-candidate.mjs",
+    "test:workshop": "node scripts/verify-workshop-candidate.check.mjs",
     "analyze:runtime": "node scripts/analyze-runtime-log.mjs",
     "tauri": "tauri"
   },
