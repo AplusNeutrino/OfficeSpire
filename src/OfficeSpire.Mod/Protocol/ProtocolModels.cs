@@ -19,6 +19,7 @@ public static class PhaseNames
     public const string Rewards = "rewards";
     public const string Shop = "shop";
     public const string Event = "event";
+    public const string SpecialEvent = "special_event";
     public const string Rest = "rest";
     public const string Treasure = "treasure";
     public const string Menu = "menu";

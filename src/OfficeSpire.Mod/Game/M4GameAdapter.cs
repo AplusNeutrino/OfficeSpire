@@ -59,6 +59,9 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_card_option" => ExecuteChooseCardOption(request),
                 "confirm_card_selection" => ExecuteConfirmCardSelection(request),
                 "choose_event_option" => ExecuteChooseEventOption(request),
+                "choose_special_event_cell" => ExecuteChooseSpecialEventCell(request),
+                "select_special_event_tool" => ExecuteSelectSpecialEventTool(request),
+                "proceed_special_event" => ExecuteProceedSpecialEvent(request),
                 "choose_rest_option" => ExecuteChooseRestOption(request),
                 "leave_rest_site" => ExecuteLeaveRestSite(request),
                 "open_treasure" => ExecuteOpenTreasure(request),
@@ -323,6 +326,63 @@ public sealed class M4GameAdapter : IGameAdapter
         }
         room.OptionButtonClicked(option, index);
         return Accept(request, "accepted", $"Selected event option {index}.");
+    }
+
+    private static ActionResponse ExecuteChooseSpecialEventCell(ActionRequest request)
+    {
+        Node? screen = NOverlayStack.Instance?.Peek();
+        if (screen?.GetType().Name != "NCrystalSphereScreen")
+            return Reject(request, "bad_phase", "The Crystal Sphere screen is not active.");
+        if (!TryReadRequiredInt(request.Payload, "x", out int x) ||
+            !TryReadRequiredInt(request.Payload, "y", out int y) ||
+            !TryReadRequiredString(request.Payload, "stable_id", out string? stableId) ||
+            !string.Equals(stableId, $"crystal-cell-{x}-{y}", StringComparison.Ordinal))
+            return Reject(request, "bad_request", "choose_special_event_cell requires matching payload.x, payload.y, and payload.stable_id.");
+
+        Node? target = FindNodesRecursive<Node>(screen).FirstOrDefault(node =>
+        {
+            if (node.GetType().Name != "NCrystalSphereCell" || node is not CanvasItem { Visible: true }) return false;
+            object? entity = ReadMember(node, "Entity");
+            return ReadMember(entity, "IsHidden") is true &&
+                ReadMember(entity, "X") is int currentX && currentX == x &&
+                ReadMember(entity, "Y") is int currentY && currentY == y;
+        });
+        if (target is null) return Reject(request, "stale_state", "The selected Crystal Sphere cell is no longer hidden.");
+        target.EmitSignal(NClickableControl.SignalName.Released, target);
+        return Accept(request, "accepted", $"Selected Crystal Sphere cell {x},{y}.");
+    }
+
+    private static ActionResponse ExecuteSelectSpecialEventTool(ActionRequest request)
+    {
+        Node? screen = NOverlayStack.Instance?.Peek();
+        if (screen?.GetType().Name != "NCrystalSphereScreen")
+            return Reject(request, "bad_phase", "The Crystal Sphere screen is not active.");
+        if (!TryReadRequiredString(request.Payload, "tool", out string? tool) || tool is not ("small" or "big"))
+            return Reject(request, "bad_request", "select_special_event_tool requires payload.tool equal to small or big.");
+        string path = tool == "small" ? "%SmallDivinationButton" : "%BigDivinationButton";
+        if (screen.GetNodeOrNull<NButton>(path) is not { IsEnabled: true } button)
+            return Reject(request, "not_ready", $"The {tool} divination tool is unavailable.");
+        button.ForceClick();
+        return Accept(request, "accepted", $"Selected the {tool} divination tool.");
+    }
+
+    private static ActionResponse ExecuteProceedSpecialEvent(ActionRequest request)
+    {
+        Node? screen = NOverlayStack.Instance?.Peek();
+        if (screen?.GetType().Name != "NCrystalSphereScreen")
+            return Reject(request, "bad_phase", "The Crystal Sphere screen is not active.");
+        if (screen.GetNodeOrNull<NButton>("%ProceedButton") is not { IsEnabled: true } proceed)
+            return Reject(request, "not_ready", "The special-event proceed button is unavailable.");
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Continued from the Crystal Sphere.");
+    }
+
+    private static object? ReadMember(object? target, string name)
+    {
+        if (target is null) return null;
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        Type type = target.GetType();
+        return type.GetProperty(name, flags)?.GetValue(target) ?? type.GetField(name, flags)?.GetValue(target);
     }
 
     private static ActionResponse ExecuteChooseCardOption(ActionRequest request)

@@ -155,6 +155,15 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 return CreateEnvelope(PhaseNames.CardSelection, run, BuildHandSelectionSnapshot(playerHand));
             }
 
+            Node? topOverlay = NOverlayStack.Instance?.Peek();
+            if (topOverlay?.GetType().Name == "NCrystalSphereScreen")
+            {
+                return CreateEnvelope(
+                    PhaseNames.SpecialEvent,
+                    run,
+                    BuildCrystalSphereSnapshot(topOverlay));
+            }
+
             if (NMapScreen.Instance?.IsOpen == true)
             {
                 return CreateEnvelope(PhaseNames.Map, run, BuildMapSnapshot(runState));
@@ -162,6 +171,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
             if (NRun.Instance?.EventRoom is not null)
             {
+                SpecialEventScreenDto? specialEvent = BuildCustomEventSnapshot(NRun.Instance.EventRoom);
+                if (specialEvent is not null)
+                {
+                    return CreateEnvelope(PhaseNames.SpecialEvent, run, specialEvent);
+                }
                 EventScreenDto? eventScreen = BuildEventSnapshot(runState);
                 return CreateEnvelope(
                     PhaseNames.Event,
@@ -771,6 +785,89 @@ public sealed class Sts2GameAdapter : IGameAdapter
             options,
             isShared,
             votes);
+    }
+
+    private static SpecialEventScreenDto BuildCrystalSphereSnapshot(Node screen)
+    {
+        object? entity = ReadMember(screen, "_entity");
+        string? tool = ReadMember(entity, "CrystalSphereTool")?.ToString()?.ToLowerInvariant();
+        int? remaining = ReadMember(entity, "DivinationCount") is int count ? count : null;
+        var cells = FindNodesRecursive<Node>(screen)
+            .Where(node => node.GetType().Name == "NCrystalSphereCell" && node is CanvasItem { Visible: true })
+            .Select(node =>
+            {
+                object? cell = ReadMember(node, "Entity");
+                if (ReadMember(cell, "IsHidden") is not true ||
+                    ReadMember(cell, "X") is not int x ||
+                    ReadMember(cell, "Y") is not int y)
+                {
+                    return null;
+                }
+                return new SpecialEventCellSnapshotDto(x, y, $"crystal-cell-{x}-{y}", $"Hidden cell {x + 1}, {y + 1}");
+            })
+            .Where(cell => cell is not null)
+            .Cast<SpecialEventCellSnapshotDto>()
+            .OrderBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .ToList();
+        bool canProceed = screen.GetNodeOrNull<NButton>("%ProceedButton") is { IsEnabled: true };
+        bool canSmall = screen.GetNodeOrNull<NButton>("%SmallDivinationButton") is { IsEnabled: true };
+        bool canBig = screen.GetNodeOrNull<NButton>("%BigDivinationButton") is { IsEnabled: true };
+        bool waiting = canProceed || (remaining > 0 && cells.Count > 0 && (canSmall || canBig));
+        return new SpecialEventScreenDto(
+            waiting,
+            "crystal_sphere",
+            screen.GetType().FullName ?? screen.GetType().Name,
+            canProceed ? "Divination is complete. Continue when ready." : "Choose a divination tool, then reveal a hidden cell.",
+            tool,
+            remaining,
+            cells,
+            canSmall,
+            canBig,
+            canProceed,
+            null);
+    }
+
+    private static SpecialEventScreenDto? BuildCustomEventSnapshot(NEventRoom room)
+    {
+        Node? custom = FindNodesRecursive<Node>(room)
+            .FirstOrDefault(node => node.GetType().Name is "NFakeMerchant" or "NAncientEventLayout");
+        if (custom is null)
+        {
+            return null;
+        }
+
+        if (custom.GetType().Name == "NAncientEventLayout" && ReadMember(custom, "IsDialogueOnLastLine") is true)
+        {
+            // Once the final native dialogue line is reached, ordinary authoritative event
+            // options are active and should flow through the normal EventModel contract.
+            return null;
+        }
+
+        string variant = custom.GetType().Name == "NFakeMerchant" ? "fake_merchant" : "ancient_dialogue";
+        string message = variant == "fake_merchant"
+            ? "This custom merchant uses a version-specific inventory flow. Continue in the original STS2 window."
+            : "This event has native dialogue before ordinary choices. Advance the dialogue in STS2; OfficeSpire will expose the choices when they become authoritative.";
+        return new SpecialEventScreenDto(
+            false,
+            variant,
+            custom.GetType().FullName ?? custom.GetType().Name,
+            message,
+            null,
+            null,
+            [],
+            false,
+            false,
+            false,
+            "No version-stable action contract is available for this custom event surface.");
+    }
+
+    private static object? ReadMember(object? target, string name)
+    {
+        if (target is null) return null;
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        Type type = target.GetType();
+        return type.GetProperty(name, flags)?.GetValue(target) ?? type.GetField(name, flags)?.GetValue(target);
     }
 
     private static RestScreenDto BuildRestSnapshot(IRunState runState)
@@ -1415,6 +1512,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is EventScreenDto eventScreen && eventScreen.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.SpecialEvent, StringComparison.Ordinal))
+        {
+            return screenValue is SpecialEventScreenDto special && special.WaitingForInput;
+        }
+
         if (string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal))
         {
             return screenValue is RestScreenDto rest && rest.WaitingForInput;
@@ -1546,6 +1648,23 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     option.IsLocked,
                     option.IsProceed
                 }).ToArray()
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.SpecialEvent, StringComparison.Ordinal) &&
+            screenValue is SpecialEventScreenDto special)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                special.Variant,
+                special.SelectedTool,
+                special.RemainingActions,
+                Cells = special.Cells.Select(cell => new { cell.X, cell.Y, cell.StableId }).ToArray(),
+                special.CanSelectSmallTool,
+                special.CanSelectBigTool,
+                special.CanProceed,
+                special.UnavailableReason
             };
         }
         else if (string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal) &&

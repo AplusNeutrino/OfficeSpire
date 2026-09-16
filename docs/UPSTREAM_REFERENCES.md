@@ -226,6 +226,11 @@ The M9.6 in-run party slice additionally inspected `RunLobby`, `RunManager`, `IR
   - `decompiled/MegaCrit.Sts2.Core.Multiplayer.Game/TreasureRoomRelicSynchronizer.cs`
   - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic/NTreasureRoomRelicCollection.cs`
   - `decompiled/MegaCrit.Sts2.Core.Nodes.Rooms/NTreasureRoom.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Events.Custom/NFakeMerchant.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere/NCrystalSphereScreen.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere/NCrystalSphereCell.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent/CrystalSphereMinigame.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Events/NAncientEventLayout.cs`
 - License/copyright status: decompiled game material; used only to inventory public runtime type/property names. No source or control flow was copied.
 
 For M9.4–M9.6, these files confirm that Standard, Custom and Daily setup converge on `StartRunLobby`, whose read-only properties include `GameMode`, `Ascension`, `MaxAscension`, `Seed`, `DailyTime`, `Modifiers`, `Act1`, `NetService`, `MaxPlayers`, `LocalPlayer` and `Players`. `LobbyPlayer` supplies network ID, slot, character and Ready state. The inspected client contract does not directly identify which remote network ID owns the host role, so OfficeSpire deliberately leaves client-side host attribution unknown. OfficeSpire independently reflects these values and adds no setup or lobby mutation.
@@ -235,6 +240,8 @@ The same reference identifies join discovery through visible `NJoinFriendButton.
 For the M9.7 card-selection audit, the same pinned source confirms that `NCardGridSelectionScreen` is an abstract shell whose subclasses own different `OnCardClicked`, preview, confirmation and cancellation flows. OfficeSpire uses this only as an API inventory: it independently classifies the two already-modeled deck-card/upgrade paths and fails all other subclasses closed. No decompiled control flow was copied.
 
 The M9.7 treasure audit confirms `CurrentRelics`, nullable integer `_predictedVote`, `GetPlayerVote`, `PickRelicLocally`, and award completion, but no native skip/decline operation. `NTreasureRoomRelicCollection` enables only concrete relic holders and forwards holder indexes to the synchronizer. OfficeSpire independently corrected its state contract and removed the nonexistent skip path; no upstream implementation was copied.
+
+The M9.7 custom-event audit found two non-generic surfaces in the inspected build: Crystal Sphere uses its own overlay, grid cells, tool controls and proceed button, while Fake Merchant uses a custom event layout instead of ordinary event-option buttons. The separate `GAME_SYSTEMS_REFERENCE.md` event inventory lists the ordinary `EventModel` family and these notable custom mechanics. OfficeSpire independently exposes the minimum typed Crystal Sphere state/action boundary and leaves the other custom surfaces fail closed; no decompiled control flow was copied.
 
 ## Licensing rule
 

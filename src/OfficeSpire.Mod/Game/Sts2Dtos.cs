@@ -319,6 +319,25 @@ internal sealed record EventOptionSnapshotDto(
     bool IsLocked,
     bool IsProceed);
 
+internal sealed record SpecialEventScreenDto(
+    bool WaitingForInput,
+    string Variant,
+    string NativeType,
+    string Message,
+    string? SelectedTool,
+    int? RemainingActions,
+    IReadOnlyList<SpecialEventCellSnapshotDto> Cells,
+    bool CanSelectSmallTool,
+    bool CanSelectBigTool,
+    bool CanProceed,
+    string? UnavailableReason);
+
+internal sealed record SpecialEventCellSnapshotDto(
+    int X,
+    int Y,
+    string StableId,
+    string Label);
+
 internal sealed record RestScreenDto(
     bool WaitingForInput,
     string InteractionState,

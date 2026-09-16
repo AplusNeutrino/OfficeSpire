@@ -199,6 +199,8 @@ internal sealed class ActionInbox
             "choose_card_option" or "confirm_card_selection" =>
                 string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal),
             "choose_event_option" => string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal),
+            "choose_special_event_cell" or "select_special_event_tool" or "proceed_special_event" =>
+                string.Equals(phase, PhaseNames.SpecialEvent, StringComparison.Ordinal),
             "choose_rest_option" or "leave_rest_site" =>
                 string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal),
             "open_treasure" or "choose_treasure_relic" or "leave_treasure" =>

@@ -13,6 +13,9 @@ import {
   createCardOptionAction,
   createConfirmCardSelectionAction,
   createEventOptionAction,
+  createSpecialEventCellAction,
+  createSpecialEventToolAction,
+  createProceedSpecialEventAction,
   createRestOptionAction,
   createLeaveRestSiteAction,
   createTreasureAction,
@@ -966,6 +969,78 @@ describe("OfficeSpire wire protocol", () => {
       expected_revision: 111,
       payload: { slot_index: 2, potion_id: "swift_potion" },
     });
+  });
+  it("validates Crystal Sphere state and creates identity-bound actions", () => {
+    const state = {
+      protocol_version: 1,
+      state_revision: 112,
+      phase: "special_event",
+      action_pending: false,
+      run: {},
+      screen: {
+        waiting_for_input: true,
+        variant: "crystal_sphere",
+        native_type: "NCrystalSphereScreen",
+        message: "Choose a cell.",
+        selected_tool: "big",
+        remaining_actions: 3,
+        cells: [
+          {
+            x: 2,
+            y: 4,
+            stable_id: "crystal-cell-2-4",
+            label: "Hidden cell 3, 5",
+          },
+        ],
+        can_select_small_tool: true,
+        can_select_big_tool: true,
+        can_proceed: false,
+        unavailable_reason: null,
+      },
+    };
+    expect(isStateSnapshot(state)).toBe(true);
+    expect(
+      createSpecialEventCellAction(2, 4, "crystal-cell-2-4", 112),
+    ).toMatchObject({
+      action: "choose_special_event_cell",
+      expected_revision: 112,
+      payload: { x: 2, y: 4, stable_id: "crystal-cell-2-4" },
+    });
+    expect(createSpecialEventToolAction("small", 112).action).toBe(
+      "select_special_event_tool",
+    );
+    expect(createProceedSpecialEventAction(113).action).toBe(
+      "proceed_special_event",
+    );
+  });
+  it("rejects malformed and falsely actionable special-event fallbacks", () => {
+    const fallback = {
+      protocol_version: 1,
+      state_revision: 114,
+      phase: "special_event",
+      action_pending: true,
+      run: {},
+      screen: {
+        waiting_for_input: true,
+        variant: "fake_merchant",
+        native_type: "NFakeMerchant",
+        message: "Use STS2.",
+        selected_tool: null,
+        remaining_actions: null,
+        cells: [],
+        can_select_small_tool: false,
+        can_select_big_tool: false,
+        can_proceed: false,
+        unavailable_reason: "No stable contract.",
+      },
+    };
+    expect(isStateSnapshot(fallback)).toBe(false);
+    expect(
+      isStateSnapshot({
+        ...fallback,
+        screen: { ...fallback.screen, waiting_for_input: false },
+      }),
+    ).toBe(true);
   });
   it("maps combat keyboard shortcuts without browser key-layout ambiguity", () => {
     expect(resolveCombatShortcut("Digit3", false, false)).toEqual({

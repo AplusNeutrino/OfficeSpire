@@ -79,6 +79,7 @@ Known phase names:
 - `rewards`
 - `shop`
 - `event`
+- `special_event`
 - `rest`
 - `treasure`
 - `menu`
@@ -221,6 +222,18 @@ When `phase="event"`, `screen` contains `name`, `description`, `is_finished`, an
 - `choose_event_option`: `{ "option_index": 1, "action_token": "<opaque>" }`
 
 Each native event-option instance receives an opaque process-local action token. The game thread reloads the current event model and rejects a missing, replaced, out-of-range, or locked choice. The synthetic completed-event leave control uses the reserved `event-proceed` token and native event-room proceed path. Tokens do not depend on localized display text.
+
+## M9 special-event actions
+
+`phase="special_event"` is reserved for native event layouts that do not use the ordinary `EventModel.CurrentOptions` button contract. The screen includes `variant`, `native_type`, a readable message and an optional `unavailable_reason`.
+
+For `variant="crystal_sphere"`, `selected_tool`, `remaining_actions`, enabled tool controls and every still-hidden grid cell are authoritative. Each cell uses the stable identity `crystal-cell-{x}-{y}`.
+
+- `select_special_event_tool`: `{ "tool": "small" }` or `{ "tool": "big" }`
+- `choose_special_event_cell`: `{ "x": 2, "y": 4, "stable_id": "crystal-cell-2-4" }`
+- `proceed_special_event`: `{}`
+
+The game thread reloads the active overlay and revalidates the enabled control and hidden coordinate. It never retries a timed-out request. `fake_merchant`, `ancient_dialogue`, and `unsupported` are non-actionable fail-closed variants until a complete native identity/action/settlement contract is verified; clients must show their original-UI handoff reason.
 
 ## M7 rest-site actions
 

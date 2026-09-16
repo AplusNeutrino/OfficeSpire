@@ -11,6 +11,8 @@ import type {
   CardSelectionStateSnapshot,
   EventOptionState,
   EventStateSnapshot,
+  SpecialEventCellState,
+  SpecialEventStateSnapshot,
   RestOptionState,
   RestStateSnapshot,
   TreasureRelicState,
@@ -40,6 +42,9 @@ import {
   createCardOptionAction,
   createConfirmCardSelectionAction,
   createEventOptionAction,
+  createSpecialEventCellAction,
+  createSpecialEventToolAction,
+  createProceedSpecialEventAction,
   createRestOptionAction,
   createLeaveRestSiteAction,
   createTreasureAction,
@@ -56,6 +61,7 @@ import { MapPanel } from "./components/MapPanel";
 import { RewardsPanel } from "./components/RewardsPanel";
 import { CardSelectionPanel } from "./components/CardSelectionPanel";
 import { EventPanel } from "./components/EventPanel";
+import { SpecialEventPanel } from "./components/SpecialEventPanel";
 import { RestPanel } from "./components/RestPanel";
 import { TreasurePanel } from "./components/TreasurePanel";
 import { PartyPanel } from "./components/PartyPanel";
@@ -348,6 +354,17 @@ export default function App() {
         createEventOptionAction(
           option.option_index,
           option.action_token,
+          snapshot.state_revision,
+        ),
+      );
+  };
+  const chooseSpecialEventCell = (cell: SpecialEventCellState) => {
+    if (snapshot?.phase === "special_event")
+      submit(
+        createSpecialEventCellAction(
+          cell.x,
+          cell.y,
+          cell.stable_id,
           snapshot.state_revision,
         ),
       );
@@ -694,6 +711,20 @@ export default function App() {
             snapshot={snapshot as EventStateSnapshot}
             disabled={disabled}
             onOption={chooseEventOption}
+          />
+        ) : snapshot.phase === "special_event" ? (
+          <SpecialEventPanel
+            snapshot={snapshot as SpecialEventStateSnapshot}
+            disabled={disabled}
+            onCell={chooseSpecialEventCell}
+            onTool={(tool) =>
+              submit(
+                createSpecialEventToolAction(tool, snapshot.state_revision),
+              )
+            }
+            onProceed={() =>
+              submit(createProceedSpecialEventAction(snapshot.state_revision))
+            }
           />
         ) : snapshot.phase === "rest" ? (
           <RestPanel

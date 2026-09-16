@@ -6,6 +6,7 @@ import type {
   RestScreen,
   RewardsScreen,
   ShopScreen,
+  SpecialEventScreen,
   StateSnapshot,
   TreasureScreen,
 } from "../types";
@@ -102,6 +103,14 @@ export function hasStableSnapshotIdentities(
           (token) => typeof token === "string" && token.length > 0,
         ) &&
         unique(tokens)
+      );
+    }
+    case "special_event": {
+      const cells = (snapshot.screen as SpecialEventScreen).cells;
+      return (
+        cells.every(
+          (cell) => cell.stable_id === `crystal-cell-${cell.x}-${cell.y}`,
+        ) && unique(cells.map((cell) => cell.stable_id))
       );
     }
     case "rest": {

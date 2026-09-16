@@ -205,6 +205,26 @@ export interface EventScreen {
   is_shared: boolean;
   votes: DecisionVoteState[];
 }
+export interface SpecialEventCellState {
+  x: number;
+  y: number;
+  stable_id: string;
+  label: string;
+}
+export interface SpecialEventScreen {
+  waiting_for_input: boolean;
+  variant:
+    "crystal_sphere" | "fake_merchant" | "ancient_dialogue" | "unsupported";
+  native_type: string;
+  message: string;
+  selected_tool: "none" | "small" | "big" | null;
+  remaining_actions: number | null;
+  cells: SpecialEventCellState[];
+  can_select_small_tool: boolean;
+  can_select_big_tool: boolean;
+  can_proceed: boolean;
+  unavailable_reason: string | null;
+}
 export interface RestOptionState {
   option_index: number;
   id: string;
@@ -447,6 +467,10 @@ export interface EventStateSnapshot extends BaseStateSnapshot {
   phase: "event";
   screen: EventScreen;
 }
+export interface SpecialEventStateSnapshot extends BaseStateSnapshot {
+  phase: "special_event";
+  screen: SpecialEventScreen;
+}
 export interface RestStateSnapshot extends BaseStateSnapshot {
   phase: "rest";
   screen: RestScreen;
@@ -473,6 +497,7 @@ export type StateSnapshot =
   | RewardsStateSnapshot
   | CardSelectionStateSnapshot
   | EventStateSnapshot
+  | SpecialEventStateSnapshot
   | RestStateSnapshot
   | TreasureStateSnapshot
   | ShopStateSnapshot
@@ -505,6 +530,9 @@ export interface OverlayAction {
     | "choose_card_option"
     | "confirm_card_selection"
     | "choose_event_option"
+    | "choose_special_event_cell"
+    | "select_special_event_tool"
+    | "proceed_special_event"
     | "choose_rest_option"
     | "leave_rest_site"
     | "open_treasure"
@@ -551,6 +579,62 @@ function isValidRestScreen(screen: RestScreen, run: RunState): boolean {
     default:
       return false;
   }
+}
+
+function isValidSpecialEventScreen(screen: SpecialEventScreen): boolean {
+  const variants = new Set([
+    "crystal_sphere",
+    "fake_merchant",
+    "ancient_dialogue",
+    "unsupported",
+  ]);
+  const tools = new Set(["none", "small", "big", null]);
+  if (
+    typeof screen.waiting_for_input !== "boolean" ||
+    !variants.has(screen.variant) ||
+    typeof screen.native_type !== "string" ||
+    screen.native_type.length === 0 ||
+    typeof screen.message !== "string" ||
+    !tools.has(screen.selected_tool) ||
+    (screen.remaining_actions !== null &&
+      (!Number.isInteger(screen.remaining_actions) ||
+        screen.remaining_actions < 0)) ||
+    !Array.isArray(screen.cells) ||
+    typeof screen.can_select_small_tool !== "boolean" ||
+    typeof screen.can_select_big_tool !== "boolean" ||
+    typeof screen.can_proceed !== "boolean" ||
+    (screen.unavailable_reason !== null &&
+      (typeof screen.unavailable_reason !== "string" ||
+        screen.unavailable_reason.length === 0))
+  )
+    return false;
+  if (screen.variant !== "crystal_sphere") {
+    return (
+      !screen.waiting_for_input &&
+      screen.cells.length === 0 &&
+      screen.unavailable_reason !== null
+    );
+  }
+  return (
+    screen.unavailable_reason === null &&
+    screen.cells.every(
+      (cell) =>
+        Number.isInteger(cell.x) &&
+        cell.x >= 0 &&
+        Number.isInteger(cell.y) &&
+        cell.y >= 0 &&
+        cell.stable_id === `crystal-cell-${cell.x}-${cell.y}` &&
+        typeof cell.label === "string" &&
+        cell.label.length > 0,
+    ) &&
+    new Set(screen.cells.map((cell) => cell.stable_id)).size ===
+      screen.cells.length &&
+    screen.waiting_for_input ===
+      (screen.can_proceed ||
+        ((screen.remaining_actions ?? 0) > 0 &&
+          screen.cells.length > 0 &&
+          (screen.can_select_small_tool || screen.can_select_big_tool)))
+  );
 }
 
 function hasValidPlayerRestDecisions(
@@ -876,6 +960,8 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
           )) &&
         ((c.screen as EventScreen).is_shared ||
           (c.screen as EventScreen).votes.length === 0))) &&
+    (c.phase !== "special_event" ||
+      isValidSpecialEventScreen(c.screen as SpecialEventScreen)) &&
     (c.phase !== "rest" ||
       isValidRestScreen(c.screen as RestScreen, c.run as RunState)) &&
     (c.phase !== "treasure" ||

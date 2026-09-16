@@ -138,6 +138,43 @@ export function createEventOptionAction(
   };
 }
 
+export function createSpecialEventCellAction(
+  x: number,
+  y: number,
+  stableId: string,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "choose_special_event_cell",
+    expected_revision: revision,
+    payload: { x, y, stable_id: stableId },
+  };
+}
+
+export function createSpecialEventToolAction(
+  tool: "small" | "big",
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "select_special_event_tool",
+    expected_revision: revision,
+    payload: { tool },
+  };
+}
+
+export function createProceedSpecialEventAction(
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "proceed_special_event",
+    expected_revision: revision,
+    payload: {},
+  };
+}
+
 export function createRestOptionAction(
   optionIndex: number,
   optionId: string,

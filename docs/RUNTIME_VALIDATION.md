@@ -435,6 +435,15 @@ M9.7 treasure lifecycle source checkpoint:
 - the game thread checks the enabled chest control before opening and the native collection-open flag before voting;
 - all results are source/static/build evidence only. Current-assembly Mod compilation, empty-chest behavior, contested multiplayer relic fights and final award settlement remain `implemented_unverified`.
 
+M9.7 special-event/minigame source checkpoint:
+
+- `special_event` is a separate protocol phase, preventing custom native layouts from being mistaken for ordinary event options;
+- Crystal Sphere snapshots bind every hidden choice to `crystal-cell-{x}-{y}`, report the current small/big tool and remaining divinations, and expose proceed only when the native button is enabled;
+- the dispatcher repeats the active-screen, enabled-control and hidden-coordinate checks immediately before each tool/cell/proceed mutation; a revealed or replaced cell returns `stale_state` and is not clicked;
+- Fake Merchant and ancient dialogue are typed read-only fallbacks with a required original-UI handoff reason; protocol validation rejects either variant if it advertises input;
+- static protocol tests cover a valid grid, malformed/falsely actionable fallback rejection and action payload identity. These checks do not compile the Mod or execute STS2;
+- installed-assembly compilation plus live paid/free Crystal Sphere routes, small/big reveals, completion, Fake Merchant purchase/combat/leave, ordinary event handoff and multiplayer behavior remain `implemented_unverified`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:
