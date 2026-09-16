@@ -21,12 +21,30 @@ internal sealed record MenuScreenDto(
     string MenuScreen,
     string Message,
     IReadOnlyList<MenuOptionSnapshotDto> Options,
-    bool CanMutate);
+    bool CanMutate,
+    int? CurrentProfileId = null,
+    IReadOnlyList<MenuCharacterSnapshotDto>? Characters = null,
+    string PopupBody = "");
 
 internal sealed record MenuOptionSnapshotDto(
     string Id,
     string Label,
     bool Enabled);
+
+internal sealed record MenuCharacterSnapshotDto(
+    string Id,
+    string Name,
+    bool Locked,
+    int StartingHp,
+    int StartingGold,
+    int MaxEnergy,
+    string Description,
+    IReadOnlyList<MenuStartingRelicSnapshotDto> StartingRelics,
+    IReadOnlyList<string> StartingDeck);
+
+internal sealed record MenuStartingRelicSnapshotDto(
+    string Name,
+    string Description);
 
 internal sealed record RelicSnapshotDto(
     string Id,

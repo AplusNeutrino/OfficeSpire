@@ -349,7 +349,10 @@ M9.3 read-only source checkpoint:
 - currently visible native menu controls are exported as semantic IDs, labels and availability, with duplicate IDs rejected;
 - the Overlay only renders informational rows and `can_mutate` is required to remain false;
 - no menu mutation was added, so observation cannot start, resume, abandon or quit a game;
-- cold start, saves, modded-save warning, profile selection, every menu transition and character availability remain `implemented_unverified` or `not_implemented` until observed against the installed STS2 build.
+- profile selection reports native profile IDs and current profile without exposing any create/delete/overwrite mutation;
+- generic native yes/no popups are observable with normalized text, but an unrecognized popup is not labeled as a modded-save warning;
+- character selection reports identity, lock state, initial HP/gold/energy, starting relics and starting deck;
+- cold start, saves, exact modded-save warning classification, profile switching, every menu transition and all character data remain `implemented_unverified` until observed against the installed STS2 build.
 
 ## Required evidence format for future probes
 

@@ -248,6 +248,21 @@ export interface MenuOptionState {
   label: string;
   enabled: boolean;
 }
+export interface MenuStartingRelicState {
+  name: string;
+  description: string;
+}
+export interface MenuCharacterState {
+  id: string;
+  name: string;
+  locked: boolean;
+  starting_hp: number;
+  starting_gold: number;
+  max_energy: number;
+  description: string;
+  starting_relics: MenuStartingRelicState[];
+  starting_deck: string[];
+}
 export interface MenuScreen {
   waiting_for_input: false;
   menu_screen:
@@ -258,10 +273,15 @@ export interface MenuScreen {
     | "multiplayer_join"
     | "multiplayer_load"
     | "character_select"
+    | "profile_select"
+    | "popup"
     | "unknown";
   message: string;
   options: MenuOptionState[];
   can_mutate: false;
+  current_profile_id: number | null;
+  characters: MenuCharacterState[] | null;
+  popup_body: string;
 }
 const runEndStatuses = new Set(["victory", "defeat", "abandoned"]);
 const menuScreens = new Set([
@@ -272,6 +292,8 @@ const menuScreens = new Set([
   "multiplayer_join",
   "multiplayer_load",
   "character_select",
+  "profile_select",
+  "popup",
   "unknown",
 ]);
 interface BaseStateSnapshot {
@@ -474,6 +496,34 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         ) &&
         new Set((c.screen as MenuScreen).options.map((option) => option.id))
           .size === (c.screen as MenuScreen).options.length &&
+        ((c.screen as MenuScreen).current_profile_id === null ||
+          ((c.screen as MenuScreen).menu_screen === "profile_select" &&
+            Number.isInteger((c.screen as MenuScreen).current_profile_id))) &&
+        ((c.screen as MenuScreen).characters === null ||
+          ((c.screen as MenuScreen).menu_screen === "character_select" &&
+            Array.isArray((c.screen as MenuScreen).characters) &&
+            (c.screen as MenuScreen).characters!.every(
+              (character) =>
+                typeof character.id === "string" &&
+                character.id.length > 0 &&
+                typeof character.name === "string" &&
+                typeof character.locked === "boolean" &&
+                Number.isInteger(character.starting_hp) &&
+                Number.isInteger(character.starting_gold) &&
+                Number.isInteger(character.max_energy) &&
+                typeof character.description === "string" &&
+                Array.isArray(character.starting_relics) &&
+                character.starting_relics.every(
+                  (relic) =>
+                    typeof relic.name === "string" &&
+                    typeof relic.description === "string",
+                ) &&
+                Array.isArray(character.starting_deck) &&
+                character.starting_deck.every(
+                  (card) => typeof card === "string",
+                ),
+            ))) &&
+        typeof (c.screen as MenuScreen).popup_body === "string" &&
         (c.screen as MenuScreen).can_mutate === false)) &&
     (c.phase !== "run_end" ||
       (c.action_pending === false &&

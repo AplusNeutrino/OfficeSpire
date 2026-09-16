@@ -25,6 +25,7 @@ using MegaCrit.Sts2.Core.Nodes.Rewards;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen;
+using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
@@ -244,6 +245,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         (string TypeName, string Screen, string Message, (string Field, string Id, string Label)[] Fields)[] definitions =
         [
+            ("NVerticalPopup", "popup", "A native STS2 confirmation is open. Review it in the original window.", []),
+            ("NProfileScreen", "profile_select", "Choose a profile in the original STS2 window.", []),
             ("NCharacterSelectScreen", "character_select", "Choose a character in the original STS2 window.", []),
             ("NJoinFriendScreen", "multiplayer_join", "Choose a multiplayer session in the original STS2 window.", []),
             ("NMultiplayerLoadGameScreen", "multiplayer_load", "Choose a saved multiplayer run in the original STS2 window.", []),
@@ -261,14 +264,33 @@ public sealed class Sts2GameAdapter : IGameAdapter
         {
             Node? screen = FindVisibleNodeByTypeName(tree.Root, definition.TypeName);
             if (screen is null) continue;
-            var options = definition.Screen == "character_select"
-                ? BuildCharacterMenuOptions(screen)
-                : definition.Fields
+            List<MenuCharacterSnapshotDto>? characters = null;
+            int? currentProfileId = null;
+            string popupBody = string.Empty;
+            List<MenuOptionSnapshotDto> options;
+            if (definition.Screen == "character_select")
+            {
+                (options, characters) = BuildCharacterMenuState(screen);
+            }
+            else if (definition.Screen == "profile_select")
+            {
+                options = BuildProfileMenuOptions(screen);
+                currentProfileId = SaveManager.Instance?.CurrentProfileId;
+            }
+            else if (definition.Screen == "popup")
+            {
+                (options, popupBody) = BuildPopupMenuState(screen);
+                if (options.Count == 0) continue;
+            }
+            else
+            {
+                options = definition.Fields
                     .Select(field => BuildMenuOption(screen, field.Field, field.Id, field.Label))
                     .Where(option => option is not null)
                     .Cast<MenuOptionSnapshotDto>()
                     .ToList();
-            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false);
+            }
+            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody);
         }
 
         return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
@@ -282,20 +304,29 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return new MenuOptionSnapshotDto(id, label, enabled);
     }
 
-    private static List<MenuOptionSnapshotDto> BuildCharacterMenuOptions(Node screen)
+    private static (List<MenuOptionSnapshotDto> Options, List<MenuCharacterSnapshotDto> Characters) BuildCharacterMenuState(Node screen)
     {
         var options = new List<MenuOptionSnapshotDto>();
+        var characters = new List<MenuCharacterSnapshotDto>();
         foreach (Node button in FindNodesByTypeName(screen, "NCharacterSelectButton"))
         {
             object? character = button.GetType().GetProperty("Character")?.GetValue(button);
             if (character is null) continue;
-            string id = character.GetType().GetProperty("Id")?.GetValue(character)?.ToString() ?? string.Empty;
+            string id = GetModelId(character);
             if (string.IsNullOrWhiteSpace(id)) continue;
-            string label = character.GetType().GetProperty("Title")?.GetValue(character) is LocString title
-                ? SafeFormat(title)
-                : id;
+            string label = GetLocalizedProperty(character, "Title", id);
             bool locked = button.GetType().GetProperty("IsLocked")?.GetValue(button) as bool? ?? false;
             options.Add(new MenuOptionSnapshotDto(id, label, !locked));
+            characters.Add(new MenuCharacterSnapshotDto(
+                id,
+                label,
+                locked,
+                GetIntProperty(character, "StartingHp"),
+                GetIntProperty(character, "StartingGold"),
+                GetIntProperty(character, "MaxEnergy"),
+                GetLocalizedProperty(character, "CardsModifierDescription"),
+                BuildStartingRelics(character),
+                BuildStartingDeck(character)));
         }
 
         foreach ((string field, string id, string label) in new[]
@@ -308,7 +339,85 @@ public sealed class Sts2GameAdapter : IGameAdapter
             MenuOptionSnapshotDto? option = BuildMenuOption(screen, field, id, label);
             if (option is not null) options.Add(option);
         }
+        return (options, characters);
+    }
+
+    private static List<MenuOptionSnapshotDto> BuildProfileMenuOptions(Node screen)
+    {
+        var options = new List<MenuOptionSnapshotDto>();
+        if (GetInstanceFieldValue(screen, "_profileButtons") is System.Collections.IEnumerable buttons)
+        {
+            foreach (object button in buttons)
+            {
+                if (GetInstanceFieldValue(button, "_profileId") is not int id) continue;
+                bool enabled = button.GetType().GetProperty("IsEnabled")?.GetValue(button) as bool? ?? false;
+                options.Add(new MenuOptionSnapshotDto($"profile_{id}", $"Profile {id}", enabled));
+            }
+        }
+        MenuOptionSnapshotDto? back = BuildMenuOption(screen, "_backButton", "back", "Back");
+        if (back is not null) options.Add(back);
         return options;
+    }
+
+    private static (List<MenuOptionSnapshotDto> Options, string Body) BuildPopupMenuState(Node screen)
+    {
+        var options = new List<MenuOptionSnapshotDto>();
+        foreach ((string property, string id, string label) in new[]
+        {
+            ("YesButton", "yes", "Yes"),
+            ("NoButton", "no", "No")
+        })
+        {
+            object? button = screen.GetType().GetProperty(property)?.GetValue(screen);
+            if (button is not CanvasItem item || !item.IsVisibleInTree()) continue;
+            bool enabled = button.GetType().GetProperty("IsEnabled")?.GetValue(button) as bool? ?? false;
+            options.Add(new MenuOptionSnapshotDto(id, label, enabled));
+        }
+        string body = FindNodesByTypeName(screen, "NFormattedLabel")
+            .Select(ReadControlText)
+            .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text)) ?? string.Empty;
+        return (options, body);
+    }
+
+    private static List<MenuStartingRelicSnapshotDto> BuildStartingRelics(object character)
+    {
+        var relics = new List<MenuStartingRelicSnapshotDto>();
+        if (character.GetType().GetProperty("StartingRelics")?.GetValue(character) is not System.Collections.IEnumerable values) return relics;
+        foreach (object relic in values)
+        {
+            relics.Add(new MenuStartingRelicSnapshotDto(
+                GetLocalizedProperty(relic, "Title", GetModelId(relic)),
+                GetLocalizedProperty(relic, "DynamicDescription")));
+        }
+        return relics;
+    }
+
+    private static List<string> BuildStartingDeck(object character)
+    {
+        var cards = new List<string>();
+        if (character.GetType().GetProperty("StartingDeck")?.GetValue(character) is not System.Collections.IEnumerable values) return cards;
+        foreach (object card in values) cards.Add(GetLocalizedProperty(card, "Title", GetModelId(card)));
+        return cards;
+    }
+
+    private static string GetModelId(object model)
+    {
+        object? id = model.GetType().GetProperty("Id")?.GetValue(model);
+        return id?.GetType().GetProperty("Entry")?.GetValue(id)?.ToString() ?? id?.ToString() ?? string.Empty;
+    }
+
+    private static int GetIntProperty(object instance, string propertyName) =>
+        instance.GetType().GetProperty(propertyName)?.GetValue(instance) as int? ?? 0;
+
+    private static string GetLocalizedProperty(object instance, string propertyName, string fallback = "") =>
+        instance.GetType().GetProperty(propertyName)?.GetValue(instance) is LocString value
+            ? SafeFormat(value)
+            : fallback;
+
+    private static string ReadControlText(Node node)
+    {
+        Variant text = node.Get("text");
+        return text.VariantType == Variant.Type.Nil ? string.Empty : NormalizeRichText(text.AsString());
     }
 
     private static object? GetInstanceFieldValue(object instance, string fieldName)

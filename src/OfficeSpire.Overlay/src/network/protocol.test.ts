@@ -253,6 +253,9 @@ describe("OfficeSpire wire protocol", () => {
           { id: "singleplayer", label: "Single player", enabled: true },
         ],
         can_mutate: false,
+        current_profile_id: null,
+        characters: null,
+        popup_body: "",
       },
     };
     expect(isStateSnapshot(menu)).toBe(true);
@@ -263,6 +266,30 @@ describe("OfficeSpire wire protocol", () => {
         screen: { ...menu.screen, can_mutate: true },
       }),
     ).toBe(false);
+    expect(
+      isStateSnapshot({
+        ...menu,
+        screen: {
+          ...menu.screen,
+          menu_screen: "character_select",
+          characters: [
+            {
+              id: "IRONCLAD",
+              name: "Ironclad",
+              locked: false,
+              starting_hp: 80,
+              starting_gold: 99,
+              max_energy: 3,
+              description: "",
+              starting_relics: [
+                { name: "Burning Blood", description: "Heal after combat." },
+              ],
+              starting_deck: ["Strike", "Defend"],
+            },
+          ],
+        },
+      }),
+    ).toBe(true);
     expect(
       isStateSnapshot({
         ...menu,
