@@ -245,6 +245,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         (string TypeName, string Screen, string Message, (string Field, string Id, string Label)[] Fields)[] definitions =
         [
+            ("NErrorPopup", "error_popup", "STS2 reported an error. Review recovery choices in the original window.", []),
             ("NVerticalPopup", "popup", "A native STS2 confirmation is open. Review it in the original window.", []),
             ("NProfileScreen", "profile_select", "Choose a profile in the original STS2 window.", []),
             ("NCustomRunScreen", "custom_run", "Review the custom run configuration in the original STS2 window.", []),
@@ -272,6 +273,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
             MenuRunSetupSnapshotDto? runSetup = null;
             MenuLobbySnapshotDto? lobby = null;
             MenuConnectionSnapshotDto? connection = null;
+            MenuSavedRunSnapshotDto? savedRun = null;
+            string popupTitle = string.Empty;
             List<MenuOptionSnapshotDto> options;
             if (definition.Screen is "character_select" or "custom_run")
             {
@@ -305,16 +308,16 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 AddMenuOption(options, screen, "_confirmButton", "confirm", "Confirm");
                 AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
                 AddMenuOption(options, screen, "_backButton", "back", "Back");
-                connection = BuildLoadConnectionState(screen);
+                (connection, savedRun) = BuildLoadConnectionState(screen);
             }
             else if (definition.Screen == "profile_select")
             {
                 options = BuildProfileMenuOptions(screen);
                 currentProfileId = SaveManager.Instance?.CurrentProfileId;
             }
-            else if (definition.Screen == "popup")
+            else if (definition.Screen is "popup" or "error_popup")
             {
-                (options, popupBody) = BuildPopupMenuState(screen);
+                (options, popupTitle, popupBody) = BuildPopupMenuState(screen);
                 if (options.Count == 0) continue;
             }
             else
@@ -326,7 +329,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     .ToList();
                 if (definition.Screen == "multiplayer_host") connection = BuildHostConnectionState(screen);
             }
-            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup, lobby, connection);
+            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup, lobby, connection, savedRun, popupTitle);
         }
 
         return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
@@ -401,8 +404,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return options;
     }
 
-    private static (List<MenuOptionSnapshotDto> Options, string Body) BuildPopupMenuState(Node screen)
+    private static (List<MenuOptionSnapshotDto> Options, string Title, string Body) BuildPopupMenuState(Node screen)
     {
+        Node popup = screen.GetType().Name == "NVerticalPopup"
+            ? screen
+            : FindNodesByTypeName(screen, "NVerticalPopup").FirstOrDefault() ?? screen;
         var options = new List<MenuOptionSnapshotDto>();
         foreach ((string property, string id, string label) in new[]
         {
@@ -410,15 +416,14 @@ public sealed class Sts2GameAdapter : IGameAdapter
             ("NoButton", "no", "No")
         })
         {
-            object? button = screen.GetType().GetProperty(property)?.GetValue(screen);
+            object? button = popup.GetType().GetProperty(property)?.GetValue(popup);
             if (button is not CanvasItem item || !item.IsVisibleInTree()) continue;
             bool enabled = button.GetType().GetProperty("IsEnabled")?.GetValue(button) as bool? ?? false;
             options.Add(new MenuOptionSnapshotDto(id, label, enabled));
         }
-        string body = FindNodesByTypeName(screen, "NFormattedLabel")
-            .Select(ReadControlText)
-            .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text)) ?? string.Empty;
-        return (options, body);
+        string title = ReadControlText(popup.GetType().GetProperty("TitleLabel")?.GetValue(popup) as Node);
+        string body = ReadControlText(popup.GetType().GetProperty("BodyLabel")?.GetValue(popup) as Node);
+        return (options, title, body);
     }
 
     private static List<MenuStartingRelicSnapshotDto> BuildStartingRelics(object character)
@@ -540,14 +545,46 @@ public sealed class Sts2GameAdapter : IGameAdapter
     private static MenuConnectionSnapshotDto BuildHostConnectionState(Node screen) =>
         new(IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_loadingOverlay")) ? "hosting" : "idle", 0, 4, []);
 
-    private static MenuConnectionSnapshotDto BuildLoadConnectionState(Node screen)
+    private static (MenuConnectionSnapshotDto Connection, MenuSavedRunSnapshotDto? SavedRun) BuildLoadConnectionState(Node screen)
     {
         object? lobby = GetInstanceFieldValue(screen, "_runLobby");
-        if (lobby is null) return new MenuConnectionSnapshotDto("loading", 0, null, []);
-        int connected = CountEnumerable(lobby.GetType().GetProperty("ConnectedPlayerIds")?.GetValue(lobby));
+        if (lobby is null) return (new MenuConnectionSnapshotDto("loading", 0, null, []), null);
+        object? connectedValues = lobby.GetType().GetProperty("ConnectedPlayerIds")?.GetValue(lobby);
+        var connectedIds = ToStringSet(connectedValues);
+        int connected = connectedIds.Count;
         object? run = lobby.GetType().GetProperty("Run")?.GetValue(lobby);
         int required = CountEnumerable(run?.GetType().GetProperty("Players")?.GetValue(run));
-        return new MenuConnectionSnapshotDto("load_lobby", connected, required > 0 ? required : null, []);
+        var connection = new MenuConnectionSnapshotDto("load_lobby", connected, required > 0 ? required : null, []);
+        if (run is null) return (connection, null);
+        var players = new List<MenuSavedPlayerSnapshotDto>();
+        if (run.GetType().GetProperty("Players")?.GetValue(run) is System.Collections.IEnumerable savedPlayers)
+        {
+            foreach (object player in savedPlayers)
+            {
+                string id = player.GetType().GetProperty("NetId")?.GetValue(player)?.ToString() ?? string.Empty;
+                if (string.IsNullOrEmpty(id)) continue;
+                object? characterId = player.GetType().GetProperty("CharacterId")?.GetValue(player);
+                players.Add(new MenuSavedPlayerSnapshotDto(
+                    id,
+                    GetIdEntry(characterId),
+                    GetIntProperty(player, "CurrentHp"),
+                    GetIntProperty(player, "MaxHp"),
+                    GetIntProperty(player, "MaxEnergy"),
+                    GetIntProperty(player, "MaxPotionSlotCount"),
+                    GetIntProperty(player, "Gold"),
+                    connectedIds.Contains(id)));
+            }
+        }
+        if (players.Count == 0 || players.Select(player => player.Id).Distinct().Count() != players.Count) return (connection, null);
+        string mode = lobby.GetType().GetProperty("GameMode")?.GetValue(lobby)?.ToString()?.ToLowerInvariant() ?? "unknown";
+        var savedRun = new MenuSavedRunSnapshotDto(
+            mode,
+            GetIntProperty(run, "Ascension"),
+            GetIntProperty(run, "CurrentActIndex") + 1,
+            CountEnumerable(run.GetType().GetProperty("VisitedMapCoords")?.GetValue(run)),
+            players.Count(player => !player.Connected),
+            players);
+        return (connection, savedRun);
     }
 
     private static bool IsVisibleCanvasItem(object? value) =>
@@ -561,11 +598,26 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return count;
     }
 
+    private static HashSet<string> ToStringSet(object? value)
+    {
+        var results = new HashSet<string>(StringComparer.Ordinal);
+        if (value is not System.Collections.IEnumerable items) return results;
+        foreach (object item in items)
+        {
+            string id = item.ToString() ?? string.Empty;
+            if (!string.IsNullOrEmpty(id)) results.Add(id);
+        }
+        return results;
+    }
+
     private static string GetModelId(object model)
     {
         object? id = model.GetType().GetProperty("Id")?.GetValue(model);
         return id?.GetType().GetProperty("Entry")?.GetValue(id)?.ToString() ?? id?.ToString() ?? string.Empty;
     }
+
+    private static string GetIdEntry(object? id) =>
+        id?.GetType().GetProperty("Entry")?.GetValue(id)?.ToString() ?? id?.ToString() ?? string.Empty;
 
     private static int GetIntProperty(object instance, string propertyName) =>
         instance.GetType().GetProperty(propertyName)?.GetValue(instance) as int? ?? 0;
@@ -575,8 +627,9 @@ public sealed class Sts2GameAdapter : IGameAdapter
             ? SafeFormat(value)
             : fallback;
 
-    private static string ReadControlText(Node node)
+    private static string ReadControlText(Node? node)
     {
+        if (node is null) return string.Empty;
         Variant text = node.Get("text");
         return text.VariantType == Variant.Type.Nil ? string.Empty : NormalizeRichText(text.AsString());
     }

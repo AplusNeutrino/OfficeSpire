@@ -304,6 +304,24 @@ export interface MenuConnectionState {
   required_players: number | null;
   sessions: MenuSessionState[];
 }
+export interface MenuSavedPlayerState {
+  id: string;
+  character_id: string;
+  current_hp: number;
+  max_hp: number;
+  max_energy: number;
+  potion_capacity: number;
+  gold: number;
+  connected: boolean;
+}
+export interface MenuSavedRunState {
+  mode: string;
+  ascension: number;
+  current_act: number;
+  visited_floor_count: number;
+  missing_players: number;
+  players: MenuSavedPlayerState[];
+}
 export interface MenuScreen {
   waiting_for_input: false;
   menu_screen:
@@ -318,6 +336,7 @@ export interface MenuScreen {
     | "daily_run"
     | "profile_select"
     | "popup"
+    | "error_popup"
     | "unknown";
   message: string;
   options: MenuOptionState[];
@@ -325,9 +344,11 @@ export interface MenuScreen {
   current_profile_id: number | null;
   characters: MenuCharacterState[] | null;
   popup_body: string;
+  popup_title: string;
   run_setup: MenuRunSetupState | null;
   lobby: MenuLobbyState | null;
   connection: MenuConnectionState | null;
+  saved_run: MenuSavedRunState | null;
 }
 const runEndStatuses = new Set(["victory", "defeat", "abandoned"]);
 const menuScreens = new Set([
@@ -342,6 +363,7 @@ const menuScreens = new Set([
   "daily_run",
   "profile_select",
   "popup",
+  "error_popup",
   "unknown",
 ]);
 interface BaseStateSnapshot {
@@ -572,6 +594,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
                 ),
             ))) &&
         typeof (c.screen as MenuScreen).popup_body === "string" &&
+        typeof (c.screen as MenuScreen).popup_title === "string" &&
         ((c.screen as MenuScreen).run_setup === null ||
           (["character_select", "custom_run", "daily_run"].includes(
             (c.screen as MenuScreen).menu_screen,
@@ -672,6 +695,48 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
                 (session) => session.id,
               ),
             ).size === (c.screen as MenuScreen).connection!.sessions.length)) &&
+        ((c.screen as MenuScreen).saved_run === null ||
+          ((c.screen as MenuScreen).menu_screen === "multiplayer_load" &&
+            typeof (c.screen as MenuScreen).saved_run!.mode === "string" &&
+            Number.isInteger((c.screen as MenuScreen).saved_run!.ascension) &&
+            (c.screen as MenuScreen).saved_run!.ascension >= 0 &&
+            Number.isInteger((c.screen as MenuScreen).saved_run!.current_act) &&
+            (c.screen as MenuScreen).saved_run!.current_act >= 1 &&
+            Number.isInteger(
+              (c.screen as MenuScreen).saved_run!.visited_floor_count,
+            ) &&
+            (c.screen as MenuScreen).saved_run!.visited_floor_count >= 0 &&
+            Number.isInteger(
+              (c.screen as MenuScreen).saved_run!.missing_players,
+            ) &&
+            Array.isArray((c.screen as MenuScreen).saved_run!.players) &&
+            (c.screen as MenuScreen).saved_run!.players.length > 0 &&
+            (c.screen as MenuScreen).saved_run!.missing_players ===
+              (c.screen as MenuScreen).saved_run!.players.filter(
+                (player) => !player.connected,
+              ).length &&
+            (c.screen as MenuScreen).saved_run!.players.every(
+              (player) =>
+                typeof player.id === "string" &&
+                player.id.length > 0 &&
+                typeof player.character_id === "string" &&
+                Number.isInteger(player.current_hp) &&
+                player.current_hp >= 0 &&
+                Number.isInteger(player.max_hp) &&
+                player.max_hp >= player.current_hp &&
+                Number.isInteger(player.max_energy) &&
+                player.max_energy >= 0 &&
+                Number.isInteger(player.potion_capacity) &&
+                player.potion_capacity >= 0 &&
+                Number.isInteger(player.gold) &&
+                player.gold >= 0 &&
+                typeof player.connected === "boolean",
+            ) &&
+            new Set(
+              (c.screen as MenuScreen).saved_run!.players.map(
+                (player) => player.id,
+              ),
+            ).size === (c.screen as MenuScreen).saved_run!.players.length)) &&
         (c.screen as MenuScreen).can_mutate === false)) &&
     (c.phase !== "run_end" ||
       (c.action_pending === false &&

@@ -595,7 +595,7 @@ This plan is informed by the current game-facing APIs already used in this repos
 | M9.3 | Main menu and save lifecycle | Observe and safely expose continue/new-run/profile/mod-warning/return/quit surfaces; never infer a save or overwrite decision | Cold start, existing save, no save, save-and-quit, resume, and modded-save separation | `implemented_unverified` in part — typed main/singleplayer/multiplayer/host/join/load/profile/character and generic confirmation observation; exact mod-warning classification remains |
 | M9.4 | Mode and run setup | Single-player/multiplayer/custom/daily selection; ascension, seed and custom modifiers; explicit confirmation and cancellation | Each supported mode and validation/rejection path; no hidden defaults | `implemented_unverified` in part — typed read-only Standard/Custom/Daily setup including ascension, seed and modifiers; mutations remain absent |
 | M9.5 | Character and party selection | Character details, availability, selection, ready/unready and launch; stable character/player identities; character-specific resource declarations | Every playable character in solo and supported party sizes | `implemented_unverified` in part — read-only character details plus typed local/remote roster and readiness; selection and launch mutations remain absent |
-| M9.6 | Multiplayer lifecycle | Host/join/invite/lobby state, peers, readiness, reconnect, host migration, simultaneous combat, votes, teammate targets, shared decisions and disconnect degradation | Multi-machine evidence for 2–4 players; incompatible Mod/version behavior; no action attributed to the wrong player | `implemented_unverified` in part — read-only host/join/load progress, discoverable sessions, lobby roster and readiness; mutations/reconnect/votes remain absent |
+| M9.6 | Multiplayer lifecycle | Host/join/invite/lobby state, peers, readiness, reconnect, host migration, simultaneous combat, votes, teammate targets, shared decisions and disconnect degradation | Multi-machine evidence for 2–4 players; incompatible Mod/version behavior; no action attributed to the wrong player | `implemented_unverified` in part — read-only host/join/load progress, saved-run roster/risk, error popup, discovery, lobby roster and readiness; mutations/reconnect/votes remain absent |
 | M9.7 | Full run decisions | Close remaining map, battle, reward, card/grid, event, treasure/chest, shop, rest/campfire and special-minigame variants; inventory must be data-driven and version stamped | At least one legal and one stale/rejected observation for every supported family and character-specific variant | `implemented_unverified` in part; variant inventory remains incomplete |
 | M9.8 | Settlement and post-run | Complete victory/defeat/abandon summary, statistics/unlocks, continue/return controls, and safe transition back to menu; preserve revival edges | Victory, defeat, abandon, revival prevention, unlock flow and return-to-menu | `implemented_unverified` read-only outcome; post-run actions `not_implemented` |
 | M9.9 | Privacy hotkey and window lifecycle | Configurable global shortcut that hides/restores only the authenticated STS2 process window; optional Overlay hide; explicit tray/status recovery; shortcut-collision handling; restore on exit/crash where possible | Windows/Tauri tests for focus, minimize/fullscreen/multi-monitor, process restart, shortcut collision and recovery | `not_implemented` |
@@ -652,7 +652,15 @@ M9.6 discovery/load checkpoint — 2026-09-16:
 - `NMultiplayerHostSubmenu` reports the asynchronous hosting state without claiming a lobby was created before the native screen transition;
 - `NMultiplayerLoadGameScreen` reports connected versus required saved-run players and exposes only the native confirm/unready/back availability;
 - discovery entries use stable platform player IDs, are unique at protocol ingestion, and remain non-actionable informational rows;
-- error-popup reason taxonomy, invite flow, actively running-session rejoin, saved-run player details and all multiplayer mutations remain for later M9.6 slices.
+- invite flow, actively running-session rejoin, stable native error reason codes and all multiplayer mutations remain for later M9.6 slices.
+
+M9.6 saved-run/error checkpoint — 2026-09-16:
+
+- initialized multiplayer load screens expose native mode, ascension, current act, visited-floor count and the complete saved player roster;
+- each saved player reports stable network ID, character ID, HP, maximum energy, potion capacity, gold and connection presence;
+- missing-player count is derived from that complete roster and shown as a warning, never as authorization to continue without peers;
+- native `NErrorPopup` is distinguished from an ordinary confirmation and its localized title/body are readable, but OfficeSpire does not derive a stable network-error enum from presentation text;
+- no continue-without-player, reconnect, dismiss/report-error or load mutation was added; current-assembly compilation and all Windows/STS2 transitions remain `implemented_unverified`.
 
 ### 9.2 Complete information contract
 

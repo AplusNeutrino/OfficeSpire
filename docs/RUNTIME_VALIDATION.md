@@ -376,7 +376,15 @@ M9.6 discovery/load source checkpoint:
 - host mode exposes its asynchronous loading overlay, while saved-run load lobbies expose connected/required player counts;
 - protocol validation rejects duplicate discovered-session IDs and impossible negative/over-capacity connection counts;
 - disappearing loading state is not treated as success, and no join/load/refresh/host operation is sent by OfficeSpire;
-- real Steam discovery, FastMP fallback, failed connection popups, loaded-run missing-player confirmation, rejoin behavior and version mismatch handling remain `implemented_unverified` or `not_implemented`.
+- real Steam discovery, FastMP fallback, loaded-run missing-player confirmation, rejoin behavior and version mismatch handling remain `implemented_unverified` or `not_implemented`.
+
+M9.6 saved-run/error source checkpoint:
+
+- multiplayer load state carries the native saved mode, ascension, act, visited floors and a complete player inventory with HP, energy, potion capacity, gold and connected/missing state;
+- validation requires unique player IDs and an exact missing-player count, preventing partial saved rosters from appearing complete;
+- the Overlay calls out missing peers but cannot confirm continuing without them, reconnect them or begin the run;
+- `NErrorPopup` is surfaced separately with normalized localized title/body and its native buttons remain informational only;
+- this is source/build evidence. Live error causes, missing-player confirmation, save compatibility and recovery behavior remain `implemented_unverified`.
 
 ## Required evidence format for future probes
 

@@ -256,9 +256,11 @@ describe("OfficeSpire wire protocol", () => {
         current_profile_id: null,
         characters: null,
         popup_body: "",
+        popup_title: "",
         run_setup: null,
         lobby: null,
         connection: null,
+        saved_run: null,
       },
     };
     expect(isStateSnapshot(menu)).toBe(true);
@@ -328,6 +330,7 @@ describe("OfficeSpire wire protocol", () => {
             ],
           },
           connection: null,
+          saved_run: null,
         },
       }),
     ).toBe(true);
@@ -343,6 +346,51 @@ describe("OfficeSpire wire protocol", () => {
             required_players: null,
             sessions: [
               { id: "7656119", label: "Player 7656119", enabled: true },
+            ],
+          },
+          saved_run: null,
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...menu,
+        screen: {
+          ...menu.screen,
+          menu_screen: "multiplayer_load",
+          connection: {
+            status: "load_lobby",
+            connected_players: 1,
+            required_players: 2,
+            sessions: [],
+          },
+          saved_run: {
+            mode: "standard",
+            ascension: 3,
+            current_act: 2,
+            visited_floor_count: 19,
+            missing_players: 1,
+            players: [
+              {
+                id: "1",
+                character_id: "IRONCLAD",
+                current_hp: 40,
+                max_hp: 80,
+                max_energy: 3,
+                potion_capacity: 3,
+                gold: 120,
+                connected: true,
+              },
+              {
+                id: "2",
+                character_id: "SILENT",
+                current_hp: 35,
+                max_hp: 70,
+                max_energy: 3,
+                potion_capacity: 3,
+                gold: 80,
+                connected: false,
+              },
             ],
           },
         },

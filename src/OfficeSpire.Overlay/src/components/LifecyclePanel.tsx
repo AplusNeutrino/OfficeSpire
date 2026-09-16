@@ -10,6 +10,7 @@ export function LifecyclePanel({
       <section className="empty lifecycle-panel" aria-live="polite">
         <h1>{snapshot.screen.menu_screen.replace(/_/g, " ")}</h1>
         <p>{snapshot.screen.message}</p>
+        {snapshot.screen.popup_title && <h2>{snapshot.screen.popup_title}</h2>}
         {snapshot.screen.popup_body && <p>{snapshot.screen.popup_body}</p>}
         {snapshot.screen.current_profile_id !== null && (
           <p>Current profile: {snapshot.screen.current_profile_id}</p>
@@ -82,6 +83,33 @@ export function LifecyclePanel({
                 ))}
               </ul>
             )}
+          </section>
+        )}
+        {snapshot.screen.saved_run && (
+          <section className="menu-saved-run" aria-label="Saved run">
+            <h2>Saved run</h2>
+            <p>
+              {snapshot.screen.saved_run.mode} · Ascension{" "}
+              {snapshot.screen.saved_run.ascension} · Act{" "}
+              {snapshot.screen.saved_run.current_act} · Floor{" "}
+              {snapshot.screen.saved_run.visited_floor_count}
+            </p>
+            {snapshot.screen.saved_run.missing_players > 0 && (
+              <p role="alert">
+                Missing players: {snapshot.screen.saved_run.missing_players}.
+                Continuing without them must be confirmed in STS2.
+              </p>
+            )}
+            <ul>
+              {snapshot.screen.saved_run.players.map((player) => (
+                <li key={player.id}>
+                  {player.character_id || "Unknown character"}:{" "}
+                  {player.current_hp}/{player.max_hp} HP · {player.gold} gold ·{" "}
+                  {player.max_energy} energy · {player.potion_capacity} potion
+                  slots — {player.connected ? "Connected" : "Missing"}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
         {snapshot.screen.characters &&

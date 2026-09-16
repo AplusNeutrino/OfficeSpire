@@ -27,7 +27,9 @@ internal sealed record MenuScreenDto(
     string PopupBody = "",
     MenuRunSetupSnapshotDto? RunSetup = null,
     MenuLobbySnapshotDto? Lobby = null,
-    MenuConnectionSnapshotDto? Connection = null);
+    MenuConnectionSnapshotDto? Connection = null,
+    MenuSavedRunSnapshotDto? SavedRun = null,
+    string PopupTitle = "");
 
 internal sealed record MenuOptionSnapshotDto(
     string Id,
@@ -89,6 +91,24 @@ internal sealed record MenuSessionSnapshotDto(
     string Id,
     string Label,
     bool Enabled);
+
+internal sealed record MenuSavedRunSnapshotDto(
+    string Mode,
+    int Ascension,
+    int CurrentAct,
+    int VisitedFloorCount,
+    int MissingPlayers,
+    IReadOnlyList<MenuSavedPlayerSnapshotDto> Players);
+
+internal sealed record MenuSavedPlayerSnapshotDto(
+    string Id,
+    string CharacterId,
+    int CurrentHp,
+    int MaxHp,
+    int MaxEnergy,
+    int PotionCapacity,
+    int Gold,
+    bool Connected);
 
 internal sealed record RelicSnapshotDto(
     string Id,

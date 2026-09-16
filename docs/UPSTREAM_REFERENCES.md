@@ -197,6 +197,8 @@ The same inspection confirmed `CardModel.GetDescriptionForPile(PileType)` for pi
 
 For M9.3–M9.5, the same STS2MCP inspection commit identifies the current native screen/control families `NMainMenu`, `NSingleplayerSubmenu`, `NMultiplayerSubmenu`, `NMultiplayerHostSubmenu`, `NJoinFriendScreen`, `NMultiplayerLoadGameScreen`, `NProfileScreen`, `NVerticalPopup`, `NCharacterSelectScreen`, and `NCharacterSelectButton`. It also confirms `SaveManager.CurrentProfileId` and the character-model starting HP/gold/energy, relic and deck properties. OfficeSpire uses these shapes only for independent read-only observation, emits a generic popup rather than guessing its purpose, and does not adopt STS2MCP's menu mutation paths.
 
+For the later M9.6 saved-run/error slice, `SerializableRun`, `SerializablePlayer`, `LoadRunLobby`, `NMultiplayerLoadGameScreen`, `NVerticalPopup` and `NErrorPopup` were cross-checked against `zhiyue/sts2-rl-agent` commit `1b7e7ce35e608722650763938c153ea8bc370333`. These sources establish the native saved-player IDs/state, connected-player set, missing-player confirmation boundary and localized error-popup container. OfficeSpire independently observes those fields and deliberately omits every load, reconnect, continue-without-peer and popup mutation.
+
 ## zhiyue/sts2-rl-agent decompiled API reference
 
 - Repository: https://github.com/zhiyue/sts2-rl-agent
