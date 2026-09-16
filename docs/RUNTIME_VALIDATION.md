@@ -362,6 +362,14 @@ M9.4 read-only source checkpoint:
 - no configuration or ready/embark mutation exists, and no timed-out setup action can be replayed;
 - installed-assembly compilation, all legal/rejected seed and modifier paths, Daily server/local fallback, and solo/multiplayer synchronization remain `implemented_unverified`.
 
+M9.5/M9.6 read-only lobby checkpoint:
+
+- initialized Standard, Custom and Daily setup can report local service role, nullable capacity, stable local/remote player IDs, unique slots, characters and Ready state;
+- client-side host identity stays unknown rather than being inferred, and `all_ready` is not treated as authoritative launch settlement;
+- partially initialized or identity-incomplete native lobbies are omitted, preventing placeholder players from passing protocol validation;
+- protocol validation requires exactly one local player plus unique player and slot identities;
+- 2–4 machine hosting/joining, remote host attribution, disconnect/reconnect, readiness changes, host migration, simultaneous combat and shared decisions remain `implemented_unverified` or `not_implemented`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

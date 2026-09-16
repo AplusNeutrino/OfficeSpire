@@ -39,6 +39,27 @@ export function LifecyclePanel({
             </p>
           </section>
         )}
+        {snapshot.screen.lobby && (
+          <section className="menu-lobby" aria-label="Lobby">
+            <h2>Lobby</h2>
+            <p>
+              Role: {snapshot.screen.lobby.role} · Players{" "}
+              {snapshot.screen.lobby.players.length}/
+              {snapshot.screen.lobby.max_players ?? "?"}
+            </p>
+            <ul>
+              {snapshot.screen.lobby.players.map((player) => (
+                <li key={player.id}>
+                  Slot {player.slot_id + 1}:{" "}
+                  {player.character_name || player.character_id || "Unselected"}
+                  {player.is_local ? " (you)" : ""}
+                  {player.is_host === true ? " (host)" : ""} —{" "}
+                  {player.is_ready ? "Ready" : "Not ready"}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {snapshot.screen.characters &&
           snapshot.screen.characters.length > 0 && (
             <div className="menu-character-list">

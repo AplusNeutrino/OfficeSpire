@@ -25,7 +25,8 @@ internal sealed record MenuScreenDto(
     int? CurrentProfileId = null,
     IReadOnlyList<MenuCharacterSnapshotDto>? Characters = null,
     string PopupBody = "",
-    MenuRunSetupSnapshotDto? RunSetup = null);
+    MenuRunSetupSnapshotDto? RunSetup = null,
+    MenuLobbySnapshotDto? Lobby = null);
 
 internal sealed record MenuOptionSnapshotDto(
     string Id,
@@ -60,6 +61,22 @@ internal sealed record MenuModifierSnapshotDto(
     string Id,
     string Name,
     string Description);
+
+internal sealed record MenuLobbySnapshotDto(
+    string Role,
+    int? MaxPlayers,
+    string LocalPlayerId,
+    bool AllReady,
+    IReadOnlyList<MenuLobbyPlayerSnapshotDto> Players);
+
+internal sealed record MenuLobbyPlayerSnapshotDto(
+    string Id,
+    int SlotId,
+    bool IsLocal,
+    bool? IsHost,
+    string CharacterId,
+    string CharacterName,
+    bool IsReady);
 
 internal sealed record RelicSnapshotDto(
     string Id,

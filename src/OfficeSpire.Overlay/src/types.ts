@@ -277,6 +277,22 @@ export interface MenuRunSetupState {
   daily_server_time: string | null;
   modifiers: MenuModifierState[];
 }
+export interface MenuLobbyPlayerState {
+  id: string;
+  slot_id: number;
+  is_local: boolean;
+  is_host: boolean | null;
+  character_id: string;
+  character_name: string;
+  is_ready: boolean;
+}
+export interface MenuLobbyState {
+  role: string;
+  max_players: number | null;
+  local_player_id: string;
+  all_ready: boolean;
+  players: MenuLobbyPlayerState[];
+}
 export interface MenuScreen {
   waiting_for_input: false;
   menu_screen:
@@ -299,6 +315,7 @@ export interface MenuScreen {
   characters: MenuCharacterState[] | null;
   popup_body: string;
   run_setup: MenuRunSetupState | null;
+  lobby: MenuLobbyState | null;
 }
 const runEndStatuses = new Set(["victory", "defeat", "abandoned"]);
 const menuScreens = new Set([
@@ -569,6 +586,50 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
                 typeof modifier.name === "string" &&
                 typeof modifier.description === "string",
             ))) &&
+        ((c.screen as MenuScreen).lobby === null ||
+          (["character_select", "custom_run", "daily_run"].includes(
+            (c.screen as MenuScreen).menu_screen,
+          ) &&
+            typeof (c.screen as MenuScreen).lobby!.role === "string" &&
+            ((c.screen as MenuScreen).lobby!.max_players === null ||
+              (Number.isInteger((c.screen as MenuScreen).lobby!.max_players) &&
+                (c.screen as MenuScreen).lobby!.max_players! >= 1)) &&
+            typeof (c.screen as MenuScreen).lobby!.local_player_id ===
+              "string" &&
+            typeof (c.screen as MenuScreen).lobby!.all_ready === "boolean" &&
+            Array.isArray((c.screen as MenuScreen).lobby!.players) &&
+            ((c.screen as MenuScreen).lobby!.max_players === null ||
+              (c.screen as MenuScreen).lobby!.players.length <=
+                (c.screen as MenuScreen).lobby!.max_players!) &&
+            (c.screen as MenuScreen).lobby!.players.every(
+              (player) =>
+                typeof player.id === "string" &&
+                player.id.length > 0 &&
+                Number.isInteger(player.slot_id) &&
+                player.slot_id >= 0 &&
+                typeof player.is_local === "boolean" &&
+                (player.is_host === null ||
+                  typeof player.is_host === "boolean") &&
+                typeof player.character_id === "string" &&
+                typeof player.character_name === "string" &&
+                typeof player.is_ready === "boolean",
+            ) &&
+            new Set(
+              (c.screen as MenuScreen).lobby!.players.map(
+                (player) => player.id,
+              ),
+            ).size === (c.screen as MenuScreen).lobby!.players.length &&
+            new Set(
+              (c.screen as MenuScreen).lobby!.players.map(
+                (player) => player.slot_id,
+              ),
+            ).size === (c.screen as MenuScreen).lobby!.players.length &&
+            (c.screen as MenuScreen).lobby!.players.filter(
+              (player) => player.is_local,
+            ).length === 1 &&
+            (c.screen as MenuScreen).lobby!.players.find(
+              (player) => player.is_local,
+            )?.id === (c.screen as MenuScreen).lobby!.local_player_id)) &&
         (c.screen as MenuScreen).can_mutate === false)) &&
     (c.phase !== "run_end" ||
       (c.action_pending === false &&

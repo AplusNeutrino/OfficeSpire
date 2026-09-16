@@ -209,7 +209,7 @@ For M9.3–M9.5, the same STS2MCP inspection commit identifies the current nativ
   - `decompiled/MegaCrit.Sts2.Core.Models/ModifierModel.cs`
 - License/copyright status: decompiled game material; used only to inventory public runtime type/property names. No source or control flow was copied.
 
-For M9.4, these files confirm that Standard, Custom and Daily setup converge on `StartRunLobby`, whose read-only properties include `GameMode`, `Ascension`, `MaxAscension`, `Seed`, `DailyTime`, `Modifiers` and `Act1`. They also establish the distinct `NCustomRunScreen` and `NDailyRunScreen` node names and modifier presentation properties. OfficeSpire independently reflects those values and adds no setup mutation.
+For M9.4–M9.6, these files confirm that Standard, Custom and Daily setup converge on `StartRunLobby`, whose read-only properties include `GameMode`, `Ascension`, `MaxAscension`, `Seed`, `DailyTime`, `Modifiers`, `Act1`, `NetService`, `MaxPlayers`, `LocalPlayer` and `Players`. `LobbyPlayer` supplies network ID, slot, character and Ready state. The inspected client contract does not directly identify which remote network ID owns the host role, so OfficeSpire deliberately leaves client-side host attribution unknown. OfficeSpire independently reflects these values and adds no setup or lobby mutation.
 
 ## Licensing rule
 

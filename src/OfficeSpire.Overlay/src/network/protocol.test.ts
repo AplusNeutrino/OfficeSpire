@@ -257,6 +257,7 @@ describe("OfficeSpire wire protocol", () => {
         characters: null,
         popup_body: "",
         run_setup: null,
+        lobby: null,
       },
     };
     expect(isStateSnapshot(menu)).toBe(true);
@@ -306,6 +307,23 @@ describe("OfficeSpire wire protocol", () => {
             daily_server_time: null,
             modifiers: [
               { id: "DRAFT", name: "Draft", description: "Draft a deck." },
+            ],
+          },
+          lobby: {
+            role: "singleplayer",
+            max_players: 1,
+            local_player_id: "1",
+            all_ready: false,
+            players: [
+              {
+                id: "1",
+                slot_id: 0,
+                is_local: true,
+                is_host: null,
+                character_id: "IRONCLAD",
+                character_name: "Ironclad",
+                is_ready: false,
+              },
             ],
           },
         },

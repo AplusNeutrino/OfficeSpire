@@ -270,11 +270,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
             int? currentProfileId = null;
             string popupBody = string.Empty;
             MenuRunSetupSnapshotDto? runSetup = null;
+            MenuLobbySnapshotDto? lobby = null;
             List<MenuOptionSnapshotDto> options;
             if (definition.Screen is "character_select" or "custom_run")
             {
                 (options, characters) = BuildCharacterMenuState(screen);
                 runSetup = BuildRunSetup(screen);
+                lobby = BuildMenuLobby(screen);
                 if (definition.Screen == "custom_run")
                 {
                     options.RemoveAll(option => option.Id is "confirm" or "unready" or "back");
@@ -290,6 +292,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
                 AddMenuOption(options, screen, "_backButton", "back", "Back");
                 runSetup = BuildRunSetup(screen);
+                lobby = BuildMenuLobby(screen);
             }
             else if (definition.Screen == "profile_select")
             {
@@ -309,7 +312,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     .Cast<MenuOptionSnapshotDto>()
                     .ToList();
             }
-            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup);
+            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup, lobby);
         }
 
         return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
@@ -452,6 +455,46 @@ public sealed class Sts2GameAdapter : IGameAdapter
             lobby.GetType().GetProperty("Act1")?.GetValue(lobby)?.ToString() ?? "unknown",
             serverTime is DateTimeOffset timestamp ? timestamp.ToString("O") : null,
             modifiers);
+    }
+
+    private static MenuLobbySnapshotDto? BuildMenuLobby(Node screen)
+    {
+        object? lobby = screen.GetType().GetProperty("Lobby")?.GetValue(screen)
+            ?? GetInstanceFieldValue(screen, "_lobby");
+        if (lobby is null) return null;
+        object? netService = lobby.GetType().GetProperty("NetService")?.GetValue(lobby);
+        string role = netService?.GetType().GetProperty("Type")?.GetValue(netService)?.ToString()?.ToLowerInvariant() ?? "unknown";
+        string localPlayerId = string.Empty;
+        object? localPlayer = lobby.GetType().GetProperty("LocalPlayer")?.GetValue(lobby);
+        if (localPlayer is not null) localPlayerId = GetInstanceFieldValue(localPlayer, "id")?.ToString() ?? string.Empty;
+        var players = new List<MenuLobbyPlayerSnapshotDto>();
+        if (lobby.GetType().GetProperty("Players")?.GetValue(lobby) is System.Collections.IEnumerable values)
+        {
+            foreach (object player in values)
+            {
+                string id = GetInstanceFieldValue(player, "id")?.ToString() ?? string.Empty;
+                int slotId = GetInstanceFieldValue(player, "slotId") as int? ?? -1;
+                if (string.IsNullOrEmpty(id) || slotId < 0) continue;
+                object? character = GetInstanceFieldValue(player, "character");
+                bool isLocal = !string.IsNullOrEmpty(localPlayerId) && id == localPlayerId;
+                players.Add(new MenuLobbyPlayerSnapshotDto(
+                    id,
+                    slotId,
+                    isLocal,
+                    role == "host" ? isLocal : null,
+                    character is null ? string.Empty : GetModelId(character),
+                    character is null ? string.Empty : GetLocalizedProperty(character, "Title", GetModelId(character)),
+                    GetInstanceFieldValue(player, "isReady") as bool? ?? false));
+            }
+        }
+        if (players.Count == 0 || players.Count(player => player.IsLocal) != 1) return null;
+        int maxPlayers = GetIntProperty(lobby, "MaxPlayers");
+        return new MenuLobbySnapshotDto(
+            role,
+            maxPlayers > 0 ? maxPlayers : null,
+            localPlayerId,
+            players.Count > 0 && players.All(player => player.IsReady),
+            players);
     }
 
     private static string GetModelId(object model)
