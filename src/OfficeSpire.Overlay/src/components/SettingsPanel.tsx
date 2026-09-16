@@ -1,11 +1,13 @@
 import { DEFAULT_SETTINGS, type OverlaySettings } from "../settings";
 import { useEffect, useRef, type RefObject } from "react";
+import { PRIVACY_SHORTCUT, type PrivacyStatus } from "../privacy";
 
 interface Props {
   settings: OverlaySettings;
   onChange: (settings: OverlaySettings) => void;
   onClose: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
+  privacyStatus?: PrivacyStatus;
 }
 
 export function SettingsPanel({
@@ -13,6 +15,7 @@ export function SettingsPanel({
   onChange,
   onClose,
   returnFocusRef,
+  privacyStatus,
 }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -99,6 +102,40 @@ export function SettingsPanel({
         />
         Reduce motion
       </label>
+      <fieldset>
+        <legend>Privacy shortcut</legend>
+        <p>
+          Press <kbd>{PRIVACY_SHORTCUT}</kbd> to hide or restore the
+          authenticated STS2 window.
+        </p>
+        <label className="setting-check">
+          <input
+            type="checkbox"
+            checked={settings.privacyHotkeyEnabled}
+            onChange={(event) =>
+              update({ privacyHotkeyEnabled: event.target.checked })
+            }
+          />
+          Enable global shortcut
+        </label>
+        <label className="setting-check">
+          <input
+            type="checkbox"
+            checked={settings.hideOverlayWithGame}
+            disabled={!settings.privacyHotkeyEnabled}
+            onChange={(event) =>
+              update({ hideOverlayWithGame: event.target.checked })
+            }
+          />
+          Hide OfficeSpire too
+        </label>
+        <small role={privacyStatus?.error ? "alert" : "status"}>
+          {privacyStatus?.error ??
+            (privacyStatus?.registered
+              ? `Registered${privacyStatus.game_hidden ? " · game hidden" : ""}`
+              : "Available in the Windows desktop build")}
+        </small>
+      </fieldset>
       <button
         className="settings-reset"
         onClick={() => onChange(DEFAULT_SETTINGS)}

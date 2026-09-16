@@ -4,6 +4,8 @@ export interface OverlaySettings {
   scale: number;
   highContrast: boolean;
   reduceMotion: boolean;
+  privacyHotkeyEnabled: boolean;
+  hideOverlayWithGame: boolean;
 }
 
 export const DEFAULT_SETTINGS: OverlaySettings = {
@@ -12,6 +14,8 @@ export const DEFAULT_SETTINGS: OverlaySettings = {
   scale: 1,
   highContrast: false,
   reduceMotion: false,
+  privacyHotkeyEnabled: true,
+  hideOverlayWithGame: false,
 };
 
 export const SETTINGS_KEY = "officespire.settings.v1";
@@ -42,6 +46,14 @@ export function parseSettings(value: string | null): OverlaySettings {
         typeof candidate.reduceMotion === "boolean"
           ? candidate.reduceMotion
           : DEFAULT_SETTINGS.reduceMotion,
+      privacyHotkeyEnabled:
+        typeof candidate.privacyHotkeyEnabled === "boolean"
+          ? candidate.privacyHotkeyEnabled
+          : DEFAULT_SETTINGS.privacyHotkeyEnabled,
+      hideOverlayWithGame:
+        typeof candidate.hideOverlayWithGame === "boolean"
+          ? candidate.hideOverlayWithGame
+          : DEFAULT_SETTINGS.hideOverlayWithGame,
     };
   } catch {
     return DEFAULT_SETTINGS;

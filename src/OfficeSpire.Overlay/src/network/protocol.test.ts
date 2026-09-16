@@ -1179,6 +1179,8 @@ describe("OfficeSpire wire protocol", () => {
           scale: 0.1,
           highContrast: true,
           reduceMotion: true,
+          privacyHotkeyEnabled: false,
+          hideOverlayWithGame: true,
         }),
       ),
     ).toEqual({
@@ -1187,6 +1189,8 @@ describe("OfficeSpire wire protocol", () => {
       scale: 0.85,
       highContrast: true,
       reduceMotion: true,
+      privacyHotkeyEnabled: false,
+      hideOverlayWithGame: true,
     });
   });
 });

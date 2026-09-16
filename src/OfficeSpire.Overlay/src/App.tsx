@@ -82,6 +82,11 @@ import {
 } from "./network/actionLifecycle";
 import { loadSettings, saveSettings, type OverlaySettings } from "./settings";
 import { shouldMoveDecisionFocus } from "./accessibility/focusPolicy";
+import {
+  configurePrivacyMode,
+  getPrivacyStatus,
+  type PrivacyStatus,
+} from "./privacy";
 const terminalCodes = new Set([
   "completed",
   "stale_state",
@@ -115,6 +120,7 @@ export default function App() {
   const [selectedPotion, setSelectedPotion] = useState<PotionState>();
   const [settings, setSettings] = useState(loadSettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [privacyStatus, setPrivacyStatus] = useState<PrivacyStatus>();
   const clientRef = useRef<OfficeSpireWebSocketClient | undefined>(undefined);
   const retryRef = useRef<number | undefined>(undefined);
   const pollRef = useRef<number | undefined>(undefined);
@@ -435,6 +441,34 @@ export default function App() {
   };
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   useEffect(() => {
+    void configurePrivacyMode(
+      settings.privacyHotkeyEnabled,
+      settings.hideOverlayWithGame,
+    )
+      .then(setPrivacyStatus)
+      .catch((error) =>
+        setPrivacyStatus({
+          enabled: settings.privacyHotkeyEnabled,
+          hide_overlay: settings.hideOverlayWithGame,
+          game_hidden: false,
+          shortcut: "Ctrl+Shift+F12",
+          registered: false,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+  }, [settings.hideOverlayWithGame, settings.privacyHotkeyEnabled]);
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const poll = window.setInterval(
+      () =>
+        void getPrivacyStatus()
+          .then(setPrivacyStatus)
+          .catch(() => {}),
+      500,
+    );
+    return () => window.clearInterval(poll);
+  }, [settingsOpen]);
+  useEffect(() => {
     const nextPhase = snapshot?.phase;
     if (
       shouldMoveDecisionFocus(previousPhaseRef.current, nextPhase, settingsOpen)
@@ -662,6 +696,7 @@ export default function App() {
           onChange={updateSettings}
           onClose={closeSettings}
           returnFocusRef={settingsButtonRef}
+          privacyStatus={privacyStatus}
         />
       )}
       <div
