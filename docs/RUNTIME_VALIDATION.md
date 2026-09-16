@@ -410,7 +410,7 @@ M9.6 per-player rest-decision source checkpoint:
 - rest snapshots now enumerate each run player's own synchronizer-generated remaining options, last chosen index and hover index under their stable network ID;
 - remote records are display-only, while local actions retain expected-revision, option-index and native option-ID revalidation;
 - protocol ingestion rejects duplicate/missing party records, duplicate option IDs/indexes and impossible hover positions;
-- the inspected reward synchronizer does not expose a current choice inventory, so reward ownership remains unresolved instead of being inferred from asynchronous settlement messages;
+- the inspected reward synchronizer does not expose remote current-choice inventories; OfficeSpire binds the visible native reward screen only to the authenticated local player and never infers remote rewards from settlement messages;
 - current-assembly compilation, 2–4 player rest progress, option removal, target handoff and disconnect behavior remain `implemented_unverified`; teammate targeting remains `not_implemented`.
 
 M9.6 simultaneous-combat ownership source checkpoint:
@@ -420,6 +420,14 @@ M9.6 simultaneous-combat ownership source checkpoint:
 - local readiness now also fails closed while the local action queue is paused; no combat request accepts or derives a remote owner ID;
 - protocol validation rejects incomplete/duplicate participant sets, remotely actionable records and a mismatch between local readiness and `waiting_for_input`;
 - these are source/build assertions only. Real simultaneous turns, queue ordering, pause/resume, disconnect and cross-machine settlement remain `implemented_unverified`.
+
+M9.2/M9.6/M9.10 source closeout checkpoint:
+
+- the inspected M9.2 contract now has complete typed player, Run, deck/pile, potion, relic, status and character-specific state; partial payloads fail protocol validation;
+- rewards carry `owner_player_id`, which must equal `run.party.local_player_id` in multiplayer, preventing a reward action from being attributed to a remote teammate;
+- invite UI, connection/rejoin and unmodeled teammate targeting remain explicit STS2 handoffs, and the inspected native contract exposes no host migration;
+- keyboard mapping covers menus, special-event tools/cells/proceed and post-run primary actions. Global shortcuts ignore editable/interactive elements, and focus follows menu screen, special-event variant and run-end stage changes without moving on ordinary revisions;
+- unit tests and the web production build are static evidence only. Installed-assembly compilation, native field parity, Windows/Tauri focus and screen-reader behavior, and 2–4-machine reward/reconnect/disconnect behavior remain `implemented_unverified`.
 
 M9.7 card/grid variant safety source checkpoint:
 

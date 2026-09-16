@@ -1,9 +1,11 @@
 export function shouldMoveDecisionFocus(
-  previousPhase: string | undefined,
-  nextPhase: string | undefined,
+  previousSurface: string | undefined,
+  nextSurface: string | undefined,
   settingsOpen: boolean,
 ) {
   return (
-    !settingsOpen && nextPhase !== undefined && previousPhase !== nextPhase
+    !settingsOpen &&
+    nextSurface !== undefined &&
+    previousSurface !== nextSurface
   );
 }

@@ -211,21 +211,41 @@ export function LifecyclePanel({
           )}
         {snapshot.screen.options.length > 0 && (
           <ul className="menu-observation-list">
-            {snapshot.screen.options.map((option) => (
-              <li key={option.id}>
-                {option.actionable ? (
-                  <button
-                    disabled={disabled || !option.enabled}
-                    onClick={() => onOption?.(option)}
-                  >
-                    {option.label}
-                  </button>
-                ) : (
-                  <span>{option.label}</span>
-                )}
-                <small>{option.enabled ? "Available" : "Unavailable"}</small>
-              </li>
-            ))}
+            {snapshot.screen.options.map((option) => {
+              const actionable = snapshot.screen.options.filter(
+                (candidate) => candidate.actionable && candidate.enabled,
+              );
+              const shortcutIndex = actionable.findIndex(
+                (candidate) => candidate.id === option.id,
+              );
+              const shortcut =
+                option.id === "back"
+                  ? "Escape"
+                  : option.id === "confirm"
+                    ? "Enter"
+                    : shortcutIndex >= 0 && shortcutIndex < 9
+                      ? `${shortcutIndex + 1}`
+                      : undefined;
+              return (
+                <li key={option.id}>
+                  {option.actionable ? (
+                    <button
+                      disabled={disabled || !option.enabled}
+                      onClick={() => onOption?.(option)}
+                      aria-keyshortcuts={shortcut}
+                    >
+                      {shortcutIndex >= 0 && shortcutIndex < 9
+                        ? `[${shortcutIndex + 1}] `
+                        : ""}
+                      {option.label}
+                    </button>
+                  ) : (
+                    <span>{option.label}</span>
+                  )}
+                  <small>{option.enabled ? "Available" : "Unavailable"}</small>
+                </li>
+              );
+            })}
           </ul>
         )}
         <p className="lifecycle-safety">
@@ -274,12 +294,23 @@ export function LifecyclePanel({
         )}
       </section>
       {snapshot.screen.can_view_summary && (
-        <button disabled={disabled} onClick={() => onRunEnd?.("summary")}>
-          View native summary
+        <button
+          disabled={disabled}
+          onClick={() => onRunEnd?.("summary")}
+          aria-keyshortcuts="Enter"
+        >
+          [Enter] View native summary
         </button>
       )}
       {snapshot.screen.can_return_to_menu && (
-        <button disabled={disabled} onClick={() => onRunEnd?.("main_menu")}>
+        <button
+          disabled={disabled}
+          onClick={() => onRunEnd?.("main_menu")}
+          aria-keyshortcuts={
+            snapshot.screen.stage === "summary" ? "Enter" : undefined
+          }
+        >
+          {snapshot.screen.stage === "summary" ? "[Enter] " : ""}
           Return to main menu
         </button>
       )}

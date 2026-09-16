@@ -3,7 +3,9 @@ export type RunKeyboardCommand =
   | { kind: "confirm" }
   | { kind: "skip" }
   | { kind: "leave" }
-  | { kind: "remove" };
+  | { kind: "remove" }
+  | { kind: "big_tool" }
+  | { kind: "back" };
 
 export function resolveRunShortcut(
   code: string,
@@ -14,5 +16,7 @@ export function resolveRunShortcut(
   if (code === "KeyS") return { kind: "skip" };
   if (code === "KeyL") return { kind: "leave" };
   if (code === "KeyR") return { kind: "remove" };
+  if (code === "KeyB") return { kind: "big_tool" };
+  if (code === "Escape") return { kind: "back" };
   return undefined;
 }

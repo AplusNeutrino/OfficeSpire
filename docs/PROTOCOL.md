@@ -202,7 +202,7 @@ When `phase="map"`, `screen.map_generation` identifies the native generated map 
 
 ## M7 reward actions
 
-When `phase="rewards"`, the screen uses either `mode="rewards"` with `items`, or `mode="card_selection"` with `card_choices`.
+When `phase="rewards"`, the screen uses either `mode="rewards"` with `items`, or `mode="card_selection"` with `card_choices`. `owner_player_id` is the stable native ID of the local player whose reward screen is observed. In multiplayer it must equal `run.party.local_player_id`; clients reject a mismatch rather than exposing a reward action for another player.
 
 - `choose_reward`: `{ "choice_index": 0, "action_token": "<opaque>" }`
 - `choose_reward_card`: `{ "choice_index": 1, "card_id": "strike" }`

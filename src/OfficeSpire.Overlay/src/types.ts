@@ -168,6 +168,7 @@ export interface RewardItemState {
 export interface RewardsScreen {
   waiting_for_input: boolean;
   mode: "rewards" | "card_selection" | "unavailable";
+  owner_player_id: string;
   items: RewardItemState[];
   card_choices: RewardCardState[];
   can_skip: boolean;
@@ -966,7 +967,12 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
           c.run as RunState,
         ))) &&
     (c.phase !== "rewards" ||
-      (Array.isArray((c.screen as RewardsScreen).items) &&
+      (typeof (c.screen as RewardsScreen).owner_player_id === "string" &&
+        (c.screen as RewardsScreen).owner_player_id.length > 0 &&
+        (!(c.run as RunState).party ||
+          (c.screen as RewardsScreen).owner_player_id ===
+            (c.run as RunState).party?.local_player_id) &&
+        Array.isArray((c.screen as RewardsScreen).items) &&
         Array.isArray((c.screen as RewardsScreen).card_choices))) &&
     (c.phase !== "card_selection" ||
       isValidCardSelectionScreen(c.screen as CardSelectionScreen)) &&

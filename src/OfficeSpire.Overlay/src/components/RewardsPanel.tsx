@@ -34,6 +34,12 @@ export function RewardsPanel({
             ? "Choose a card"
             : "Combat rewards"}
         </h2>
+        {run.party && (
+          <p className="ownership-note">
+            Rewards belong to {run.character_name || "your local player"};
+            OfficeSpire cannot claim rewards for another player.
+          </p>
+        )}
         <div className="reward-list">
           {screen.mode === "card_selection"
             ? screen.card_choices.map((card, index) => (

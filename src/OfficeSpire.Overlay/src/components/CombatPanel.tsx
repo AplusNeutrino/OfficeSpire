@@ -57,7 +57,8 @@ export function CombatPanel({
     <>
       <header className="run-line">
         <span>
-          {run.character_name} · ACT {run.current_act} · F{run.current_floor}
+          {run.character_name} ({run.character_id}) · A{run.ascension_level} ·
+          ACT {run.current_act} · F{run.current_floor}
         </span>
         <span>{run.gold}G</span>
       </header>

@@ -103,11 +103,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
             if (NOverlayStack.Instance?.Peek() is NRewardsScreen or NCardRewardSelectionScreen)
             {
-                RewardsScreenDto? rewards = BuildRewardsSnapshot();
+                RewardsScreenDto? rewards = BuildRewardsSnapshot(player);
                 return CreateEnvelope(
                     PhaseNames.Rewards,
                     run,
-                    rewards ?? new RewardsScreenDto(false, "unavailable", [], [], false));
+                    rewards ?? new RewardsScreenDto(false, "unavailable", player?.NetId.ToString() ?? string.Empty, [], [], false));
             }
 
             if (NOverlayStack.Instance?.Peek() is NChooseACardSelectionScreen chooseScreen)
@@ -743,8 +743,9 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return results;
     }
 
-    private static RewardsScreenDto? BuildRewardsSnapshot()
+    private static RewardsScreenDto? BuildRewardsSnapshot(Player? owner)
     {
+        string ownerPlayerId = owner?.NetId.ToString() ?? string.Empty;
         var overlay = NOverlayStack.Instance?.Peek();
         if (overlay is NCardRewardSelectionScreen cardScreen)
         {
@@ -757,7 +758,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 .Where(card => card is not null)
                 .Cast<RewardCardSnapshotDto>()
                 .ToList();
-            return new RewardsScreenDto(cards.Count > 0, "card_selection", [], cards, false);
+            return new RewardsScreenDto(cards.Count > 0, "card_selection", ownerPlayerId, [], cards, false);
         }
 
         if (overlay is not NRewardsScreen rewardsScreen)
@@ -793,7 +794,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         bool canSkip = FindNodesRecursive<NProceedButton>((Node)rewardsScreen).Any(button => button.IsEnabled);
-        return new RewardsScreenDto(items.Count > 0 || canSkip, "rewards", items, [], canSkip);
+        return new RewardsScreenDto(items.Count > 0 || canSkip, "rewards", ownerPlayerId, items, [], canSkip);
     }
 
     private static EventScreenDto? BuildEventSnapshot(IRunState runState)

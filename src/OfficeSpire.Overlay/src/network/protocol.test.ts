@@ -732,6 +732,7 @@ describe("OfficeSpire wire protocol", () => {
         screen: {
           waiting_for_input: true,
           mode: "rewards",
+          owner_player_id: "local-player",
           items: [],
           card_choices: [],
           can_skip: true,
@@ -1139,11 +1140,20 @@ describe("OfficeSpire wire protocol", () => {
     expect(resolveRunShortcut("KeyS")).toEqual({ kind: "skip" });
     expect(resolveRunShortcut("KeyL")).toEqual({ kind: "leave" });
     expect(resolveRunShortcut("KeyR")).toEqual({ kind: "remove" });
+    expect(resolveRunShortcut("KeyB")).toEqual({ kind: "big_tool" });
+    expect(resolveRunShortcut("Escape")).toEqual({ kind: "back" });
   });
   it("moves focus only when the decision surface changes outside settings", () => {
     expect(shouldMoveDecisionFocus(undefined, "menu", false)).toBe(true);
     expect(shouldMoveDecisionFocus("map", "combat", false)).toBe(true);
     expect(shouldMoveDecisionFocus("combat", "combat", false)).toBe(false);
+    expect(
+      shouldMoveDecisionFocus(
+        "menu:singleplayer",
+        "menu:character_select",
+        false,
+      ),
+    ).toBe(true);
     expect(shouldMoveDecisionFocus("map", "combat", true)).toBe(false);
     expect(shouldMoveDecisionFocus("combat", undefined, false)).toBe(false);
   });

@@ -49,35 +49,43 @@ export function SpecialEventPanel({
             <button
               disabled={disabled || !screen.can_select_small_tool}
               onClick={() => onTool("small")}
+              aria-keyshortcuts="S"
             >
-              Small tool
+              [S] Small tool
             </button>
             <button
               disabled={disabled || !screen.can_select_big_tool}
               onClick={() => onTool("big")}
+              aria-keyshortcuts="B"
             >
-              Big tool
+              [B] Big tool
             </button>
           </div>
           <div
             className="event-options"
             aria-label="Hidden Crystal Sphere cells"
           >
-            {screen.cells.map((cell) => (
+            {screen.cells.map((cell, index) => (
               <button
                 key={cell.stable_id}
                 disabled={
                   disabled || !screen.waiting_for_input || screen.can_proceed
                 }
                 onClick={() => onCell(cell)}
+                aria-keyshortcuts={index < 9 ? `${index + 1}` : undefined}
               >
+                {index < 9 ? `[${index + 1}] ` : ""}
                 {cell.label}
               </button>
             ))}
           </div>
           {screen.can_proceed && (
-            <button disabled={disabled} onClick={onProceed}>
-              Continue
+            <button
+              disabled={disabled}
+              onClick={onProceed}
+              aria-keyshortcuts="Enter"
+            >
+              [Enter] Continue
             </button>
           )}
         </section>

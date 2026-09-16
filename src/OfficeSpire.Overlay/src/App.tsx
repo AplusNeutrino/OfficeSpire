@@ -109,6 +109,26 @@ const terminalCodes = new Set([
   "timeout",
   "client_timeout",
 ]);
+
+function decisionKey(snapshot: StateSnapshot | undefined) {
+  if (!snapshot) return undefined;
+  if (snapshot.phase === "menu")
+    return `menu:${(snapshot as MenuStateSnapshot).screen.menu_screen}`;
+  if (snapshot.phase === "run_end")
+    return `run_end:${(snapshot as LifecycleStateSnapshot).screen.stage}`;
+  if (snapshot.phase === "special_event")
+    return `special_event:${(snapshot as SpecialEventStateSnapshot).screen.variant}`;
+  return snapshot.phase;
+}
+
+function isNativeKeyboardTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      ["BUTTON", "INPUT", "SELECT", "TEXTAREA", "A"].includes(target.tagName))
+  );
+}
+
 export default function App() {
   const [status, setStatus] = useState<ConnectionStatus>("discovering");
   const [snapshot, setSnapshot] = useState<StateSnapshot>();
@@ -131,7 +151,7 @@ export default function App() {
   const reconnectRef = useRef(new ReconnectController());
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const decisionSurfaceRef = useRef<HTMLDivElement>(null);
-  const previousPhaseRef = useRef<string | undefined>(undefined);
+  const previousDecisionRef = useRef<string | undefined>(undefined);
   const clearPoll = useCallback(() => {
     if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
     pollRef.current = undefined;
@@ -435,6 +455,7 @@ export default function App() {
     !snapshot ||
     snapshot.action_pending ||
     actionInFlight;
+  const currentDecisionKey = decisionKey(snapshot);
   const updateSettings = (next: OverlaySettings) => {
     setSettings(next);
     saveSettings(next);
@@ -469,14 +490,17 @@ export default function App() {
     return () => window.clearInterval(poll);
   }, [settingsOpen]);
   useEffect(() => {
-    const nextPhase = snapshot?.phase;
     if (
-      shouldMoveDecisionFocus(previousPhaseRef.current, nextPhase, settingsOpen)
+      shouldMoveDecisionFocus(
+        previousDecisionRef.current,
+        currentDecisionKey,
+        settingsOpen,
+      )
     ) {
       decisionSurfaceRef.current?.focus();
     }
-    previousPhaseRef.current = nextPhase;
-  }, [settingsOpen, snapshot?.phase]);
+    previousDecisionRef.current = currentDecisionKey;
+  }, [currentDecisionKey, settingsOpen]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
@@ -485,6 +509,7 @@ export default function App() {
         event.ctrlKey ||
         event.altKey ||
         event.metaKey ||
+        isNativeKeyboardTarget(event.target) ||
         snapshot?.phase !== "combat"
       )
         return;
@@ -546,6 +571,7 @@ export default function App() {
         event.ctrlKey ||
         event.altKey ||
         event.metaKey ||
+        isNativeKeyboardTarget(event.target) ||
         !snapshot ||
         snapshot.phase === "combat" ||
         disabled
@@ -598,6 +624,32 @@ export default function App() {
         )[command.index];
         if (state.screen.waiting_for_input && option) {
           chooseEventOption(option);
+          handled = true;
+        }
+      } else if (snapshot.phase === "special_event") {
+        const state = snapshot as SpecialEventStateSnapshot;
+        if (command.kind === "choice" && state.screen.waiting_for_input) {
+          const cell = state.screen.cells[command.index];
+          if (cell && !state.screen.can_proceed) {
+            chooseSpecialEventCell(cell);
+            handled = true;
+          }
+        } else if (
+          command.kind === "skip" &&
+          state.screen.can_select_small_tool
+        ) {
+          submit(
+            createSpecialEventToolAction("small", snapshot.state_revision),
+          );
+          handled = true;
+        } else if (
+          command.kind === "big_tool" &&
+          state.screen.can_select_big_tool
+        ) {
+          submit(createSpecialEventToolAction("big", snapshot.state_revision));
+          handled = true;
+        } else if (command.kind === "confirm" && state.screen.can_proceed) {
+          submit(createProceedSpecialEventAction(snapshot.state_revision));
           handled = true;
         }
       } else if (snapshot.phase === "rest") {
@@ -653,6 +705,36 @@ export default function App() {
           handled = true;
         } else if (command.kind === "leave" && state.screen.can_leave) {
           submit(createShopAction("leave_shop", snapshot.state_revision));
+          handled = true;
+        }
+      } else if (snapshot.phase === "menu") {
+        const state = snapshot as MenuStateSnapshot;
+        const actionable = state.screen.options.filter(
+          (option) => option.actionable && option.enabled,
+        );
+        let option: MenuOptionState | undefined;
+        if (command.kind === "choice") option = actionable[command.index];
+        else if (command.kind === "confirm")
+          option = actionable.find((candidate) => candidate.id === "confirm");
+        else if (command.kind === "back")
+          option = actionable.find((candidate) => candidate.id === "back");
+        if (option) {
+          chooseMenuOption(option);
+          handled = true;
+        }
+      } else if (snapshot.phase === "run_end" && command.kind === "confirm") {
+        const state = snapshot as LifecycleStateSnapshot;
+        if (
+          state.screen.stage === "summary" &&
+          state.screen.can_return_to_menu
+        ) {
+          submit(createRunEndAction("main_menu", snapshot.state_revision));
+          handled = true;
+        } else if (state.screen.can_view_summary) {
+          submit(createRunEndAction("summary", snapshot.state_revision));
+          handled = true;
+        } else if (state.screen.can_return_to_menu) {
+          submit(createRunEndAction("main_menu", snapshot.state_revision));
           handled = true;
         }
       }

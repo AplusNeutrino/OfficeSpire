@@ -3,7 +3,11 @@ import type { RunPartyState } from "../types";
 export function PartyPanel({ party }: { party: RunPartyState }) {
   const missing = party.members.length - party.connected_players;
   return (
-    <details className="party-panel" open={missing > 0}>
+    <details
+      className="party-panel"
+      open={missing > 0}
+      aria-live={missing > 0 ? "assertive" : "polite"}
+    >
       <summary>
         Party {party.connected_players}/{party.members.length}
         {missing > 0 ? ` · ${missing} disconnected` : ""}
@@ -20,8 +24,10 @@ export function PartyPanel({ party }: { party: RunPartyState }) {
               {member.is_local ? " (you)" : ""}
             </strong>{" "}
             — {member.current_hp}/{member.max_hp} HP · {member.block} block ·{" "}
-            {member.gold} gold · {member.potion_count}/{member.potion_capacity}{" "}
-            potions · {member.connected ? "Connected" : "Disconnected"}
+            {member.max_energy} energy · {member.gold} gold ·{" "}
+            {member.potion_count}/{member.potion_capacity} potions ·{" "}
+            {member.is_alive ? "Alive" : "Down"} ·{" "}
+            {member.connected ? "Connected" : "Disconnected"}
           </li>
         ))}
       </ul>

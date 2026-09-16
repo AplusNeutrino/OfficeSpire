@@ -288,6 +288,7 @@ internal sealed record MapNodeSnapshotDto(
 internal sealed record RewardsScreenDto(
     bool WaitingForInput,
     string Mode,
+    string OwnerPlayerId,
     IReadOnlyList<RewardItemSnapshotDto> Items,
     IReadOnlyList<RewardCardSnapshotDto> CardChoices,
     bool CanSkip);
