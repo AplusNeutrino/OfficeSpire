@@ -163,12 +163,12 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 return CreateEnvelope(
                     PhaseNames.Event,
                     run,
-                    eventScreen ?? new EventScreenDto(false, string.Empty, "Event is loading.", false, []));
+                    eventScreen ?? new EventScreenDto(false, string.Empty, "Event is loading.", false, [], false, []));
             }
 
             if (NRestSiteRoom.Instance is not null)
             {
-                return CreateEnvelope(PhaseNames.Rest, run, BuildRestSnapshot());
+                return CreateEnvelope(PhaseNames.Rest, run, BuildRestSnapshot(runState));
             }
 
             if (NRun.Instance?.TreasureRoom is not null)
@@ -770,7 +770,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             votes);
     }
 
-    private static RestScreenDto BuildRestSnapshot()
+    private static RestScreenDto BuildRestSnapshot(IRunState runState)
     {
         NRestSiteRoom room = NRestSiteRoom.Instance!;
         var options = room.Options
@@ -789,12 +789,29 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 : canProceed
                     ? "proceed"
                     : "resolving";
+        var synchronizer = RunManager.Instance.RestSiteSynchronizer;
+        var playerDecisions = runState.Players.Select(player =>
+        {
+            var availableOptions = synchronizer.GetOptionsForPlayer(player)
+                .Select((option, index) => new RestOptionSnapshotDto(
+                    index,
+                    option.OptionId,
+                    SafeFormat(option.Title),
+                    SafeFormat(option.Description)))
+                .ToList();
+            return new PlayerRestDecisionSnapshotDto(
+                player.NetId.ToString(),
+                availableOptions,
+                synchronizer.GetChosenOptionIndex(player.NetId),
+                synchronizer.GetHoveredOptionIndex(player.NetId));
+        }).ToList();
         return new RestScreenDto(
             !targetSelectionPending && (options.Count > 0 || canProceed),
             interactionState,
             options,
             canProceed,
-            targetSelectionPending);
+            targetSelectionPending,
+            playerDecisions);
     }
 
     private static TreasureScreenDto BuildTreasureSnapshot(IRunState runState)

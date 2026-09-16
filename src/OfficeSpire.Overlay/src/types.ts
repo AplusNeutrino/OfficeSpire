@@ -201,6 +201,13 @@ export interface RestScreen {
   options: RestOptionState[];
   can_proceed: boolean;
   target_selection_pending: boolean;
+  player_decisions: PlayerRestDecisionState[];
+}
+export interface PlayerRestDecisionState {
+  player_id: string;
+  available_options: RestOptionState[];
+  last_chosen_option_index: number | null;
+  hovered_option_index: number | null;
 }
 export interface TreasureRelicState {
   choice_index: number;
@@ -496,8 +503,13 @@ export interface OverlayAction {
   payload: Record<string, unknown>;
 }
 
-function isValidRestScreen(screen: RestScreen): boolean {
-  if (!Array.isArray(screen.options)) return false;
+function isValidRestScreen(screen: RestScreen, run: RunState): boolean {
+  if (
+    !Array.isArray(screen.options) ||
+    !Array.isArray(screen.player_decisions) ||
+    !hasValidPlayerRestDecisions(screen.player_decisions, run)
+  )
+    return false;
   switch (screen.interaction_state) {
     case "options":
       return (
@@ -524,6 +536,50 @@ function isValidRestScreen(screen: RestScreen): boolean {
     default:
       return false;
   }
+}
+
+function hasValidPlayerRestDecisions(
+  decisions: PlayerRestDecisionState[],
+  run: RunState,
+): boolean {
+  if (
+    decisions.some(
+      (decision) =>
+        typeof decision.player_id !== "string" ||
+        decision.player_id.length === 0 ||
+        !Array.isArray(decision.available_options) ||
+        decision.available_options.some(
+          (option) =>
+            !Number.isInteger(option.option_index) ||
+            option.option_index < 0 ||
+            typeof option.id !== "string" ||
+            option.id.length === 0 ||
+            typeof option.name !== "string" ||
+            typeof option.description !== "string",
+        ) ||
+        new Set(decision.available_options.map((option) => option.option_index))
+          .size !== decision.available_options.length ||
+        new Set(decision.available_options.map((option) => option.id)).size !==
+          decision.available_options.length ||
+        (decision.last_chosen_option_index !== null &&
+          (!Number.isInteger(decision.last_chosen_option_index) ||
+            decision.last_chosen_option_index < 0)) ||
+        (decision.hovered_option_index !== null &&
+          (!Number.isInteger(decision.hovered_option_index) ||
+            decision.hovered_option_index < 0 ||
+            decision.hovered_option_index >=
+              decision.available_options.length)),
+    ) ||
+    new Set(decisions.map((decision) => decision.player_id)).size !==
+      decisions.length
+  )
+    return false;
+  if (!run.party) return decisions.length <= 1;
+  const partyIds = new Set(run.party.members.map((member) => member.id));
+  return (
+    decisions.length === partyIds.size &&
+    decisions.every((decision) => partyIds.has(decision.player_id))
+  );
 }
 
 function hasValidDecisionVotes(
@@ -660,7 +716,8 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
           )) &&
         ((c.screen as EventScreen).is_shared ||
           (c.screen as EventScreen).votes.length === 0))) &&
-    (c.phase !== "rest" || isValidRestScreen(c.screen as RestScreen)) &&
+    (c.phase !== "rest" ||
+      isValidRestScreen(c.screen as RestScreen, c.run as RunState)) &&
     (c.phase !== "treasure" ||
       (Array.isArray((c.screen as TreasureScreen).relics) &&
         hasValidDecisionVotes(

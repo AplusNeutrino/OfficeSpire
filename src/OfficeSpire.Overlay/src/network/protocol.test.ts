@@ -724,6 +724,7 @@ describe("OfficeSpire wire protocol", () => {
           options: [],
           can_proceed: true,
           target_selection_pending: false,
+          player_decisions: [],
         },
       }),
     ).toBe(true);
@@ -739,9 +740,49 @@ describe("OfficeSpire wire protocol", () => {
         options: [],
         can_proceed: false,
         target_selection_pending: false,
+        player_decisions: [],
       },
     };
     expect(isStateSnapshot(resolving)).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...resolving,
+        screen: {
+          ...resolving.screen,
+          player_decisions: [
+            {
+              player_id: "local-player",
+              available_options: [
+                {
+                  option_index: 0,
+                  id: "rest",
+                  name: "Rest",
+                  description: "Heal.",
+                },
+              ],
+              last_chosen_option_index: null,
+              hovered_option_index: 0,
+            },
+          ],
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...resolving,
+        screen: {
+          ...resolving.screen,
+          player_decisions: [
+            {
+              player_id: "local-player",
+              available_options: [],
+              last_chosen_option_index: null,
+              hovered_option_index: 0,
+            },
+          ],
+        },
+      }),
+    ).toBe(false);
     expect(
       isStateSnapshot({
         ...resolving,

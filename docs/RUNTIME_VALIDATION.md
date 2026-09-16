@@ -403,6 +403,14 @@ M9.6 shared-decision source checkpoint:
 - no remote-player mutation, inferred consent or automatic replay was introduced;
 - real 2–4 player voting, disconnect during a vote, simultaneous submission and settlement remain `implemented_unverified`; reward ownership and rest-site teammate targeting are still unimplemented.
 
+M9.6 per-player rest-decision source checkpoint:
+
+- rest snapshots now enumerate each run player's own synchronizer-generated remaining options, last chosen index and hover index under their stable network ID;
+- remote records are display-only, while local actions retain expected-revision, option-index and native option-ID revalidation;
+- protocol ingestion rejects duplicate/missing party records, duplicate option IDs/indexes and impossible hover positions;
+- the inspected reward synchronizer does not expose a current choice inventory, so reward ownership remains unresolved instead of being inferred from asynchronous settlement messages;
+- current-assembly compilation, 2–4 player rest progress, option removal, target handoff and disconnect behavior remain `implemented_unverified`; teammate targeting remains `not_implemented`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

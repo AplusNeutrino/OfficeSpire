@@ -313,7 +313,14 @@ internal sealed record RestScreenDto(
     string InteractionState,
     IReadOnlyList<RestOptionSnapshotDto> Options,
     bool CanProceed,
-    bool TargetSelectionPending);
+    bool TargetSelectionPending,
+    IReadOnlyList<PlayerRestDecisionSnapshotDto> PlayerDecisions);
+
+internal sealed record PlayerRestDecisionSnapshotDto(
+    string PlayerId,
+    IReadOnlyList<RestOptionSnapshotDto> AvailableOptions,
+    int? LastChosenOptionIndex,
+    int? HoveredOptionIndex);
 
 internal sealed record RestOptionSnapshotDto(
     int OptionIndex,

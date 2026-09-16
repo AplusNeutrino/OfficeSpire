@@ -9,6 +9,9 @@ interface Props {
 
 export function RestPanel({ snapshot, disabled, onOption, onLeave }: Props) {
   const { run, screen } = snapshot;
+  const playerName = (playerId: string) =>
+    run.party?.members.find((member) => member.id === playerId)
+      ?.character_name ?? "You";
   return (
     <>
       <header className="run-line">
@@ -54,6 +57,25 @@ export function RestPanel({ snapshot, disabled, onOption, onLeave }: Props) {
           </button>
         )}
       </section>
+      {screen.player_decisions.length > 1 && (
+        <section>
+          <h2>Party rest choices</h2>
+          <ul>
+            {screen.player_decisions.map((decision) => (
+              <li key={decision.player_id}>
+                <strong>{playerName(decision.player_id)}</strong>:{" "}
+                {decision.last_chosen_option_index !== null
+                  ? `completed choice ${decision.last_chosen_option_index + 1}`
+                  : `${decision.available_options.length} option(s) available`}
+              </li>
+            ))}
+          </ul>
+          <p className="status-copy">
+            Each player owns their rest-site decision. OfficeSpire cannot choose
+            for a teammate.
+          </p>
+        </section>
+      )}
     </>
   );
 }

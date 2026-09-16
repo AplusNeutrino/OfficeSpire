@@ -222,12 +222,14 @@ Each native event-option instance receives an opaque process-local action token.
 
 ## M7 rest-site actions
 
-When `phase="rest"`, `screen.options` contains authoritative rest choices and `can_proceed` exposes the native leave control. `interaction_state` is one of `options`, `player_target`, `proceed`, or `resolving`, so a client never infers completion merely because the option buttons disappeared.
+When `phase="rest"`, `screen.options` contains the local player's authoritative rest choices and `can_proceed` exposes the native leave control. `interaction_state` is one of `options`, `player_target`, `proceed`, or `resolving`, so a client never infers completion merely because the option buttons disappeared. `player_decisions` contains one record per run player, keyed by stable network ID, with that player's current native option inventory, last completed option index and current hover index. A multiplayer inventory must exactly match `run.party.members`; it is read-only for non-local players.
 
 - `choose_rest_option`: `{ "option_index": 0, "option_id": "rest" }`
 - `leave_rest_site`: `{}`
 
 `target_selection_pending=true` indicates a multiplayer target decision that this version does not model. Mutations then fail closed with `unsupported_state`; the user must complete that target in STS2.
+
+Option inventories are player-specific: the Mod does not copy the local player's options onto teammates. OfficeSpire can display whether another player still has choices, but it cannot select, target or confirm on their behalf. A recorded last-choice index refers to the synchronizer's completed action and is not rebound to a potentially changed remaining-option list.
 
 `interaction_state="resolving"` is non-actionable and means STS2 has removed the choices without yet exposing a supported follow-up. Card-based smith/remove follow-ups are represented as the separate `card_selection` phase. A phase change or a newer settled decision revision, not the initial click, establishes completion.
 
