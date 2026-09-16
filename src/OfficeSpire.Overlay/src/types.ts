@@ -236,6 +236,28 @@ export interface RunState {
   character_id: string;
   character_name: string;
   deck_cards: InventoryCardState[];
+  party: RunPartyState | null;
+}
+export interface RunPartyMemberState {
+  id: string;
+  is_local: boolean;
+  connected: boolean;
+  character_id: string;
+  character_name: string;
+  current_hp: number;
+  max_hp: number;
+  block: number;
+  is_alive: boolean;
+  gold: number;
+  max_energy: number;
+  potion_count: number;
+  potion_capacity: number;
+}
+export interface RunPartyState {
+  role: string;
+  local_player_id: string;
+  connected_players: number;
+  members: RunPartyMemberState[];
 }
 export interface LifecycleScreen {
   waiting_for_input: false;
@@ -509,6 +531,48 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
       (Array.isArray((c.screen as CombatScreen).hand) &&
         Array.isArray((c.run as RunState).relics) &&
         Array.isArray((c.run as RunState).deck_cards) &&
+        ((c.run as RunState).party === null ||
+          (typeof (c.run as RunState).party?.role === "string" &&
+            typeof (c.run as RunState).party?.local_player_id === "string" &&
+            Number.isInteger((c.run as RunState).party?.connected_players) &&
+            Array.isArray((c.run as RunState).party?.members) &&
+            (c.run as RunState).party!.members.length > 1 &&
+            (c.run as RunState).party!.connected_players ===
+              (c.run as RunState).party!.members.filter(
+                (member) => member.connected,
+              ).length &&
+            (c.run as RunState).party!.members.filter(
+              (member) => member.is_local,
+            ).length === 1 &&
+            (c.run as RunState).party!.members.find((member) => member.is_local)
+              ?.id === (c.run as RunState).party!.local_player_id &&
+            (c.run as RunState).party!.members.every(
+              (member) =>
+                typeof member.id === "string" &&
+                member.id.length > 0 &&
+                typeof member.is_local === "boolean" &&
+                typeof member.connected === "boolean" &&
+                typeof member.character_id === "string" &&
+                typeof member.character_name === "string" &&
+                Number.isInteger(member.current_hp) &&
+                member.current_hp >= 0 &&
+                Number.isInteger(member.max_hp) &&
+                member.max_hp >= member.current_hp &&
+                Number.isInteger(member.block) &&
+                member.block >= 0 &&
+                typeof member.is_alive === "boolean" &&
+                Number.isInteger(member.gold) &&
+                member.gold >= 0 &&
+                Number.isInteger(member.max_energy) &&
+                member.max_energy >= 0 &&
+                Number.isInteger(member.potion_count) &&
+                member.potion_count >= 0 &&
+                Number.isInteger(member.potion_capacity) &&
+                member.potion_capacity >= member.potion_count,
+            ) &&
+            new Set(
+              (c.run as RunState).party!.members.map((member) => member.id),
+            ).size === (c.run as RunState).party!.members.length)) &&
         typeof (c.run as RunState).character_id === "string" &&
         (c.run as RunState).character_id.length > 0 &&
         typeof (c.run as RunState).character_name === "string" &&

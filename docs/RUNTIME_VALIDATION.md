@@ -386,6 +386,15 @@ M9.6 saved-run/error source checkpoint:
 - `NErrorPopup` is surfaced separately with normalized localized title/body and its native buttons remain informational only;
 - this is source/build evidence. Live error causes, missing-player confirmation, save compatibility and recovery behavior remain `implemented_unverified`.
 
+M9.6 run-party source checkpoint:
+
+- run snapshots now include an authoritative multiplayer roster sourced from the run's players and `RunLobby.ConnectedPlayerIds`;
+- each member exposes network/character identity, local ownership, connected state, HP/block/alive state, gold, energy and potion occupancy/capacity;
+- the Overlay expands party details automatically when a peer is disconnected, and states explicitly that it will not reconnect or replay actions;
+- native invite availability is visible during setup but remains non-actionable;
+- the inspected native source allows existing-player rejoin but abandons the run when the host abandons it; no host-migration capability was found;
+- these are static/source checks only. Multi-machine disconnect/rejoin, host loss and simultaneous combat remain `implemented_unverified`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

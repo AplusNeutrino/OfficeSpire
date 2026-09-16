@@ -8,7 +8,29 @@ internal sealed record RunSnapshotDto(
     IReadOnlyList<RelicSnapshotDto> Relics,
     string CharacterId = "",
     string CharacterName = "",
-    IReadOnlyList<CardInventorySnapshotDto>? DeckCards = null);
+    IReadOnlyList<CardInventorySnapshotDto>? DeckCards = null,
+    RunPartySnapshotDto? Party = null);
+
+internal sealed record RunPartySnapshotDto(
+    string Role,
+    string LocalPlayerId,
+    int ConnectedPlayers,
+    IReadOnlyList<RunPartyMemberSnapshotDto> Members);
+
+internal sealed record RunPartyMemberSnapshotDto(
+    string Id,
+    bool IsLocal,
+    bool Connected,
+    string CharacterId,
+    string CharacterName,
+    int CurrentHp,
+    int MaxHp,
+    int Block,
+    bool IsAlive,
+    int Gold,
+    int MaxEnergy,
+    int PotionCount,
+    int PotionCapacity);
 
 internal sealed record LifecycleScreenDto(
     bool WaitingForInput,

@@ -58,6 +58,7 @@ import { CardSelectionPanel } from "./components/CardSelectionPanel";
 import { EventPanel } from "./components/EventPanel";
 import { RestPanel } from "./components/RestPanel";
 import { TreasurePanel } from "./components/TreasurePanel";
+import { PartyPanel } from "./components/PartyPanel";
 import { ShopPanel } from "./components/ShopPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { LifecyclePanel } from "./components/LifecyclePanel";
@@ -646,6 +647,7 @@ export default function App() {
             : "Connection status"
         }
       >
+        {snapshot?.run.party && <PartyPanel party={snapshot.run.party} />}
         {!snapshot ? (
           <section className="empty">
             <h1>Waiting for STS2</h1>

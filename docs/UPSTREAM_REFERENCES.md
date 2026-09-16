@@ -199,6 +199,8 @@ For M9.3–M9.5, the same STS2MCP inspection commit identifies the current nativ
 
 For the later M9.6 saved-run/error slice, `SerializableRun`, `SerializablePlayer`, `LoadRunLobby`, `NMultiplayerLoadGameScreen`, `NVerticalPopup` and `NErrorPopup` were cross-checked against `zhiyue/sts2-rl-agent` commit `1b7e7ce35e608722650763938c153ea8bc370333`. These sources establish the native saved-player IDs/state, connected-player set, missing-player confirmation boundary and localized error-popup container. OfficeSpire independently observes those fields and deliberately omits every load, reconnect, continue-without-peer and popup mutation.
 
+The M9.6 in-run party slice additionally inspected `RunLobby`, `RunManager`, `IRunState`, `RunState`, `Player` and `NInvitePlayersButton` at that same pinned commit. `RunLobby` maintains the authoritative connected-ID set, limits rejoin to an existing run player, and converts host abandonment into run abandonment; `NInvitePlayersButton` delegates availability and the actual platform dialog to STS2. OfficeSpire therefore displays invite availability and party connectivity without opening dialogs, reconnecting peers, replaying actions or claiming unsupported host migration.
+
 ## zhiyue/sts2-rl-agent decompiled API reference
 
 - Repository: https://github.com/zhiyue/sts2-rl-agent

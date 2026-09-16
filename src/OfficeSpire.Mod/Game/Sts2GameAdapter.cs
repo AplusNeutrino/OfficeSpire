@@ -297,6 +297,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 AddMenuOption(options, screen, "_backButton", "back", "Back");
                 runSetup = BuildRunSetup(screen);
                 lobby = BuildMenuLobby(screen);
+                AddInviteOption(options, screen);
             }
             else if (definition.Screen == "multiplayer_join")
             {
@@ -384,7 +385,16 @@ public sealed class Sts2GameAdapter : IGameAdapter
             MenuOptionSnapshotDto? option = BuildMenuOption(screen, field, id, label);
             if (option is not null) options.Add(option);
         }
+        AddInviteOption(options, screen);
         return (options, characters);
+    }
+
+    private static void AddInviteOption(List<MenuOptionSnapshotDto> options, Node screen)
+    {
+        Node? invite = FindVisibleNodeByTypeName(screen, "NInvitePlayersButton");
+        if (invite is null) return;
+        bool enabled = invite.GetType().GetProperty("IsEnabled")?.GetValue(invite) as bool? ?? false;
+        options.Add(new MenuOptionSnapshotDto("invite", "Invite players", enabled));
     }
 
     private static List<MenuOptionSnapshotDto> BuildProfileMenuOptions(Node screen)
@@ -990,7 +1000,34 @@ public sealed class Sts2GameAdapter : IGameAdapter
             relics,
             player?.Character.Id.ToString() ?? string.Empty,
             player is null ? string.Empty : SafeFormat(player.Character.Title),
-            deckCards);
+            deckCards,
+            BuildRunParty(runState));
+    }
+
+    private static RunPartySnapshotDto? BuildRunParty(IRunState runState)
+    {
+        if (runState.Players.Count <= 1 || RunManager.Instance.RunLobby is not { } runLobby) return null;
+        string localPlayerId = RunManager.Instance.NetService.NetId.ToString();
+        string role = RunManager.Instance.NetService.Type.ToString().ToLowerInvariant();
+        var connectedIds = runLobby.ConnectedPlayerIds
+            .Select(id => id.ToString())
+            .ToHashSet(StringComparer.Ordinal);
+        var members = runState.Players.Select(member => new RunPartyMemberSnapshotDto(
+            member.NetId.ToString(),
+            member.NetId.ToString() == localPlayerId,
+            connectedIds.Contains(member.NetId.ToString()),
+            member.Character.Id.ToString(),
+            SafeFormat(member.Character.Title),
+            member.Creature.CurrentHp,
+            member.Creature.MaxHp,
+            member.Creature.Block,
+            member.Creature.IsAlive,
+            member.Gold,
+            member.MaxEnergy,
+            member.Potions.Count(),
+            member.MaxPotionCount)).ToList();
+        if (members.Count(member => member.IsLocal) != 1) return null;
+        return new RunPartySnapshotDto(role, localPlayerId, connectedIds.Count, members);
     }
 
     private static CombatScreenDto? BuildCombatSnapshot(Player player)
