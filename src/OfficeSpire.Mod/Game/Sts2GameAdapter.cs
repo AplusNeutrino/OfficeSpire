@@ -562,6 +562,10 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 relic.StackCount))
             .ToList() ?? [];
 
+        var deckCards = player?.Deck?.Cards
+            .Select((card, index) => BuildInventoryCard(card, index, PileType.None))
+            .ToList() ?? [];
+
         return new RunSnapshotDto(
             runState.AscensionLevel,
             runState.CurrentActIndex + 1,
@@ -569,7 +573,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
             player?.Gold ?? 0,
             relics,
             player?.Character.Id.ToString() ?? string.Empty,
-            player is null ? string.Empty : SafeFormat(player.Character.Title));
+            player is null ? string.Empty : SafeFormat(player.Character.Title),
+            deckCards);
     }
 
     private static CombatScreenDto? BuildCombatSnapshot(Player player)
@@ -676,7 +681,16 @@ public sealed class Sts2GameAdapter : IGameAdapter
             Piles: new PileSnapshotDto(
                 playerCombatState.DrawPile.Cards.Count,
                 playerCombatState.DiscardPile.Cards.Count,
-                playerCombatState.ExhaustPile.Cards.Count),
+                playerCombatState.ExhaustPile.Cards.Count,
+                playerCombatState.DrawPile.Cards
+                    .Select((card, index) => BuildInventoryCard(card, index, PileType.Draw))
+                    .ToList(),
+                playerCombatState.DiscardPile.Cards
+                    .Select((card, index) => BuildInventoryCard(card, index, PileType.Discard))
+                    .ToList(),
+                playerCombatState.ExhaustPile.Cards
+                    .Select((card, index) => BuildInventoryCard(card, index, PileType.Exhaust))
+                    .ToList()),
             Enemies: enemies,
             PotionCapacity: player.PotionSlots.Count,
             Potions: potions);
@@ -722,6 +736,18 @@ public sealed class Sts2GameAdapter : IGameAdapter
             NeedsTarget: needsTarget,
             ValidTargetIds: validTargetIds);
     }
+
+    private static CardInventorySnapshotDto BuildInventoryCard(
+        CardModel card,
+        int index,
+        PileType pile) => new(
+            index,
+            card.Id.ToString(),
+            SafeFormat(card.Title),
+            card.Type.ToString(),
+            card.Rarity.ToString(),
+            GetCardDescription(card, pile),
+            card.IsUpgraded);
 
     private static EnemySnapshotDto BuildEnemySnapshot(Creature enemy, int fallbackIndex)
     {
@@ -1175,9 +1201,17 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
     }
 
-    private static string GetCardDescription(CardModel? card)
+    private static string GetCardDescription(CardModel? card, PileType pile = PileType.Hand)
     {
         if (card is null) return string.Empty;
+        try
+        {
+            return NormalizeRichText(card.GetDescriptionForPile(pile));
+        }
+        catch
+        {
+            // Fall through to the older description construction path for version compatibility.
+        }
         try
         {
             LocString description = card.Description;

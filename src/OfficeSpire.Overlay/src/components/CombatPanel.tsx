@@ -3,6 +3,7 @@ import type {
   CombatStateSnapshot,
   EnemyState,
   PotionState,
+  InventoryCardState,
 } from "../types";
 import { CardButton } from "./CardButton";
 interface Props {
@@ -16,6 +17,22 @@ interface Props {
   onDiscardPotion: (potion: PotionState) => void;
   onCancelTarget: () => void;
   onEndTurn: () => void;
+}
+function CardInventory({ cards }: { cards: InventoryCardState[] }) {
+  if (cards.length === 0) return <small>Empty</small>;
+  return (
+    <div className="detail-list">
+      {cards.map((card) => (
+        <div className="detail-item" key={`${card.index}-${card.id}`}>
+          <strong>
+            {card.name}
+            {card.is_upgraded ? "+" : ""} · {card.type} · {card.rarity}
+          </strong>
+          <small>{card.description}</small>
+        </div>
+      ))}
+    </div>
+  );
 }
 export function CombatPanel({
   snapshot,
@@ -143,6 +160,10 @@ export function CombatPanel({
           <small>No relics</small>
         )}
       </section>
+      <details className="inventory-details">
+        <summary>Deck ({run.deck_cards.length})</summary>
+        <CardInventory cards={run.deck_cards} />
+      </details>
       <section>
         <h2>Enemies</h2>
         <div className="list">
@@ -273,6 +294,20 @@ export function CombatPanel({
           [E] End Turn
         </button>
       </footer>
+      <section className="pile-details">
+        <details>
+          <summary>Draw pile ({screen.piles.draw})</summary>
+          <CardInventory cards={screen.piles.draw_cards} />
+        </details>
+        <details>
+          <summary>Discard pile ({screen.piles.discard})</summary>
+          <CardInventory cards={screen.piles.discard_cards} />
+        </details>
+        <details>
+          <summary>Exhaust pile ({screen.piles.exhaust})</summary>
+          <CardInventory cards={screen.piles.exhaust_cards} />
+        </details>
+      </section>
       <p className="keyboard-help">
         1–9 cards/targets · Shift+1–9 potions · Esc cancel
       </p>

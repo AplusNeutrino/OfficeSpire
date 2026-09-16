@@ -96,6 +96,8 @@ For `phase="combat"`, `run.character_id` and `run.character_name` identify the l
 
 `screen.potion_capacity` is the native slot count, while `screen.potions` contains occupied slots with their original slot indexes, identities, target rules, and availability. Empty slots are therefore represented by capacity minus occupied entries rather than fabricated potion objects. `run.relics` contains each native relic's ID, name, description, and stack count. These presentation additions do not mint a decision revision by themselves and do not change action identity.
 
+`run.deck_cards` lists every authoritative run-deck card separately, retaining its deck index, native ID, upgrade state, type, rarity and description. It deliberately does not merge cards solely by ID because upgraded and base copies may differ. `screen.piles.draw_cards`, `discard_cards`, and `exhaust_cards` list current combat-pile contents with descriptions generated for their native `PileType`. Their array lengths must exactly match the corresponding `draw`, `discard`, and `exhaust` counts or the client rejects the snapshot. These lists are read-only presentation state; only `screen.hand` carries playable hand indexes.
+
 ## Action request
 
 The body of an `action` message is:

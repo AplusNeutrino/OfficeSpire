@@ -609,7 +609,10 @@ M9.2 source checkpoint — 2026-09-16:
 - cosmetic pets without native combat state are deliberately not fabricated as companions;
 - the Overlay renders these fields alongside player powers, relics and potion capacity, and rejects incomplete combat snapshots rather than silently hiding missing character state;
 - exact APIs were cross-checked against STS2MCP commit `55e064850a68f3b4cde7e5fd525bf9b2dec4e885`; OfficeSpire's typed DTOs and UI are independently implemented;
-- installed-assembly compilation and live comparison across all characters remain `implemented_unverified`; deck/pile contents beyond counts still remain to be implemented.
+- the authoritative run deck now exposes every card individually with native identity, upgrade state, type, rarity and readable description rather than collapsing upgraded and base copies;
+- combat draw, discard and exhaust piles expose their exact current contents using pile-context descriptions, and the Overlay provides collapsed read-only inspection panels;
+- protocol ingestion requires reported pile counts to equal the supplied card arrays, preventing a partial payload from appearing complete;
+- installed-assembly compilation and live comparison across all characters and pile-changing effects remain `implemented_unverified`.
 
 ### 9.2 Complete information contract
 

@@ -351,6 +351,7 @@ describe("OfficeSpire wire protocol", () => {
         run: {
           character_id: "IRONCLAD",
           character_name: "Ironclad",
+          deck_cards: [],
           relics: [
             {
               id: "burning-blood",
@@ -373,6 +374,14 @@ describe("OfficeSpire wire protocol", () => {
           orb_capacity: 0,
           orbs: [],
           companions: [],
+          piles: {
+            draw: 0,
+            discard: 0,
+            exhaust: 0,
+            draw_cards: [],
+            discard_cards: [],
+            exhaust_cards: [],
+          },
           hand: [],
           enemies: [],
           potion_capacity: 3,

@@ -331,7 +331,15 @@ Second source slice:
 - protocol validation fails closed when the complete M9 combat information shape is absent;
 - this is source/build evidence only. Current STS2 assembly compilation and all five-character live comparisons remain `implemented_unverified`.
 
-Required live evidence remains: compile against the installed STS2 assemblies; compare identity, powers, relics, potion slots, Regent stars, Defect orbs and Necrobinder Osty against the native UI; observe add/remove/expiry and capacity changes; verify the Windows/Tauri layout and rich/localized descriptions. Full deck/pile inspection remains `not_implemented`, and any additional character-specific entity discovered in the installed version must be added to the inventory before M9.2 can complete.
+Third source slice:
+
+- the run snapshot exports every deck card separately with native identity and upgrade state;
+- draw, discard and exhaust pile contents use STS2's pile-context description path;
+- the Overlay exposes collapsed, read-only deck/pile inspectors while retaining the compact count footer;
+- protocol validation rejects count/content mismatches, so partial pile exports cannot silently masquerade as complete information;
+- deck mutation, draw/reshuffle/discard/exhaust transitions and character-specific card descriptions remain `implemented_unverified` pending STS2 runtime evidence.
+
+Required live evidence remains: compile against the installed STS2 assemblies; compare identity, powers, relics, potion slots, Regent stars, Defect orbs, Necrobinder Osty, the run deck and all combat piles against the native UI; observe add/remove/expiry, reshuffle and capacity changes; verify the Windows/Tauri layout and rich/localized descriptions. Any additional character-specific entity discovered in the installed version must be added to the inventory before M9.2 can complete.
 
 The M9 privacy hotkey is planned but not implemented. Its runtime gate includes authenticated-PID-only targeting, hide/restore recovery, global-shortcut collision, fullscreen, multi-monitor, focus, game restart and Overlay-exit behavior. Static code or a mocked window handle will not count as `runtime_pass`.
 

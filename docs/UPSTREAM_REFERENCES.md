@@ -193,6 +193,8 @@ No STS2MCP source was copied in this pass. OfficeSpire's M9 plan and player-info
 
 At the M9.2 inspection commit, `McpMod.StateBuilder.cs` confirmed current access shapes for `Player.Character`, Regent `PlayerCombatState.Stars`, Defect `OrbQueue`, and Necrobinder `GetPet<Osty>()`. The source also explicitly treats Byrdpip and PaelsLegion as cosmetic rather than real combat-state entities. OfficeSpire uses these findings only to select authoritative native models and independently defines its DTOs, validation, normalization and React rendering.
 
+The same inspection confirmed `CardModel.GetDescriptionForPile(PileType)` for pile-context text and the three live `PlayerCombatState` pile collections. The independently reviewed autoSpire commit already recorded above confirmed `player.Deck.Cards` as the authoritative run deck. OfficeSpire preserves individual card/upgrade entries rather than adopting autoSpire's ID-only grouping.
+
 ## Licensing rule
 
 Before copying or adapting source from any upstream project:

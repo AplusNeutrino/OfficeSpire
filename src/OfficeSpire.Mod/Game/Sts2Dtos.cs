@@ -7,7 +7,8 @@ internal sealed record RunSnapshotDto(
     int Gold,
     IReadOnlyList<RelicSnapshotDto> Relics,
     string CharacterId = "",
-    string CharacterName = "");
+    string CharacterName = "",
+    IReadOnlyList<CardInventorySnapshotDto>? DeckCards = null);
 
 internal sealed record LifecycleScreenDto(
     bool WaitingForInput,
@@ -47,7 +48,19 @@ internal sealed record PlayerSnapshotDto(
 internal sealed record PileSnapshotDto(
     int Draw,
     int Discard,
-    int Exhaust);
+    int Exhaust,
+    IReadOnlyList<CardInventorySnapshotDto> DrawCards,
+    IReadOnlyList<CardInventorySnapshotDto> DiscardCards,
+    IReadOnlyList<CardInventorySnapshotDto> ExhaustCards);
+
+internal sealed record CardInventorySnapshotDto(
+    int Index,
+    string Id,
+    string Name,
+    string Type,
+    string Rarity,
+    string Description,
+    bool IsUpgraded);
 
 internal sealed record CardSnapshotDto(
     int HandIndex,

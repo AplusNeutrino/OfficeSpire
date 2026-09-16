@@ -42,6 +42,15 @@ export interface CompanionState {
   block: number;
   powers: PowerState[];
 }
+export interface InventoryCardState {
+  index: number;
+  id: string;
+  name: string;
+  type: string;
+  rarity: string;
+  description: string;
+  is_upgraded: boolean;
+}
 export interface EnemyState {
   stable_id: string;
   combat_id: number;
@@ -97,7 +106,14 @@ export interface CombatScreen {
   orbs: OrbState[];
   companions: CompanionState[];
   hand: CardState[];
-  piles: { draw: number; discard: number; exhaust: number };
+  piles: {
+    draw: number;
+    discard: number;
+    exhaust: number;
+    draw_cards: InventoryCardState[];
+    discard_cards: InventoryCardState[];
+    exhaust_cards: InventoryCardState[];
+  };
   enemies: EnemyState[];
   potion_capacity: number;
   potions: PotionState[];
@@ -219,6 +235,7 @@ export interface RunState {
   relics: RelicState[];
   character_id: string;
   character_name: string;
+  deck_cards: InventoryCardState[];
 }
 export interface LifecycleScreen {
   waiting_for_input: false;
@@ -364,6 +381,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "combat" ||
       (Array.isArray((c.screen as CombatScreen).hand) &&
         Array.isArray((c.run as RunState).relics) &&
+        Array.isArray((c.run as RunState).deck_cards) &&
         typeof (c.run as RunState).character_id === "string" &&
         (c.run as RunState).character_id.length > 0 &&
         typeof (c.run as RunState).character_name === "string" &&
@@ -378,6 +396,15 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         (c.screen as CombatScreen).orbs.length <=
           (c.screen as CombatScreen).orb_capacity &&
         Array.isArray((c.screen as CombatScreen).companions) &&
+        Array.isArray((c.screen as CombatScreen).piles?.draw_cards) &&
+        Array.isArray((c.screen as CombatScreen).piles?.discard_cards) &&
+        Array.isArray((c.screen as CombatScreen).piles?.exhaust_cards) &&
+        (c.screen as CombatScreen).piles.draw ===
+          (c.screen as CombatScreen).piles.draw_cards.length &&
+        (c.screen as CombatScreen).piles.discard ===
+          (c.screen as CombatScreen).piles.discard_cards.length &&
+        (c.screen as CombatScreen).piles.exhaust ===
+          (c.screen as CombatScreen).piles.exhaust_cards.length &&
         Number.isInteger((c.screen as CombatScreen).potion_capacity) &&
         (c.screen as CombatScreen).potion_capacity >=
           (c.screen as CombatScreen).potions?.length &&
