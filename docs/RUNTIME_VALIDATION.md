@@ -444,6 +444,14 @@ M9.7 special-event/minigame source checkpoint:
 - static protocol tests cover a valid grid, malformed/falsely actionable fallback rejection and action payload identity. These checks do not compile the Mod or execute STS2;
 - installed-assembly compilation plus live paid/free Crystal Sphere routes, small/big reveals, completion, Fake Merchant purchase/combat/leave, ordinary event handoff and multiplayer behavior remain `implemented_unverified`.
 
+M9.3–M9.5 launch-chain source checkpoint:
+
+- menu options now distinguish native availability from an explicit action allowlist, and the client rejects inconsistent `waiting_for_input`/`can_mutate` state;
+- `choose_menu_option`, `set_run_ascension` and `set_custom_seed` carry expected revision and typed screen/identity payloads; the game thread repeats active-screen, control, range and host-ownership checks;
+- character and Ready/Unready controls use native callbacks, leaving the authoritative all-ready launch decision to `StartRunLobby`;
+- destructive/ambiguous popups, quit, abandon-save, invitations and modifier edits are read-only; no operation is replayed after timeout or reconnect;
+- this is static/test/build evidence only. Cold start, saves/profiles, every mode/character, solo and multiplayer launch, rejection paths and Run transition require real Windows/STS2 evidence and remain `implemented_unverified`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

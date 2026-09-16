@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Reflection;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -62,6 +63,9 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_special_event_cell" => ExecuteChooseSpecialEventCell(request),
                 "select_special_event_tool" => ExecuteSelectSpecialEventTool(request),
                 "proceed_special_event" => ExecuteProceedSpecialEvent(request),
+                "choose_menu_option" => ExecuteChooseMenuOption(request),
+                "set_run_ascension" => ExecuteSetRunAscension(request),
+                "set_custom_seed" => ExecuteSetCustomSeed(request),
                 "choose_rest_option" => ExecuteChooseRestOption(request),
                 "leave_rest_site" => ExecuteLeaveRestSite(request),
                 "open_treasure" => ExecuteOpenTreasure(request),
@@ -382,7 +386,185 @@ public sealed class M4GameAdapter : IGameAdapter
         if (target is null) return null;
         const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
         Type type = target.GetType();
-        return type.GetProperty(name, flags)?.GetValue(target) ?? type.GetField(name, flags)?.GetValue(target);
+        return type.GetProperty(name, flags)?.GetValue(target) ?? GetInstanceFieldValue(target, name);
+    }
+
+    private static ActionResponse ExecuteChooseMenuOption(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "menu_screen", out string? expectedScreen) ||
+            !TryReadRequiredString(request.Payload, "option_id", out string? optionId))
+        {
+            return Reject(request, "bad_request", "choose_menu_option requires payload.menu_screen and payload.option_id.");
+        }
+        if (!TryGetActiveMenuScreen(out Node? screen, out string currentScreen) ||
+            !string.Equals(currentScreen, expectedScreen, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The visible STS2 menu changed before dispatch.");
+        }
+        if (!TryResolveMenuOption(screen!, currentScreen, optionId!, out NButton? button))
+        {
+            return Reject(request, "unsupported_state", $"Menu option '{optionId}' is not a supported native control on '{currentScreen}'.");
+        }
+        if (button is not { IsEnabled: true } || !button.IsVisibleInTree())
+        {
+            return Reject(request, "not_ready", $"Menu option '{optionId}' is disabled or no longer visible.");
+        }
+        button.ForceClick();
+        return Accept(request, "accepted", $"Selected menu option '{optionId}'.");
+    }
+
+    private static ActionResponse ExecuteSetRunAscension(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "menu_screen", out string? expectedScreen) ||
+            !TryReadRequiredInt(request.Payload, "ascension", out int ascension))
+        {
+            return Reject(request, "bad_request", "set_run_ascension requires payload.menu_screen and payload.ascension.");
+        }
+        if (expectedScreen is not ("character_select" or "custom_run") ||
+            !TryGetActiveMenuScreen(out Node? screen, out string currentScreen) ||
+            !string.Equals(currentScreen, expectedScreen, StringComparison.Ordinal))
+        {
+            return Reject(request, "bad_phase", "Ascension can be changed only on the active Standard or Custom setup screen.");
+        }
+        object? lobby = ReadMember(screen, "Lobby") ?? ReadMember(screen, "_lobby");
+        if (lobby is null) return Reject(request, "not_ready", "The native run lobby is not initialized.");
+        int max = ReadMember(lobby, "MaxAscension") is int maxValue ? maxValue : 0;
+        string role = ReadMember(ReadMember(lobby, "NetService"), "Type")?.ToString()?.ToLowerInvariant() ?? "unknown";
+        if (role == "client") return Reject(request, "ownership_error", "Only the host or single-player owner can change ascension.");
+        if (ascension < 0 || ascension > max) return Reject(request, "bad_request", $"Ascension must be between 0 and {max}.");
+        MethodInfo? method = lobby.GetType().GetMethod("SyncAscensionChange", BindingFlags.Public | BindingFlags.Instance);
+        if (method is null) return Reject(request, "unsupported_state", "The native ascension setter is unavailable.");
+        method.Invoke(lobby, [ascension]);
+        return Accept(request, "accepted", $"Set ascension to {ascension}.");
+    }
+
+    private static ActionResponse ExecuteSetCustomSeed(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "menu_screen", out string? expectedScreen) ||
+            request.Payload.ValueKind != JsonValueKind.Object ||
+            !request.Payload.TryGetProperty("seed", out JsonElement seedElement) ||
+            seedElement.ValueKind is not (JsonValueKind.String or JsonValueKind.Null))
+        {
+            return Reject(request, "bad_request", "set_custom_seed requires payload.menu_screen and a string or null payload.seed.");
+        }
+        if (expectedScreen != "custom_run" ||
+            !TryGetActiveMenuScreen(out Node? screen, out string currentScreen) ||
+            currentScreen != "custom_run")
+        {
+            return Reject(request, "bad_phase", "A seed can be changed only on the active Custom Run screen.");
+        }
+        string? seed = seedElement.ValueKind == JsonValueKind.Null ? null : seedElement.GetString();
+        if (seed is { Length: > 64 } || seed?.Any(char.IsControl) == true)
+            return Reject(request, "bad_request", "The seed must be at most 64 characters and contain no control characters.");
+        object? lobby = ReadMember(screen, "Lobby") ?? ReadMember(screen, "_lobby");
+        if (lobby is null) return Reject(request, "not_ready", "The native run lobby is not initialized.");
+        string role = ReadMember(ReadMember(lobby, "NetService"), "Type")?.ToString()?.ToLowerInvariant() ?? "unknown";
+        if (role == "client") return Reject(request, "ownership_error", "Only the host or single-player owner can change the seed.");
+        MethodInfo? method = lobby.GetType().GetMethod("SetSeed", BindingFlags.Public | BindingFlags.Instance);
+        if (method is null) return Reject(request, "unsupported_state", "The native seed setter is unavailable.");
+        method.Invoke(lobby, [string.IsNullOrEmpty(seed) ? null : seed]);
+        return Accept(request, "accepted", string.IsNullOrEmpty(seed) ? "Restored a random seed." : "Updated the Custom Run seed.");
+    }
+
+    private static bool TryGetActiveMenuScreen(out Node? screen, out string menuScreen)
+    {
+        screen = null;
+        menuScreen = "unknown";
+        if (Engine.GetMainLoop() is not SceneTree tree || tree.Root is null) return false;
+        foreach ((string Type, string Screen) definition in new[]
+        {
+            ("NErrorPopup", "error_popup"), ("NVerticalPopup", "popup"),
+            ("NProfileScreen", "profile_select"), ("NCustomRunScreen", "custom_run"),
+            ("NDailyRunScreen", "daily_run"), ("NCharacterSelectScreen", "character_select"),
+            ("NJoinFriendScreen", "multiplayer_join"), ("NMultiplayerLoadGameScreen", "multiplayer_load"),
+            ("NMultiplayerHostSubmenu", "multiplayer_host"), ("NMultiplayerSubmenu", "multiplayer"),
+            ("NSingleplayerSubmenu", "singleplayer"), ("NMainMenu", "main")
+        })
+        {
+            Node? candidate = FindNodesByTypeName(tree.Root, definition.Type)
+                .FirstOrDefault(node => node is CanvasItem item && item.IsVisibleInTree());
+            if (candidate is null) continue;
+            screen = candidate;
+            menuScreen = definition.Screen;
+            return true;
+        }
+        return false;
+    }
+
+    private static bool TryResolveMenuOption(Node screen, string menuScreen, string optionId, out NButton? button)
+    {
+        button = null;
+        string? field = (menuScreen, optionId) switch
+        {
+            ("main", "continue") => "_continueButton",
+            ("main", "profiles") => "_openProfileScreenButton",
+            ("main", "singleplayer") => "_singleplayerButton",
+            ("main", "multiplayer") => "_multiplayerButton",
+            ("singleplayer", "standard") or ("multiplayer_host", "standard") => "_standardButton",
+            ("singleplayer", "daily") or ("multiplayer_host", "daily") => "_dailyButton",
+            ("singleplayer", "custom") or ("multiplayer_host", "custom") => "_customButton",
+            ("multiplayer", "host") => "_hostButton",
+            ("multiplayer", "join") => "_joinButton",
+            ("multiplayer", "load") => "_loadButton",
+            ("multiplayer_join", "refresh") => "_refreshButton",
+            ("character_select", "confirm") => "_embarkButton",
+            ("custom_run", "confirm") => "_confirmButton",
+            ("daily_run", "confirm") => "_embarkButton",
+            ("multiplayer_load", "confirm") => "_confirmButton",
+            ("character_select" or "custom_run" or "daily_run" or "multiplayer_load", "unready") => "_unreadyButton",
+            (_, "back") => "_backButton",
+            _ => null
+        };
+        if (field is not null)
+        {
+            button = ReadMember(screen, field) as NButton;
+            return button is not null;
+        }
+        if (menuScreen == "profile_select" && optionId.StartsWith("profile_", StringComparison.Ordinal) &&
+            int.TryParse(optionId[8..], out int profileId) && ReadMember(screen, "_profileButtons") is System.Collections.IEnumerable profiles)
+        {
+            button = profiles.Cast<object>()
+                .FirstOrDefault(candidate => ReadMember(candidate, "_profileId") is int id && id == profileId) as NButton;
+            return button is not null;
+        }
+        if (menuScreen == "multiplayer_join" && optionId.StartsWith("friend_", StringComparison.Ordinal))
+        {
+            string playerId = optionId[7..];
+            button = FindNodesByTypeName(screen, "NJoinFriendButton")
+                .FirstOrDefault(candidate => string.Equals(ReadMember(candidate, "PlayerId")?.ToString(), playerId, StringComparison.Ordinal)) as NButton;
+            return button is not null;
+        }
+        if (menuScreen is "character_select" or "custom_run")
+        {
+            button = FindNodesByTypeName(screen, "NCharacterSelectButton")
+                .FirstOrDefault(candidate => string.Equals(GetModelId(ReadMember(candidate, "Character")), optionId, StringComparison.Ordinal)) as NButton;
+            return button is not null;
+        }
+        return false;
+    }
+
+    private static object? GetInstanceFieldValue(object instance, string fieldName)
+    {
+        for (Type? type = instance.GetType(); type is not null; type = type.BaseType)
+        {
+            FieldInfo? field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field is not null) return field.GetValue(instance);
+        }
+        return null;
+    }
+
+    private static List<Node> FindNodesByTypeName(Node parent, string typeName, List<Node>? results = null)
+    {
+        results ??= [];
+        if (parent.GetType().Name == typeName) results.Add(parent);
+        foreach (Node child in parent.GetChildren()) FindNodesByTypeName(child, typeName, results);
+        return results;
+    }
+
+    private static string GetModelId(object? model)
+    {
+        object? id = ReadMember(model, "Id");
+        return ReadMember(id, "Entry")?.ToString() ?? id?.ToString() ?? string.Empty;
     }
 
     private static ActionResponse ExecuteChooseCardOption(ActionRequest request)

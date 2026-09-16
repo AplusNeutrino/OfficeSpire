@@ -32,6 +32,7 @@ import type {
   RewardsStateSnapshot,
   LifecycleStateSnapshot,
   MenuStateSnapshot,
+  MenuOptionState,
 } from "./types";
 import {
   createEndTurnAction,
@@ -53,6 +54,9 @@ import {
   createBuyShopItemAction,
   createUsePotionAction,
   createDiscardPotionAction,
+  createMenuOptionAction,
+  createRunAscensionAction,
+  createCustomSeedAction,
 } from "./actions/actionDispatcher";
 import { resolveCombatShortcut } from "./actions/combatKeyboard";
 import { resolveRunShortcut } from "./actions/runKeyboard";
@@ -95,6 +99,7 @@ const terminalCodes = new Set([
   "action_pending",
   "dispatch_exception",
   "unknown_request",
+  "ownership_error",
   "timeout",
   "client_timeout",
 ]);
@@ -399,6 +404,18 @@ export default function App() {
           snapshot.state_revision,
         ),
       );
+  };
+  const chooseMenuOption = (option: MenuOptionState) => {
+    if (snapshot?.phase !== "menu" || !option.actionable || !option.enabled)
+      return;
+    const menuSnapshot = snapshot as MenuStateSnapshot;
+    submit(
+      createMenuOptionAction(
+        menuSnapshot.screen.menu_screen,
+        option.id,
+        menuSnapshot.state_revision,
+      ),
+    );
   };
   const actionInFlight = !!(
     actionResult &&
@@ -774,6 +791,29 @@ export default function App() {
         ) : snapshot.phase === "menu" || snapshot.phase === "run_end" ? (
           <LifecyclePanel
             snapshot={snapshot as LifecycleStateSnapshot | MenuStateSnapshot}
+            disabled={disabled}
+            onOption={chooseMenuOption}
+            onAscension={(ascension) => {
+              if (
+                snapshot.phase === "menu" &&
+                (snapshot.screen.menu_screen === "character_select" ||
+                  snapshot.screen.menu_screen === "custom_run")
+              )
+                submit(
+                  createRunAscensionAction(
+                    snapshot.screen.menu_screen,
+                    ascension,
+                    snapshot.state_revision,
+                  ),
+                );
+            }}
+            onSeed={(seed) => {
+              if (
+                snapshot.phase === "menu" &&
+                snapshot.screen.menu_screen === "custom_run"
+              )
+                submit(createCustomSeedAction(seed, snapshot.state_revision));
+            }}
           />
         ) : (
           <section className="empty">

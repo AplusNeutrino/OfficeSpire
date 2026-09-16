@@ -277,7 +277,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             ("NSingleplayerSubmenu", "singleplayer", "Choose the single-player game mode in the original STS2 window.",
                 [("_standardButton", "standard", "Standard"), ("_dailyButton", "daily", "Daily"), ("_customButton", "custom", "Custom"), ("_backButton", "back", "Back")]),
             ("NMainMenu", "main", "Choose an action in the original STS2 window.",
-                [("_continueButton", "continue", "Continue"), ("_abandonRunButton", "abandon_run", "Abandon run"), ("_singleplayerButton", "singleplayer", "Single player"), ("_multiplayerButton", "multiplayer", "Multiplayer"), ("_compendiumButton", "compendium", "Compendium"), ("_timelineButton", "timeline", "Timeline"), ("_settingsButton", "settings", "Settings"), ("_quitButton", "quit", "Quit")])
+                [("_continueButton", "continue", "Continue"), ("_openProfileScreenButton", "profiles", "Profiles"), ("_abandonRunButton", "abandon_run", "Abandon run"), ("_singleplayerButton", "singleplayer", "Single player"), ("_multiplayerButton", "multiplayer", "Multiplayer"), ("_compendiumButton", "compendium", "Compendium"), ("_timelineButton", "timeline", "Timeline"), ("_settingsButton", "settings", "Settings"), ("_quitButton", "quit", "Quit")])
         ];
 
         foreach (var definition in definitions)
@@ -347,11 +347,40 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     .ToList();
                 if (definition.Screen == "multiplayer_host") connection = BuildHostConnectionState(screen);
             }
-            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup, lobby, connection, savedRun, popupTitle);
+            options = options
+                .Select(option => option with { Actionable = IsSupportedMenuOption(definition.Screen, option.Id) })
+                .ToList();
+            bool canMutate = options.Any(option => option.Actionable && option.Enabled) ||
+                CanEditRunSetup(definition.Screen, runSetup, lobby);
+            string message = canMutate
+                ? "Choose an available action. OfficeSpire will revalidate it on the STS2 main thread."
+                : definition.Message;
+            return new MenuScreenDto(canMutate, definition.Screen, message, options, canMutate, currentProfileId, characters, popupBody, runSetup, lobby, connection, savedRun, popupTitle);
         }
 
         return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
     }
+
+    private static bool CanEditRunSetup(string screen, MenuRunSetupSnapshotDto? setup, MenuLobbySnapshotDto? lobby) =>
+        setup is not null && lobby is not null &&
+        lobby.Role is "singleplayer" or "host" &&
+        screen is "character_select" or "custom_run";
+
+    private static bool IsSupportedMenuOption(string screen, string optionId) => screen switch
+    {
+        "main" => optionId is "continue" or "profiles" or "singleplayer" or "multiplayer",
+        "singleplayer" => optionId is "standard" or "daily" or "custom" or "back",
+        "multiplayer" => optionId is "host" or "join" or "load" or "back",
+        "multiplayer_host" => optionId is "standard" or "daily" or "custom" or "back",
+        "multiplayer_join" => optionId == "refresh" || optionId.StartsWith("friend_", StringComparison.Ordinal),
+        "multiplayer_load" => optionId is "confirm" or "unready" or "back",
+        "profile_select" => optionId == "back" || optionId.StartsWith("profile_", StringComparison.Ordinal),
+        "character_select" or "custom_run" =>
+            optionId is "confirm" or "unready" or "back" ||
+            optionId is not "invite",
+        "daily_run" => optionId is "confirm" or "unready" or "back",
+        _ => false
+    };
 
     private static MenuOptionSnapshotDto? BuildMenuOption(Node screen, string fieldName, string id, string label)
     {
@@ -1532,6 +1561,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is ShopScreenDto shop && shop.WaitingForInput;
         }
 
+        if (string.Equals(phase, PhaseNames.Menu, StringComparison.Ordinal))
+        {
+            return screenValue is MenuScreenDto;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -1605,6 +1639,43 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 shop.CardRemovalAvailable,
                 shop.CardRemovalCost,
                 shop.CanLeave
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Menu, StringComparison.Ordinal) &&
+            screenValue is MenuScreenDto menu)
+        {
+            projection = new
+            {
+                Phase = phase,
+                menu.MenuScreen,
+                Options = menu.Options.Select(option => new { option.Id, option.Enabled, option.Actionable }).ToArray(),
+                menu.CurrentProfileId,
+                Characters = menu.Characters?.Select(character => new { character.Id, character.Locked }).ToArray(),
+                RunSetup = menu.RunSetup is null ? null : new
+                {
+                    menu.RunSetup.Mode,
+                    menu.RunSetup.Ascension,
+                    menu.RunSetup.MaxAscension,
+                    menu.RunSetup.Seed,
+                    menu.RunSetup.ActOne,
+                    Modifiers = menu.RunSetup.Modifiers.Select(modifier => modifier.Id).ToArray()
+                },
+                Lobby = menu.Lobby is null ? null : new
+                {
+                    menu.Lobby.Role,
+                    menu.Lobby.LocalPlayerId,
+                    Players = menu.Lobby.Players.Select(player => new
+                    {
+                        player.Id,
+                        player.CharacterId,
+                        player.IsReady
+                    }).ToArray()
+                },
+                Connection = menu.Connection is null ? null : new
+                {
+                    menu.Connection.Status,
+                    Sessions = menu.Connection.Sessions.Select(session => new { session.Id, session.Enabled }).ToArray()
+                }
             };
         }
         else if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal) &&

@@ -321,6 +321,7 @@ export interface MenuOptionState {
   id: string;
   label: string;
   enabled: boolean;
+  actionable: boolean;
 }
 export interface MenuStartingRelicState {
   name: string;
@@ -397,7 +398,7 @@ export interface MenuSavedRunState {
   players: MenuSavedPlayerState[];
 }
 export interface MenuScreen {
-  waiting_for_input: false;
+  waiting_for_input: boolean;
   menu_screen:
     | "main"
     | "singleplayer"
@@ -414,7 +415,7 @@ export interface MenuScreen {
     | "unknown";
   message: string;
   options: MenuOptionState[];
-  can_mutate: false;
+  can_mutate: boolean;
   current_profile_id: number | null;
   characters: MenuCharacterState[] | null;
   popup_body: string;
@@ -533,6 +534,9 @@ export interface OverlayAction {
     | "choose_special_event_cell"
     | "select_special_event_tool"
     | "proceed_special_event"
+    | "choose_menu_option"
+    | "set_run_ascension"
+    | "set_custom_seed"
     | "choose_rest_option"
     | "leave_rest_site"
     | "open_treasure"
@@ -969,7 +973,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
     (c.phase !== "menu" ||
       (c.action_pending === false &&
-        (c.screen as MenuScreen).waiting_for_input === false &&
+        typeof (c.screen as MenuScreen).waiting_for_input === "boolean" &&
         menuScreens.has((c.screen as MenuScreen).menu_screen) &&
         typeof (c.screen as MenuScreen).message === "string" &&
         Array.isArray((c.screen as MenuScreen).options) &&
@@ -978,7 +982,8 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
             typeof option.id === "string" &&
             option.id.length > 0 &&
             typeof option.label === "string" &&
-            typeof option.enabled === "boolean",
+            typeof option.enabled === "boolean" &&
+            typeof option.actionable === "boolean",
         ) &&
         new Set((c.screen as MenuScreen).options.map((option) => option.id))
           .size === (c.screen as MenuScreen).options.length &&
@@ -986,7 +991,9 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
           ((c.screen as MenuScreen).menu_screen === "profile_select" &&
             Number.isInteger((c.screen as MenuScreen).current_profile_id))) &&
         ((c.screen as MenuScreen).characters === null ||
-          ((c.screen as MenuScreen).menu_screen === "character_select" &&
+          (["character_select", "custom_run"].includes(
+            (c.screen as MenuScreen).menu_screen,
+          ) &&
             Array.isArray((c.screen as MenuScreen).characters) &&
             (c.screen as MenuScreen).characters!.every(
               (character) =>
@@ -1153,7 +1160,21 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
                 (player) => player.id,
               ),
             ).size === (c.screen as MenuScreen).saved_run!.players.length)) &&
-        (c.screen as MenuScreen).can_mutate === false)) &&
+        typeof (c.screen as MenuScreen).can_mutate === "boolean" &&
+        (c.screen as MenuScreen).can_mutate ===
+          ((c.screen as MenuScreen).options.some(
+            (option) => option.enabled && option.actionable,
+          ) ||
+            (["character_select", "custom_run"].includes(
+              (c.screen as MenuScreen).menu_screen,
+            ) &&
+              (c.screen as MenuScreen).run_setup !== null &&
+              (c.screen as MenuScreen).lobby !== null &&
+              ["singleplayer", "host"].includes(
+                (c.screen as MenuScreen).lobby!.role,
+              ))) &&
+        (c.screen as MenuScreen).waiting_for_input ===
+          (c.screen as MenuScreen).can_mutate)) &&
     (c.phase !== "run_end" ||
       (c.action_pending === false &&
         (c.screen as LifecycleScreen).waiting_for_input === false &&

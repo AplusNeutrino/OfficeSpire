@@ -193,6 +193,8 @@ internal sealed class ActionInbox
     {
         return action switch
         {
+            "choose_menu_option" or "set_run_ascension" or "set_custom_seed" =>
+                string.Equals(phase, PhaseNames.Menu, StringComparison.Ordinal),
             "choose_map_node" => string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal),
             "choose_reward" or "choose_reward_card" or "skip_rewards" =>
                 string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal),

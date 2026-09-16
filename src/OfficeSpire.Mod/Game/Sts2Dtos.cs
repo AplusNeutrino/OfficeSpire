@@ -56,7 +56,8 @@ internal sealed record MenuScreenDto(
 internal sealed record MenuOptionSnapshotDto(
     string Id,
     string Label,
-    bool Enabled);
+    bool Enabled,
+    bool Actionable = false);
 
 internal sealed record MenuCharacterSnapshotDto(
     string Id,

@@ -25,6 +25,9 @@ import {
   createPlayCardAction,
   createUsePotionAction,
   createDiscardPotionAction,
+  createMenuOptionAction,
+  createRunAscensionAction,
+  createCustomSeedAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot, type StateSnapshot } from "../types";
 import { resolveCombatShortcut } from "../actions/combatKeyboard";
@@ -271,7 +274,7 @@ describe("OfficeSpire wire protocol", () => {
       }),
     ).toBe(false);
   });
-  it("accepts read-only menu lifecycle snapshots", () => {
+  it("accepts actionable menu lifecycle snapshots", () => {
     const menu = {
       protocol_version: 1,
       state_revision: 0,
@@ -279,14 +282,24 @@ describe("OfficeSpire wire protocol", () => {
       action_pending: false,
       run: {},
       screen: {
-        waiting_for_input: false,
+        waiting_for_input: true,
         menu_screen: "main",
         message: "Choose an action in the original STS2 window.",
         options: [
-          { id: "continue", label: "Continue", enabled: true },
-          { id: "singleplayer", label: "Single player", enabled: true },
+          {
+            id: "continue",
+            label: "Continue",
+            enabled: true,
+            actionable: true,
+          },
+          {
+            id: "singleplayer",
+            label: "Single player",
+            enabled: true,
+            actionable: true,
+          },
         ],
-        can_mutate: false,
+        can_mutate: true,
         current_profile_id: null,
         characters: null,
         popup_body: "",
@@ -302,7 +315,7 @@ describe("OfficeSpire wire protocol", () => {
     expect(
       isStateSnapshot({
         ...menu,
-        screen: { ...menu.screen, can_mutate: true },
+        screen: { ...menu.screen, can_mutate: false },
       }),
     ).toBe(false);
     expect(
@@ -442,6 +455,25 @@ describe("OfficeSpire wire protocol", () => {
         },
       }),
     ).toBe(false);
+  });
+  it("creates identity-bound menu and run setup actions", () => {
+    expect(
+      createMenuOptionAction("character_select", "IRONCLAD", 20),
+    ).toMatchObject({
+      action: "choose_menu_option",
+      expected_revision: 20,
+      payload: { menu_screen: "character_select", option_id: "IRONCLAD" },
+    });
+    expect(createRunAscensionAction("custom_run", 10, 21)).toMatchObject({
+      action: "set_run_ascension",
+      expected_revision: 21,
+      payload: { menu_screen: "custom_run", ascension: 10 },
+    });
+    expect(createCustomSeedAction(null, 22)).toMatchObject({
+      action: "set_custom_seed",
+      expected_revision: 22,
+      payload: { menu_screen: "custom_run", seed: null },
+    });
   });
   it("accepts only known read-only run-end outcomes", () => {
     const runEnd = {

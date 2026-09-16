@@ -1,9 +1,21 @@
-import type { LifecycleStateSnapshot, MenuStateSnapshot } from "../types";
+import type {
+  LifecycleStateSnapshot,
+  MenuOptionState,
+  MenuStateSnapshot,
+} from "../types";
 
 export function LifecyclePanel({
   snapshot,
+  disabled = false,
+  onOption,
+  onAscension,
+  onSeed,
 }: {
   snapshot: LifecycleStateSnapshot | MenuStateSnapshot;
+  disabled?: boolean;
+  onOption?: (option: MenuOptionState) => void;
+  onAscension?: (ascension: number) => void;
+  onSeed?: (seed: string | null) => void;
 }) {
   if (snapshot.phase === "menu") {
     return (
@@ -38,6 +50,63 @@ export function LifecyclePanel({
                 .map((modifier) => modifier.name)
                 .join(", ") || "None"}
             </p>
+            {["character_select", "custom_run"].includes(
+              snapshot.screen.menu_screen,
+            ) && (
+              <div className="menu-run-controls">
+                <button
+                  disabled={
+                    disabled || snapshot.screen.run_setup.ascension <= 0
+                  }
+                  onClick={() =>
+                    onAscension?.(snapshot.screen.run_setup!.ascension - 1)
+                  }
+                  aria-label="Decrease ascension"
+                >
+                  −
+                </button>
+                <span>Ascension {snapshot.screen.run_setup.ascension}</span>
+                <button
+                  disabled={
+                    disabled ||
+                    snapshot.screen.run_setup.ascension >=
+                      snapshot.screen.run_setup.max_ascension
+                  }
+                  onClick={() =>
+                    onAscension?.(snapshot.screen.run_setup!.ascension + 1)
+                  }
+                  aria-label="Increase ascension"
+                >
+                  +
+                </button>
+              </div>
+            )}
+            {snapshot.screen.menu_screen === "custom_run" && (
+              <form
+                key={`${snapshot.state_revision}:${snapshot.screen.run_setup.seed ?? ""}`}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const value = new FormData(event.currentTarget)
+                    .get("seed")
+                    ?.toString()
+                    .trim();
+                  onSeed?.(value || null);
+                }}
+              >
+                <label>
+                  Custom seed{" "}
+                  <input
+                    name="seed"
+                    defaultValue={snapshot.screen.run_setup.seed ?? ""}
+                    maxLength={64}
+                    disabled={disabled}
+                  />
+                </label>
+                <button type="submit" disabled={disabled}>
+                  Apply seed
+                </button>
+              </form>
+            )}
           </section>
         )}
         {snapshot.screen.lobby && (
@@ -142,14 +211,24 @@ export function LifecyclePanel({
           <ul className="menu-observation-list">
             {snapshot.screen.options.map((option) => (
               <li key={option.id}>
-                <span>{option.label}</span>
+                {option.actionable ? (
+                  <button
+                    disabled={disabled || !option.enabled}
+                    onClick={() => onOption?.(option)}
+                  >
+                    {option.label}
+                  </button>
+                ) : (
+                  <span>{option.label}</span>
+                )}
                 <small>{option.enabled ? "Available" : "Unavailable"}</small>
               </li>
             ))}
           </ul>
         )}
         <p className="lifecycle-safety">
-          This menu is read-only in OfficeSpire. Complete the choice in STS2.
+          Supported controls are revalidated against the current native menu
+          before execution. Unsupported or destructive choices stay read-only.
         </p>
       </section>
     );

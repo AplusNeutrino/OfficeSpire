@@ -175,6 +175,44 @@ export function createProceedSpecialEventAction(
   };
 }
 
+export function createMenuOptionAction(
+  menuScreen: string,
+  optionId: string,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "choose_menu_option",
+    expected_revision: revision,
+    payload: { menu_screen: menuScreen, option_id: optionId },
+  };
+}
+
+export function createRunAscensionAction(
+  menuScreen: "character_select" | "custom_run",
+  ascension: number,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "set_run_ascension",
+    expected_revision: revision,
+    payload: { menu_screen: menuScreen, ascension },
+  };
+}
+
+export function createCustomSeedAction(
+  seed: string | null,
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "set_custom_seed",
+    expected_revision: revision,
+    payload: { menu_screen: "custom_run", seed },
+  };
+}
+
 export function createRestOptionAction(
   optionIndex: number,
   optionId: string,
