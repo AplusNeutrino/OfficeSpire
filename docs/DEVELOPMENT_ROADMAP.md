@@ -590,7 +590,7 @@ This plan is informed by the current game-facing APIs already used in this repos
 
 | ID | Work package | Required source delivery | Runtime/exit evidence | Current status |
 |---|---|---|---|---|
-| M9.1 | Surface and API inventory | Version-stamped matrix of every phase, native screen/model, legal action, stable identity, settlement signal, solo/multiplayer difference, and safe fallback | Installed-assembly inspection plus at least one captured observation for every phase | `in_progress` |
+| M9.1 | Surface and API inventory | Version-stamped matrix of every phase, native screen/model, legal action, stable identity, settlement signal, solo/multiplayer difference, and safe fallback | Installed-assembly inspection plus at least one captured observation for every phase | `implemented_unverified` — final 12-phase/27-action source matrix complete; installed-version observations remain external |
 | M9.2 | Complete player and run HUD | Character identity; HP/max HP, block, energy and character resources; player powers/statuses; potion slots/capacity/targets; relics/stacks; gold, ascension, act/floor; deck and pile access; character companions/minions where applicable | Compare every field against the native UI for every playable character, including status expiry and potion/relic changes | `implemented_unverified` — source delivery complete for the inspected contract; installed-version and live character comparison remain external |
 | M9.3 | Main menu and save lifecycle | Observe and safely expose continue/new-run/profile/mod-warning/return/quit surfaces; never infer a save or overwrite decision | Cold start, existing save, no save, save-and-quit, resume, and modded-save separation | `implemented_unverified` — safe main/profile/continue/new-run chain is implemented; quit, abandon-save and unclassified warnings remain intentionally read-only |
 | M9.4 | Mode and run setup | Single-player/multiplayer/custom/daily selection; ascension, seed and custom modifiers; explicit confirmation and cancellation | Each supported mode and validation/rejection path; no hidden defaults | `implemented_unverified` — Standard/Custom/Daily navigation, ascension, custom seed, confirm/cancel are implemented; modifier inventory is visible but editing stays fail-closed pending a stable native identity contract |
@@ -600,7 +600,7 @@ This plan is informed by the current game-facing APIs already used in this repos
 | M9.8 | Settlement and post-run | Complete victory/defeat/abandon summary, statistics/unlocks, continue/return controls, and safe transition back to menu; preserve revival edges | Victory, defeat, abandon, revival prevention, unlock flow and return-to-menu | `implemented_unverified` — typed score/floor/discovery/unlock summary plus native summary and return-to-menu controls implemented; live qualification remains external |
 | M9.9 | Privacy hotkey and window lifecycle | Configurable global shortcut that hides/restores only the authenticated STS2 process window; optional Overlay hide; explicit tray/status recovery; shortcut-collision handling; restore on exit/crash where possible | Windows/Tauri tests for focus, minimize/fullscreen/multi-monitor, process restart, shortcut collision and recovery | `implemented_unverified` — global `Ctrl+Shift+F12`, authenticated PID/executable validation, optional Overlay hide, collision/status reporting and exit restore implemented; live Windows qualification remains external |
 | M9.10 | Keyboard, accessibility and recovery | Full keyboard path for every new phase; deterministic focus; screen-reader labels; readable text; timeout/reconnect/no-replay semantics across meta and run actions | Keyboard-only full chain, assistive technology pass, disconnect at each phase | `implemented_unverified` — source delivery covers every actionable M9 surface; Windows/Tauri keyboard, assistive-technology and disconnect proof remain external |
-| M9.11 | Compatibility and release qualification | Game/Mod/Overlay version gates, passive diagnostics, external-framework coexistence, Workshop candidate, full-chain evidence matrix and rollback instructions | Supported/incompatible builds, clean install/update/uninstall, private Workshop lifecycle, repeated solo and multiplayer runs | `blocked` on Windows/STS2/Tauri/Steam runtime |
+| M9.11 | Compatibility and release qualification | Game/Mod/Overlay version gates, passive diagnostics, external-framework coexistence, Workshop candidate, full-chain evidence matrix and rollback instructions | Supported/incompatible builds, clean install/update/uninstall, private Workshop lifecycle, repeated solo and multiplayer runs | source audit `source_pass`; runtime qualification `blocked` on Windows/STS2/Tauri/Steam/multi-machine evidence |
 
 M9.2 source checkpoint — 2026-09-16:
 
@@ -753,6 +753,16 @@ M9.9 privacy-hotkey checkpoint — 2026-09-16:
 - settings persist enablement and optional Overlay hiding; registration collision, hidden state and native errors are exposed in the settings dialog, while the same shortcut remains the recovery path when both windows are hidden;
 - disabling the feature or exiting normally restores tracked windows where ownership remains valid. Crash/power-loss recovery, fullscreen, multi-monitor and Windows runtime behavior remain `implemented_unverified`.
 
+M9.1/M9.11 final source-audit checkpoint — 2026-09-16:
+
+- `docs/M9_INTERFACE_MATRIX.md` is the final version-stamped inventory for all 12 protocol phases, native state/control families, 27 actions, stable identities, settlement signals, multiplayer distinctions and fail-closed handoffs;
+- `docs/M9_SOURCE_AUDIT.md` records the M9.2–M9.10 evidence and separates `source_pass` from every outstanding runtime gate;
+- `npm run audit:m9` checks phase/action parity across the backend allowlist, dispatcher, frontend constructors and matrix, plus protocol/version/application identity, dual revision guards and reward-owner settlement identity; it is included in `npm run check`;
+- the final audit replaced the action inbox's implicit “unknown means combat” fallback with an explicit four-action combat allowlist and `_ => false` rejection;
+- reward owner identity now participates in the semantic decision fingerprint, so a changed owner cannot inherit a previous decision revision;
+- README statements left over from the earlier read-only menu/run-end and fabricated treasure-skip designs were corrected;
+- M9.1 has completed its source inventory and M9.11 has completed its source audit. Both remain non-runtime results: installed-assembly, Windows/Tauri, accessibility, multiplayer and Steam qualification are still blocked or `implemented_unverified`.
+
 ### 9.2 Complete information contract
 
 The control surface must not hide information needed to make the same decision as the native game. At minimum it must expose:
@@ -814,14 +824,11 @@ Version numbers may be adjusted before release, but milestone scope and evidence
 
 Continue M9 source delivery, then use the external runtime in this order:
 
-1. complete the M9.1 installed-version surface/API inventory and M9.2 player/run information contract;
-2. add read-only typed observation for main menu, mode, character and lobby phases before enabling their mutations;
-3. close remaining run-decision variants and multiplayer identity/ownership gaps;
-4. add post-run navigation and the authenticated-PID-only privacy shortcut;
-5. build the Mod against installed STS2 assemblies and run the Windows/Tauri qualification matrix;
-6. execute one-shot stale-window probes, full solo/multiplayer runs, and accessibility/recovery checks without replay;
-7. run the candidate packager/verifier, confirm current Workshop policy and test a private candidate manually;
-8. promote only individually evidenced capabilities to `runtime_pass`.
+1. build the Mod against installed STS2 assemblies and compare the final M9 interface matrix with the actual supported build;
+2. run the Windows/Tauri qualification matrix, including the authenticated-PID privacy shortcut;
+3. execute one-shot stale-window probes, full solo/multiplayer runs, and accessibility/recovery checks without replay;
+4. run the candidate packager/verifier, confirm current Workshop policy and test a private candidate manually;
+5. promote only individually evidenced capabilities to `runtime_pass`.
 
 ## 12. Documentation ownership
 
@@ -829,6 +836,9 @@ Continue M9 source delivery, then use the external runtime in this order:
 - **[RUNTIME_VALIDATION.md](RUNTIME_VALIDATION.md)** — commands, environment, observations, PASS/FAIL evidence, known runtime limitations.
 - **[M8_RUNTIME_PROBES.md](M8_RUNTIME_PROBES.md)** — safe, non-replaying procedures and evidence requirements for M8 runtime validation.
 - **[M8_QUALIFICATION_MATRIX.md](M8_QUALIFICATION_MATRIX.md)** — complete M8.11 full-run, accessibility, compatibility, and packaging evidence matrix.
+- **[M9_INTERFACE_MATRIX.md](M9_INTERFACE_MATRIX.md)** — final M9.1 native/interface/action/identity/settlement inventory.
+- **[M9_SOURCE_AUDIT.md](M9_SOURCE_AUDIT.md)** — M9.11 static audit verdict, reproducible checks, closed findings, and external gates.
+- **[M9_RUN_DECISION_MATRIX.md](M9_RUN_DECISION_MATRIX.md)** — detailed M9.7 Run-decision and special-event subset.
 - **[PROTOCOL.md](PROTOCOL.md)** — wire schema and protocol invariants.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — component boundaries and design rationale.
 - **[UPSTREAM_REFERENCES.md](UPSTREAM_REFERENCES.md)** — third-party research, commits, licenses, and reuse decisions.

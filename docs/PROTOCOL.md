@@ -210,6 +210,8 @@ When `phase="rewards"`, the screen uses either `mode="rewards"` with `items`, or
 
 Every ordinary reward receives an opaque, process-local action token bound to its native model instance. The game thread requires the current button at the index to retain that token; tokens are never persisted or interpreted as game identity. Indexes are never retained as STS2 object references across threads. Card reward selection separately binds the native card ID and fails as stale if the card at that index changed.
 
+The action inbox uses an exact phase allowlist. Unknown action names are rejected before queueing; they are never treated as combat actions by default. The game-thread dispatcher independently retains its unsupported-action rejection.
+
 ## M7 card-selection action
 
 For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="card_selection"` and exposes authoritative `screen.options`.

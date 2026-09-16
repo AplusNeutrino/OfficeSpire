@@ -306,7 +306,7 @@ Implemented but unverified capability source:
 - reflected hand min/max/current counts and guarded `confirm_card_selection`.
 - event state/options plus guarded native event option and proceed dispatch.
 - rest-site options/leave source path, with card-selection follow-ups and explicit unsupported multiplayer targeting.
-- treasure open, relic choice/skip, predicted vote, and leave source paths.
+- treasure open, relic vote/choice, predicted vote, and leave source paths; the inspected synchronizer has no skip/decline mutation.
 - merchant inventory, purchase, card-removal initiation, and leave source paths.
 
 Frontend checks after this source pass: `npm test` PASS (15 tests) and `npm run build` PASS. Selection-screen skipping and rest-site multiplayer targeting are not implemented. No M7 runtime behavior is a pass.
@@ -428,6 +428,13 @@ M9.2/M9.6/M9.10 source closeout checkpoint:
 - invite UI, connection/rejoin and unmodeled teammate targeting remain explicit STS2 handoffs, and the inspected native contract exposes no host migration;
 - keyboard mapping covers menus, special-event tools/cells/proceed and post-run primary actions. Global shortcuts ignore editable/interactive elements, and focus follows menu screen, special-event variant and run-end stage changes without moving on ordinary revisions;
 - unit tests and the web production build are static evidence only. Installed-assembly compilation, native field parity, Windows/Tauri focus and screen-reader behavior, and 2–4-machine reward/reconnect/disconnect behavior remain `implemented_unverified`.
+
+M9.1/M9.11 final source-audit checkpoint:
+
+- the final M9 interface matrix inventories 12 phases and 27 explicit actions with native sources, stable identities, settlement signals, multiplayer behavior and safe fallback;
+- the reproducible source audit passes phase/action parity, exact protocol v1, stable product IDs, Mod/Overlay compatibility line, dual revision checks and reward-owner fingerprinting;
+- unknown action names are rejected by the outer phase allowlist rather than defaulting to combat, and the adapter retains its independent unsupported-action rejection;
+- this is `source_pass` evidence only. Current STS2 assembly compilation, Windows/Tauri execution, accessibility, multi-machine runs, framework coexistence and private Workshop lifecycle remain `blocked` or `implemented_unverified`.
 
 M9.7 card/grid variant safety source checkpoint:
 

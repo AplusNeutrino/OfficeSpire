@@ -1820,6 +1820,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 Phase = phase,
                 Run = runProjection,
                 rewards.Mode,
+                rewards.OwnerPlayerId,
                 Items = rewards.Items.Select(item => new
                 {
                     item.ChoiceIndex,

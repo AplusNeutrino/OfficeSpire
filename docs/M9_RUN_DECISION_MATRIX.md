@@ -10,7 +10,7 @@ This matrix records source coverage, not runtime qualification. `implemented_unv
 |---|---|---|---|---|---|
 | Map | generated map + reachable native points | generation + column + row | choose reachable node | newer settled map/room revision | `implemented_unverified` |
 | Combat | player combat state, hand, targets, queues | card ID + hand index; combat target ID | card, potion, discard, end turn | queue/pending cycle and newer settled revision | `implemented_unverified` |
-| Rewards | reward screen/buttons | native reward token; card ID + index | claim, choose card, skip when native proceed exists | reward inventory change/phase change | `implemented_unverified` |
+| Rewards | reward screen/buttons | local owner ID; native reward token; card ID + index | claim, choose card, skip when native proceed exists | owner-bound reward inventory change/phase change | `implemented_unverified` |
 | Card/grid | choose-card, deck-card, deck-upgrade, hand selection | card ID + current index | toggle/choose plus audited confirmation | selection count/preview/phase change | `implemented_unverified`; other subclasses fail closed |
 | Ordinary event | `EventModel.CurrentOptions` | native option token + index | choose or completed-event proceed | authoritative option/state replacement | `implemented_unverified` |
 | Rest/campfire | local options + per-player synchronizer state | native option ID + index | choose and leave | option removal/target phase/room exit | `implemented_unverified` |

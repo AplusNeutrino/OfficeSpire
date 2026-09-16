@@ -210,7 +210,9 @@ internal sealed class ActionInbox
                 string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal),
             "open_shop" or "buy_shop_item" or "request_card_removal" or "leave_shop" =>
                 string.Equals(phase, PhaseNames.Shop, StringComparison.Ordinal),
-            _ => string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
+            "play_card" or "end_turn" or "use_potion" or "discard_potion" =>
+                string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal),
+            _ => false
         };
     }
 
