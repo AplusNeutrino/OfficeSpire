@@ -243,10 +243,11 @@ When `phase="treasure"`, `screen` exposes `chest_opened`, `is_picking`, `can_lea
 
 - `open_treasure`: `{}`
 - `choose_treasure_relic`: `{ "choice_index": 0, "relic_id": "anchor" }`
-- `skip_treasure_relic`: `{}`
 - `leave_treasure`: `{}`
 
-Opening, voting, and leaving are intentionally separate requests and revision boundaries. Relic selection binds index to the current native relic ID and uses the native treasure synchronizer so multiplayer voting remains game-authoritative.
+Opening, voting, and leaving are intentionally separate requests and revision boundaries. Relic selection binds index to the current native relic ID and uses the native treasure synchronizer so multiplayer voting remains game-authoritative. The current native contract has no skip/decline vote; OfficeSpire therefore does not advertise or synthesize one.
+
+Treasure state is valid only in one of four explicit stages: unopened, opening/resolving, relic voting, or ready to leave. Before opening and after settlement, relic and vote inventories are empty. During voting, the chest is open, at least one uniquely identified relic exists, every vote points to that current inventory, and `selected_relic_index` is either `null` or a current index. The dispatcher independently rechecks that the chest control is enabled or that the native relic collection remains open before mutating.
 
 Across map, shared-event and treasure decisions, vote identities must be unique and exactly match `run.party.members` when a multiplayer party exists. These fields are observations only: OfficeSpire never submits a vote for a remote player or treats an absent vote as consent.
 

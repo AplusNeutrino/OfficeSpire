@@ -415,7 +415,7 @@ The M7.4 source pass adds authoritative event title, description, completion sta
 
 The M7.5 source pass adds authoritative rest-option snapshots, `choose_rest_option`, `leave_rest_site`, fresh native control lookup, and overlay interaction. Smith/remove follow-up screens reuse card selection. Multiplayer player-target selection is detected but intentionally fails closed as `unsupported_state` pending stable identity research.
 
-The M7.6 source pass adds authoritative chest/picking/leave state, relic candidates and predicted local vote, plus separate `open_treasure`, `choose_treasure_relic`, `skip_treasure_relic`, and `leave_treasure` actions. Each step settles through a distinct decision revision instead of chaining native mutations.
+The M7.6 source pass added chest/picking/leave state, relic candidates and predicted local vote. A later pinned-API audit removed the originally advertised `skip_treasure_relic`: the current native synchronizer has no skip/decline method. The supported `open_treasure`, `choose_treasure_relic`, and `leave_treasure` steps settle through distinct decision revisions instead of chaining native mutations.
 
 The final M7 source pass adds merchant inventory and affordability snapshots, explicit open/buy/remove/leave actions, non-blocking native purchase invocation, and a mouse-operated shop renderer. Card removal hands off to the existing deck-selection state machine. M7 is now `implemented_unverified`; unsupported multiplayer rest targeting and selection skipping remain explicit limitations rather than silent guesses.
 
@@ -702,6 +702,14 @@ M9.7 card/grid variant safety checkpoint — 2026-09-16:
 - transform, enchant, simple-card, unknown and future grid subclasses remain visible but non-actionable as `unsupported_grid`, with a required original-UI handoff reason;
 - the game-thread dispatcher repeats the concrete-type allowlist before touching a card holder, so a forged or stale client snapshot cannot enable an unmodeled subclass;
 - current-assembly compilation and real preview/confirmation settlement remain `implemented_unverified`; transform, enchant and special minigame actions remain `not_implemented` until their complete native flows are modeled.
+
+M9.7 treasure lifecycle correction — 2026-09-16:
+
+- the pinned `TreasureRoomRelicSynchronizer` exposes begin, local pick, vote observation and award settlement, but no skip/decline mutation; the fabricated `SkipRelicLocally()` call and Overlay skip control were removed;
+- treasure snapshots no longer ask `GetPlayerVote` before a voting session exists, avoiding an out-of-range native vote lookup on the unopened chest;
+- the local predicted vote now reads the actual nullable integer contract instead of fields from an obsolete/assumed wrapper shape;
+- protocol ingestion requires a coherent unopened, resolving, voting, or leave-ready lifecycle and rejects stale relic IDs, duplicate inventories, impossible selected indexes and mismatched votes;
+- opening and voting are rechecked against the enabled native chest control and open native relic collection on the game thread. Real solo/multiplayer treasure settlement remains `implemented_unverified`.
 
 ### 9.2 Complete information contract
 

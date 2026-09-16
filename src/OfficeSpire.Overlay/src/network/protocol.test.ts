@@ -878,6 +878,49 @@ describe("OfficeSpire wire protocol", () => {
         },
       }),
     ).toBe(true);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 91,
+        phase: "treasure",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          chest_opened: true,
+          is_picking: true,
+          can_leave: false,
+          relics: [
+            {
+              choice_index: 0,
+              id: "anchor",
+              name: "Anchor",
+              description: "Gain Block.",
+            },
+          ],
+          selected_relic_index: 0,
+          votes: [{ player_id: "local", choice_index: 0, choice_id: "anchor" }],
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 92,
+        phase: "treasure",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          chest_opened: false,
+          is_picking: true,
+          can_leave: false,
+          relics: [],
+          selected_relic_index: null,
+          votes: [],
+        },
+      }),
+    ).toBe(false);
   });
   it("creates and parses merchant decisions", () => {
     expect(createBuyShopItemAction("relic", 2, "anchor", 100)).toMatchObject({

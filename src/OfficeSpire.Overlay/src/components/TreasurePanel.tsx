@@ -5,7 +5,6 @@ interface Props {
   disabled: boolean;
   onOpen: () => void;
   onRelic: (relic: TreasureRelicState) => void;
-  onSkip: () => void;
   onLeave: () => void;
 }
 
@@ -14,7 +13,6 @@ export function TreasurePanel({
   disabled,
   onOpen,
   onRelic,
-  onSkip,
   onLeave,
 }: Props) {
   const { run, screen } = snapshot;
@@ -74,16 +72,6 @@ export function TreasurePanel({
               </button>
             ))}
           </div>
-        )}
-        {screen.is_picking && (
-          <button
-            className="treasure-skip"
-            disabled={disabled}
-            onClick={onSkip}
-            aria-keyshortcuts="S"
-          >
-            [S] Skip relic
-          </button>
         )}
         {screen.can_leave && (
           <button

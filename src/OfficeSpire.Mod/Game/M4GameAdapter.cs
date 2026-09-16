@@ -63,7 +63,6 @@ public sealed class M4GameAdapter : IGameAdapter
                 "leave_rest_site" => ExecuteLeaveRestSite(request),
                 "open_treasure" => ExecuteOpenTreasure(request),
                 "choose_treasure_relic" => ExecuteChooseTreasureRelic(request),
-                "skip_treasure_relic" => ExecuteSkipTreasureRelic(request),
                 "leave_treasure" => ExecuteLeaveTreasure(request),
                 "open_shop" => ExecuteOpenShop(request),
                 "buy_shop_item" => ExecuteBuyShopItem(request),
@@ -180,8 +179,14 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return Reject(request, "bad_phase", "A treasure room is not active.");
         }
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        if (room.GetType().GetField("_hasChestBeenOpened", flags)?.GetValue(room) is true)
+        {
+            return Reject(request, "already_settled", "The treasure chest is already open.");
+        }
         NButton? chest = room.GetNodeOrNull<NButton>("%Chest");
-        if (chest is null)
+        if (chest is not { IsEnabled: true })
         {
             return Reject(request, "not_ready", "The treasure chest control is unavailable.");
         }
@@ -194,6 +199,13 @@ public sealed class M4GameAdapter : IGameAdapter
         if (NRun.Instance?.TreasureRoom is null)
         {
             return Reject(request, "bad_phase", "A treasure room is not active.");
+        }
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var room = NRun.Instance!.TreasureRoom!;
+        if (room.GetType().GetField("_isRelicCollectionOpen", flags)?.GetValue(room) is not true)
+        {
+            return Reject(request, "not_ready", "Treasure relic voting is not active.");
         }
         if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
             !TryReadRequiredString(request.Payload, "relic_id", out string? relicId))
@@ -211,16 +223,6 @@ public sealed class M4GameAdapter : IGameAdapter
         }
         synchronizer.PickRelicLocally(index);
         return Accept(request, "accepted", $"Selected treasure relic {index}.");
-    }
-
-    private static ActionResponse ExecuteSkipTreasureRelic(ActionRequest request)
-    {
-        if (NRun.Instance?.TreasureRoom is null)
-        {
-            return Reject(request, "bad_phase", "A treasure room is not active.");
-        }
-        RunManager.Instance.TreasureRoomRelicSynchronizer.SkipRelicLocally();
-        return Accept(request, "accepted", "Skipped the treasure relic.");
     }
 
     private static ActionResponse ExecuteLeaveTreasure(ActionRequest request)

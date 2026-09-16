@@ -427,6 +427,14 @@ M9.7 card/grid variant safety source checkpoint:
 - the game-thread dispatcher independently rejects those subclasses with `unsupported_state`, even if a client attempts to submit an action;
 - frontend protocol tests prove an unsupported grid cannot advertise itself as actionable. This is static evidence only: current STS2 compilation and real deck-card/upgrade preview settlement remain `implemented_unverified`.
 
+M9.7 treasure lifecycle source checkpoint:
+
+- version-pinned native inspection found no `SkipRelicLocally` or equivalent decline vote in `TreasureRoomRelicSynchronizer`; the invalid Mod call, protocol action, keyboard route and Overlay control were removed;
+- unopened/resolved chests no longer read player votes from the synchronizer's inactive vote list, and the predicted local vote follows the native nullable integer field shape;
+- client validation now rejects contradictory chest/picking/leave flags, duplicate relic identities, out-of-inventory selections, and votes that do not bind to the current relic ID;
+- the game thread checks the enabled chest control before opening and the native collection-open flag before voting;
+- all results are source/static/build evidence only. Current-assembly Mod compilation, empty-chest behavior, contested multiplayer relic fights and final award settlement remain `implemented_unverified`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

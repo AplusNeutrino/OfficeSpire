@@ -509,7 +509,6 @@ export interface OverlayAction {
     | "leave_rest_site"
     | "open_treasure"
     | "choose_treasure_relic"
-    | "skip_treasure_relic"
     | "leave_treasure"
     | "open_shop"
     | "buy_shop_item"
@@ -710,6 +709,61 @@ function isValidCardSelectionScreen(screen: CardSelectionScreen): boolean {
   );
 }
 
+function isValidTreasureScreen(screen: TreasureScreen, run: RunState): boolean {
+  if (
+    typeof screen.waiting_for_input !== "boolean" ||
+    typeof screen.chest_opened !== "boolean" ||
+    typeof screen.is_picking !== "boolean" ||
+    typeof screen.can_leave !== "boolean" ||
+    !Array.isArray(screen.relics) ||
+    !Array.isArray(screen.votes) ||
+    screen.relics.some(
+      (relic) =>
+        !Number.isInteger(relic.choice_index) ||
+        relic.choice_index < 0 ||
+        typeof relic.id !== "string" ||
+        relic.id.length === 0,
+    ) ||
+    new Set(screen.relics.map((relic) => relic.choice_index)).size !==
+      screen.relics.length ||
+    new Set(screen.relics.map((relic) => relic.id)).size !==
+      screen.relics.length ||
+    screen.waiting_for_input !==
+      (!screen.chest_opened || screen.is_picking || screen.can_leave)
+  )
+    return false;
+
+  if (!screen.is_picking) {
+    return (
+      screen.relics.length === 0 &&
+      screen.selected_relic_index === null &&
+      screen.votes.length === 0 &&
+      (screen.chest_opened || !screen.can_leave)
+    );
+  }
+
+  const indexes = new Set(screen.relics.map((relic) => relic.choice_index));
+  return (
+    screen.chest_opened &&
+    !screen.can_leave &&
+    screen.relics.length > 0 &&
+    (screen.selected_relic_index === null ||
+      indexes.has(screen.selected_relic_index)) &&
+    hasValidDecisionVotes(screen.votes, run) &&
+    screen.votes.every(
+      (vote) =>
+        (vote.choice_index === null && vote.choice_id === null) ||
+        (vote.choice_index !== null &&
+          indexes.has(vote.choice_index) &&
+          screen.relics.some(
+            (relic) =>
+              relic.choice_index === vote.choice_index &&
+              relic.id === vote.choice_id,
+          )),
+    )
+  );
+}
+
 export function isStateSnapshot(value: unknown): value is StateSnapshot {
   if (!value || typeof value !== "object") return false;
   const c = value as Partial<StateSnapshot>;
@@ -825,11 +879,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "rest" ||
       isValidRestScreen(c.screen as RestScreen, c.run as RunState)) &&
     (c.phase !== "treasure" ||
-      (Array.isArray((c.screen as TreasureScreen).relics) &&
-        hasValidDecisionVotes(
-          (c.screen as TreasureScreen).votes,
-          c.run as RunState,
-        ))) &&
+      isValidTreasureScreen(c.screen as TreasureScreen, c.run as RunState)) &&
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
     (c.phase !== "menu" ||
       (c.action_pending === false &&

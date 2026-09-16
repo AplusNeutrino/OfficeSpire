@@ -832,27 +832,25 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 SafeFormat(relic.Title),
                 SafeFormat(relic.DynamicDescription)))
             .ToList() ?? [];
+        isPicking = isPicking && relics.Count > 0;
 
         int? selectedIndex = null;
         object? predictedVote = synchronizer.GetType().GetField("_predictedVote", flags)?.GetValue(synchronizer);
-        if (predictedVote is not null)
+        if (isPicking && predictedVote is int index && index >= 0 && index < relics.Count)
         {
-            var type = predictedVote.GetType();
-            if (type.GetField("voteReceived")?.GetValue(predictedVote) is true &&
-                type.GetField("index")?.GetValue(predictedVote) is int index)
-            {
-                selectedIndex = index;
-            }
+            selectedIndex = index;
         }
 
-        var votes = runState.Players.Select(player =>
-        {
-            int? vote = synchronizer.GetPlayerVote(player);
-            string? choiceId = vote is >= 0 && vote < relics.Count
-                ? relics[vote.Value].Id
-                : null;
-            return new DecisionVoteSnapshotDto(player.NetId.ToString(), vote, choiceId);
-        }).ToList();
+        List<DecisionVoteSnapshotDto> votes = synchronizer.CurrentRelics is null || relics.Count == 0
+            ? []
+            : runState.Players.Select(player =>
+            {
+                int? vote = synchronizer.GetPlayerVote(player);
+                string? choiceId = vote is >= 0 && vote < relics.Count
+                    ? relics[vote.Value].Id
+                    : null;
+                return new DecisionVoteSnapshotDto(player.NetId.ToString(), vote, choiceId);
+            }).ToList();
 
         return new TreasureScreenDto(
             !chestOpened || isPicking || canLeave,

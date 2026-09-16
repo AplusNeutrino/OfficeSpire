@@ -161,7 +161,7 @@ export function createLeaveRestSiteAction(revision: number): OverlayAction {
 }
 
 export function createTreasureAction(
-  action: "open_treasure" | "skip_treasure_relic" | "leave_treasure",
+  action: "open_treasure" | "leave_treasure",
   revision: number,
 ): OverlayAction {
   return {

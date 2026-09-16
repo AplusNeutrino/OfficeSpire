@@ -556,14 +556,6 @@ export default function App() {
             createTreasureAction("open_treasure", snapshot.state_revision),
           );
           handled = true;
-        } else if (command.kind === "skip" && state.screen.is_picking) {
-          submit(
-            createTreasureAction(
-              "skip_treasure_relic",
-              snapshot.state_revision,
-            ),
-          );
-          handled = true;
         } else if (command.kind === "leave" && state.screen.can_leave) {
           submit(
             createTreasureAction("leave_treasure", snapshot.state_revision),
@@ -722,14 +714,6 @@ export default function App() {
               )
             }
             onRelic={chooseTreasureRelic}
-            onSkip={() =>
-              submit(
-                createTreasureAction(
-                  "skip_treasure_relic",
-                  snapshot.state_revision,
-                ),
-              )
-            }
             onLeave={() =>
               submit(
                 createTreasureAction("leave_treasure", snapshot.state_revision),
