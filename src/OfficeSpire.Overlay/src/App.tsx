@@ -29,6 +29,7 @@ import type {
   RewardItemState,
   RewardsStateSnapshot,
   LifecycleStateSnapshot,
+  MenuStateSnapshot,
 } from "./types";
 import {
   createEndTurnAction,
@@ -754,7 +755,9 @@ export default function App() {
             }
           />
         ) : snapshot.phase === "menu" || snapshot.phase === "run_end" ? (
-          <LifecyclePanel snapshot={snapshot as LifecycleStateSnapshot} />
+          <LifecyclePanel
+            snapshot={snapshot as LifecycleStateSnapshot | MenuStateSnapshot}
+          />
         ) : (
           <section className="empty">
             <h1>{snapshot.phase.replace("_", " ")}</h1>

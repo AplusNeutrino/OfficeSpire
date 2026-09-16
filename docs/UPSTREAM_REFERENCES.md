@@ -195,6 +195,8 @@ At the M9.2 inspection commit, `McpMod.StateBuilder.cs` confirmed current access
 
 The same inspection confirmed `CardModel.GetDescriptionForPile(PileType)` for pile-context text and the three live `PlayerCombatState` pile collections. The independently reviewed autoSpire commit already recorded above confirmed `player.Deck.Cards` as the authoritative run deck. OfficeSpire preserves individual card/upgrade entries rather than adopting autoSpire's ID-only grouping.
 
+For M9.3, the same STS2MCP inspection commit identifies the current native screen/control families `NMainMenu`, `NSingleplayerSubmenu`, `NMultiplayerSubmenu`, `NMultiplayerHostSubmenu`, `NJoinFriendScreen`, `NMultiplayerLoadGameScreen`, `NCharacterSelectScreen`, and `NCharacterSelectButton`. OfficeSpire uses reflection only for read-only visibility/availability and emits an explicit unknown fallback; it does not adopt STS2MCP's menu mutation paths.
+
 ## Licensing rule
 
 Before copying or adapting source from any upstream project:

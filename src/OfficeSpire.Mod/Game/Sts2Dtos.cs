@@ -16,6 +16,18 @@ internal sealed record LifecycleScreenDto(
     string Message,
     bool CanStartRun);
 
+internal sealed record MenuScreenDto(
+    bool WaitingForInput,
+    string MenuScreen,
+    string Message,
+    IReadOnlyList<MenuOptionSnapshotDto> Options,
+    bool CanMutate);
+
+internal sealed record MenuOptionSnapshotDto(
+    string Id,
+    string Label,
+    bool Enabled);
+
 internal sealed record RelicSnapshotDto(
     string Id,
     string Name,

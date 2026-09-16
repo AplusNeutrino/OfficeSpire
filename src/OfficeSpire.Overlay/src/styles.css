@@ -642,6 +642,24 @@ footer {
 .empty button {
   cursor: pointer;
 }
+.menu-observation-list {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  list-style: none;
+}
+.menu-observation-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 7px;
+}
+.menu-observation-list small {
+  color: #b9b2a7;
+}
 @media (max-width: 340px) {
   .stats {
     align-items: flex-start;

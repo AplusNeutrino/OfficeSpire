@@ -243,7 +243,37 @@ export interface LifecycleScreen {
   message: string;
   can_start_run: false;
 }
+export interface MenuOptionState {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+export interface MenuScreen {
+  waiting_for_input: false;
+  menu_screen:
+    | "main"
+    | "singleplayer"
+    | "multiplayer"
+    | "multiplayer_host"
+    | "multiplayer_join"
+    | "multiplayer_load"
+    | "character_select"
+    | "unknown";
+  message: string;
+  options: MenuOptionState[];
+  can_mutate: false;
+}
 const runEndStatuses = new Set(["victory", "defeat", "abandoned"]);
+const menuScreens = new Set([
+  "main",
+  "singleplayer",
+  "multiplayer",
+  "multiplayer_host",
+  "multiplayer_join",
+  "multiplayer_load",
+  "character_select",
+  "unknown",
+]);
 interface BaseStateSnapshot {
   protocol_version: number;
   state_revision: number;
@@ -284,8 +314,12 @@ export interface ShopStateSnapshot extends BaseStateSnapshot {
   screen: ShopScreen;
 }
 export interface LifecycleStateSnapshot extends BaseStateSnapshot {
-  phase: "menu" | "run_end";
+  phase: "run_end";
   screen: LifecycleScreen;
+}
+export interface MenuStateSnapshot extends BaseStateSnapshot {
+  phase: "menu";
+  screen: MenuScreen;
 }
 export type StateSnapshot =
   | CombatStateSnapshot
@@ -296,6 +330,7 @@ export type StateSnapshot =
   | RestStateSnapshot
   | TreasureStateSnapshot
   | ShopStateSnapshot
+  | MenuStateSnapshot
   | LifecycleStateSnapshot
   | (BaseStateSnapshot & { screen: Record<string, unknown> });
 export interface WireEnvelope<T = unknown> {
@@ -426,10 +461,20 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "shop" || Array.isArray((c.screen as ShopScreen).items)) &&
     (c.phase !== "menu" ||
       (c.action_pending === false &&
-        (c.screen as LifecycleScreen).waiting_for_input === false &&
-        (c.screen as LifecycleScreen).status === "no_active_run" &&
-        typeof (c.screen as LifecycleScreen).message === "string" &&
-        (c.screen as LifecycleScreen).can_start_run === false)) &&
+        (c.screen as MenuScreen).waiting_for_input === false &&
+        menuScreens.has((c.screen as MenuScreen).menu_screen) &&
+        typeof (c.screen as MenuScreen).message === "string" &&
+        Array.isArray((c.screen as MenuScreen).options) &&
+        (c.screen as MenuScreen).options.every(
+          (option) =>
+            typeof option.id === "string" &&
+            option.id.length > 0 &&
+            typeof option.label === "string" &&
+            typeof option.enabled === "boolean",
+        ) &&
+        new Set((c.screen as MenuScreen).options.map((option) => option.id))
+          .size === (c.screen as MenuScreen).options.length &&
+        (c.screen as MenuScreen).can_mutate === false)) &&
     (c.phase !== "run_end" ||
       (c.action_pending === false &&
         (c.screen as LifecycleScreen).waiting_for_input === false &&

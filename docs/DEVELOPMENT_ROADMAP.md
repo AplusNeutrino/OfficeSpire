@@ -592,7 +592,7 @@ This plan is informed by the current game-facing APIs already used in this repos
 |---|---|---|---|---|
 | M9.1 | Surface and API inventory | Version-stamped matrix of every phase, native screen/model, legal action, stable identity, settlement signal, solo/multiplayer difference, and safe fallback | Installed-assembly inspection plus at least one captured observation for every phase | `in_progress` |
 | M9.2 | Complete player and run HUD | Character identity; HP/max HP, block, energy and character resources; player powers/statuses; potion slots/capacity/targets; relics/stacks; gold, ascension, act/floor; deck and pile access; character companions/minions where applicable | Compare every field against the native UI for every playable character, including status expiry and potion/relic changes | `implemented_unverified` in part — HP/block/energy, potions, piles and basic run data existed; powers, relic display and capacity are the first M9 slice |
-| M9.3 | Main menu and save lifecycle | Observe and safely expose continue/new-run/profile/mod-warning/return/quit surfaces; never infer a save or overwrite decision | Cold start, existing save, no save, save-and-quit, resume, and modded-save separation | `not_implemented` |
+| M9.3 | Main menu and save lifecycle | Observe and safely expose continue/new-run/profile/mod-warning/return/quit surfaces; never infer a save or overwrite decision | Cold start, existing save, no save, save-and-quit, resume, and modded-save separation | `implemented_unverified` in part — typed main/singleplayer/multiplayer/host/join/load/character observation; profile and warning surfaces remain |
 | M9.4 | Mode and run setup | Single-player/multiplayer/custom/daily selection; ascension, seed and custom modifiers; explicit confirmation and cancellation | Each supported mode and validation/rejection path; no hidden defaults | `not_implemented` |
 | M9.5 | Character and party selection | Character details, availability, selection, ready/unready and launch; stable character/player identities; character-specific resource declarations | Every playable character in solo and supported party sizes | `not_implemented` |
 | M9.6 | Multiplayer lifecycle | Host/join/invite/lobby state, peers, readiness, reconnect, host migration, simultaneous combat, votes, teammate targets, shared decisions and disconnect degradation | Multi-machine evidence for 2–4 players; incompatible Mod/version behavior; no action attributed to the wrong player | `not_implemented`; current multiplayer rest targeting and map voting remain incomplete/unverified |
@@ -613,6 +613,14 @@ M9.2 source checkpoint — 2026-09-16:
 - combat draw, discard and exhaust piles expose their exact current contents using pile-context descriptions, and the Overlay provides collapsed read-only inspection panels;
 - protocol ingestion requires reported pile counts to equal the supplied card arrays, preventing a partial payload from appearing complete;
 - installed-assembly compilation and live comparison across all characters and pile-changing effects remain `implemented_unverified`.
+
+M9.3 read-only checkpoint — 2026-09-16:
+
+- the generic no-run placeholder is replaced by a typed menu snapshot that identifies main menu, single-player mode, multiplayer, multiplayer host, multiplayer join/load, character selection, or an explicit unknown fallback;
+- visible native controls are reflected into stable semantic option IDs plus availability, while character selection reports native character model IDs and localized labels;
+- the Overlay renders the observed option inventory as disabled informational rows and the protocol requires `can_mutate=false`; no menu action exists in the action union or dispatcher;
+- option IDs must be non-empty and unique, so ambiguous private-field/version drift fails protocol ingestion rather than becoming clickable;
+- profile selection, first-time/modded-save warnings, daily/custom configuration, lobby details and authoritative navigation settlement remain `not_implemented` or `implemented_unverified` pending installed-version inspection.
 
 ### 9.2 Complete information contract
 

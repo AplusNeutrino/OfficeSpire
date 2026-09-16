@@ -246,9 +246,13 @@ describe("OfficeSpire wire protocol", () => {
       run: {},
       screen: {
         waiting_for_input: false,
-        status: "no_active_run",
-        message: "Start or resume a run through the original STS2 menu.",
-        can_start_run: false,
+        menu_screen: "main",
+        message: "Choose an action in the original STS2 window.",
+        options: [
+          { id: "continue", label: "Continue", enabled: true },
+          { id: "singleplayer", label: "Single player", enabled: true },
+        ],
+        can_mutate: false,
       },
     };
     expect(isStateSnapshot(menu)).toBe(true);
@@ -256,7 +260,19 @@ describe("OfficeSpire wire protocol", () => {
     expect(
       isStateSnapshot({
         ...menu,
-        screen: { ...menu.screen, can_start_run: true },
+        screen: { ...menu.screen, can_mutate: true },
+      }),
+    ).toBe(false);
+    expect(
+      isStateSnapshot({
+        ...menu,
+        screen: {
+          ...menu.screen,
+          options: [
+            { id: "continue", label: "Continue", enabled: true },
+            { id: "continue", label: "Duplicate", enabled: false },
+          ],
+        },
       }),
     ).toBe(false);
   });

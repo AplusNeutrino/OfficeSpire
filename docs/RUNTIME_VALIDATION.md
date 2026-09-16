@@ -343,6 +343,14 @@ Required live evidence remains: compile against the installed STS2 assemblies; c
 
 The M9 privacy hotkey is planned but not implemented. Its runtime gate includes authenticated-PID-only targeting, hide/restore recovery, global-shortcut collision, fullscreen, multi-monitor, focus, game restart and Overlay-exit behavior. Static code or a mocked window handle will not count as `runtime_pass`.
 
+M9.3 read-only source checkpoint:
+
+- no-run state now identifies typed main, single-player, multiplayer, host, join/load and character-selection surfaces;
+- currently visible native menu controls are exported as semantic IDs, labels and availability, with duplicate IDs rejected;
+- the Overlay only renders informational rows and `can_mutate` is required to remain false;
+- no menu mutation was added, so observation cannot start, resume, abandon or quit a game;
+- cold start, saves, modded-save warning, profile selection, every menu transition and character availability remain `implemented_unverified` or `not_implemented` until observed against the installed STS2 build.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

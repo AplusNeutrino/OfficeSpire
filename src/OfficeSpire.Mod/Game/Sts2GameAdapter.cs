@@ -95,11 +95,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 return CreateEnvelope(
                     PhaseNames.Menu,
                     new RunSnapshotDto(0, 0, 0, 0, []),
-                    new LifecycleScreenDto(
-                        false,
-                        "no_active_run",
-                        "Start or resume a run through the original STS2 menu.",
-                        false));
+                    BuildMenuSnapshot());
             }
 
             _noRunFrames = 0;
@@ -238,6 +234,103 @@ public sealed class Sts2GameAdapter : IGameAdapter
         "abandoned" => "The game reports that this run was abandoned.",
         _ => "The game reports that this run ended in defeat."
     };
+
+    private static MenuScreenDto BuildMenuSnapshot()
+    {
+        if (Engine.GetMainLoop() is not SceneTree tree || tree.Root is null)
+        {
+            return new MenuScreenDto(false, "unknown", "No active run; the visible menu could not be identified.", [], false);
+        }
+
+        (string TypeName, string Screen, string Message, (string Field, string Id, string Label)[] Fields)[] definitions =
+        [
+            ("NCharacterSelectScreen", "character_select", "Choose a character in the original STS2 window.", []),
+            ("NJoinFriendScreen", "multiplayer_join", "Choose a multiplayer session in the original STS2 window.", []),
+            ("NMultiplayerLoadGameScreen", "multiplayer_load", "Choose a saved multiplayer run in the original STS2 window.", []),
+            ("NMultiplayerHostSubmenu", "multiplayer_host", "Choose the multiplayer game mode in the original STS2 window.",
+                [("_standardButton", "standard", "Standard"), ("_dailyButton", "daily", "Daily"), ("_customButton", "custom", "Custom"), ("_backButton", "back", "Back")]),
+            ("NMultiplayerSubmenu", "multiplayer", "Choose a multiplayer action in the original STS2 window.",
+                [("_hostButton", "host", "Host"), ("_joinButton", "join", "Join"), ("_loadButton", "load", "Load"), ("_abandonButton", "abandon", "Abandon"), ("_backButton", "back", "Back")]),
+            ("NSingleplayerSubmenu", "singleplayer", "Choose the single-player game mode in the original STS2 window.",
+                [("_standardButton", "standard", "Standard"), ("_dailyButton", "daily", "Daily"), ("_customButton", "custom", "Custom"), ("_backButton", "back", "Back")]),
+            ("NMainMenu", "main", "Choose an action in the original STS2 window.",
+                [("_continueButton", "continue", "Continue"), ("_abandonRunButton", "abandon_run", "Abandon run"), ("_singleplayerButton", "singleplayer", "Single player"), ("_multiplayerButton", "multiplayer", "Multiplayer"), ("_compendiumButton", "compendium", "Compendium"), ("_timelineButton", "timeline", "Timeline"), ("_settingsButton", "settings", "Settings"), ("_quitButton", "quit", "Quit")])
+        ];
+
+        foreach (var definition in definitions)
+        {
+            Node? screen = FindVisibleNodeByTypeName(tree.Root, definition.TypeName);
+            if (screen is null) continue;
+            var options = definition.Screen == "character_select"
+                ? BuildCharacterMenuOptions(screen)
+                : definition.Fields
+                    .Select(field => BuildMenuOption(screen, field.Field, field.Id, field.Label))
+                    .Where(option => option is not null)
+                    .Cast<MenuOptionSnapshotDto>()
+                    .ToList();
+            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false);
+        }
+
+        return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
+    }
+
+    private static MenuOptionSnapshotDto? BuildMenuOption(Node screen, string fieldName, string id, string label)
+    {
+        object? value = GetInstanceFieldValue(screen, fieldName);
+        if (value is not CanvasItem item || !item.IsVisibleInTree()) return null;
+        bool enabled = value.GetType().GetProperty("IsEnabled")?.GetValue(value) as bool? ?? true;
+        return new MenuOptionSnapshotDto(id, label, enabled);
+    }
+
+    private static List<MenuOptionSnapshotDto> BuildCharacterMenuOptions(Node screen)
+    {
+        var options = new List<MenuOptionSnapshotDto>();
+        foreach (Node button in FindNodesByTypeName(screen, "NCharacterSelectButton"))
+        {
+            object? character = button.GetType().GetProperty("Character")?.GetValue(button);
+            if (character is null) continue;
+            string id = character.GetType().GetProperty("Id")?.GetValue(character)?.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(id)) continue;
+            string label = character.GetType().GetProperty("Title")?.GetValue(character) is LocString title
+                ? SafeFormat(title)
+                : id;
+            bool locked = button.GetType().GetProperty("IsLocked")?.GetValue(button) as bool? ?? false;
+            options.Add(new MenuOptionSnapshotDto(id, label, !locked));
+        }
+
+        foreach ((string field, string id, string label) in new[]
+        {
+            ("_embarkButton", "confirm", "Confirm"),
+            ("_unreadyButton", "unready", "Unready"),
+            ("_backButton", "back", "Back")
+        })
+        {
+            MenuOptionSnapshotDto? option = BuildMenuOption(screen, field, id, label);
+            if (option is not null) options.Add(option);
+        }
+        return options;
+    }
+
+    private static object? GetInstanceFieldValue(object instance, string fieldName)
+    {
+        for (Type? type = instance.GetType(); type is not null; type = type.BaseType)
+        {
+            FieldInfo? field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field is not null) return field.GetValue(instance);
+        }
+        return null;
+    }
+
+    private static Node? FindVisibleNodeByTypeName(Node parent, string typeName) =>
+        FindNodesByTypeName(parent, typeName).FirstOrDefault(node => node is CanvasItem item && item.IsVisibleInTree());
+
+    private static List<Node> FindNodesByTypeName(Node parent, string typeName, List<Node>? results = null)
+    {
+        results ??= [];
+        if (parent.GetType().Name == typeName) results.Add(parent);
+        foreach (Node child in parent.GetChildren()) FindNodesByTypeName(child, typeName, results);
+        return results;
+    }
 
     private static RewardsScreenDto? BuildRewardsSnapshot()
     {
