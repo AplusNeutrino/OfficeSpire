@@ -173,6 +173,23 @@ Concepts confirmed by its README:
 
 OfficeSpire does not copy BoberInSpire source. Its future overlay is independently implemented and avoids BoberInSpire's Python bridge.
 
+## Gennadiyev/STS2MCP
+
+- Repository: https://github.com/Gennadiyev/STS2MCP
+- Observed release commits: `f961c7a` (`0.3.5-rc1`) and `59ddb7e` (`0.3.4`)
+- Observed game compatibility claim: STS2 `v0.99.1`
+- License shown by the repository: MIT; exact source reuse still requires a pinned full-commit license check.
+
+M9 planning evidence:
+
+- the project exposes detailed single-player and multiplayer state/actions over localhost, supporting the feasibility of a complete external control surface;
+- release `0.3.5-rc1` specifically calls out Necrobinder companion HP/block/status state, showing that character-specific entities belong in the information contract;
+- release `0.3.4` documents multiplayer state-shape changes and deliberately omits other players' relics, hands and potions, so OfficeSpire must specify privacy/authority boundaries instead of assuming solo parity;
+- the same releases report rest/event option-index mismatch fixes, multiplayer merchant routing, and lobby API breakage on newer game versions, reinforcing OfficeSpire's stable-ID, installed-version inventory, and fail-closed requirements;
+- the project's stated future meta-controls include starting/quitting runs and multiplayer hosting/joining, but those claims are not treated as a stable game API or copied implementation.
+
+No STS2MCP source was copied in this pass. OfficeSpire's M9 plan and player-information implementation remain independent.
+
 ## Licensing rule
 
 Before copying or adapting source from any upstream project:

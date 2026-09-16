@@ -5,10 +5,10 @@
 > This document is the sole authority for OfficeSpire milestone status, execution order, scope, and exit criteria.
 > If another document, commit message, or code comment conflicts with this roadmap, update this document from real code, build results, and runtime evidence before continuing development.
 
-Last updated: 2026-09-15
-Product target: OfficeSpire v0.6
-Current development version: v0.6-beta.1 — Full Run Hardening
-Current milestone: M8 (source hardening resumed; live runtime validation remains deferred)
+Last updated: 2026-09-16
+Product target: OfficeSpire v0.7
+Current development version: v0.7-dev — Full-Chain Control Surface
+Current milestone: M9 (source delivery in progress; M8 and M9 live runtime validation remains deferred)
 Previous validated milestone: v0.6-alpha.1 — Playable Backend
 
 ## 1. Product objective
@@ -578,7 +578,74 @@ Exit criteria:
 - package/install/upgrade instructions are verified;
 - a release artifact is traceable to a tested commit.
 
-## 9. Version path
+## 9. M9 Full-Chain Control Surface
+
+Status: `in_progress` — planning and the first complete-player-information slice are under source development. M8 runtime gates remain carried forward and are not implied to have passed.
+
+M9 expands OfficeSpire from a run-decision overlay into a complete, explicit control surface for every user-visible game phase. The target chain is launch/menu -> save or mode selection -> lobby/party -> character and run setup -> map -> combat -> rewards/events/treasure/shop/rest -> game over -> post-run navigation. A phase is covered only when OfficeSpire can identify it, present all decision-relevant state, perform each supported mutation through a current native path, and observe authoritative settlement. Unsupported or version-drifted phases must remain visible and non-actionable with an original-UI handoff.
+
+This plan is informed by the current game-facing APIs already used in this repository and by version-pinned community implementations. STS2MCP demonstrates that detailed single-player and multiplayer state can be exported through a localhost Mod boundary, but its own releases also document index drift, multiplayer state-shape changes, lobby API breakage, companion state, and unfinished meta-controls. OfficeSpire therefore treats those projects as research evidence rather than a stable SDK and independently verifies every native type and mutation against the installed STS2 assemblies before enabling it.
+
+### 9.1 Authoritative work plan
+
+| ID | Work package | Required source delivery | Runtime/exit evidence | Current status |
+|---|---|---|---|---|
+| M9.1 | Surface and API inventory | Version-stamped matrix of every phase, native screen/model, legal action, stable identity, settlement signal, solo/multiplayer difference, and safe fallback | Installed-assembly inspection plus at least one captured observation for every phase | `in_progress` |
+| M9.2 | Complete player and run HUD | Character identity; HP/max HP, block, energy and character resources; player powers/statuses; potion slots/capacity/targets; relics/stacks; gold, ascension, act/floor; deck and pile access; character companions/minions where applicable | Compare every field against the native UI for every playable character, including status expiry and potion/relic changes | `implemented_unverified` in part — HP/block/energy, potions, piles and basic run data existed; powers, relic display and capacity are the first M9 slice |
+| M9.3 | Main menu and save lifecycle | Observe and safely expose continue/new-run/profile/mod-warning/return/quit surfaces; never infer a save or overwrite decision | Cold start, existing save, no save, save-and-quit, resume, and modded-save separation | `not_implemented` |
+| M9.4 | Mode and run setup | Single-player/multiplayer/custom/daily selection; ascension, seed and custom modifiers; explicit confirmation and cancellation | Each supported mode and validation/rejection path; no hidden defaults | `not_implemented` |
+| M9.5 | Character and party selection | Character details, availability, selection, ready/unready and launch; stable character/player identities; character-specific resource declarations | Every playable character in solo and supported party sizes | `not_implemented` |
+| M9.6 | Multiplayer lifecycle | Host/join/invite/lobby state, peers, readiness, reconnect, host migration, simultaneous combat, votes, teammate targets, shared decisions and disconnect degradation | Multi-machine evidence for 2–4 players; incompatible Mod/version behavior; no action attributed to the wrong player | `not_implemented`; current multiplayer rest targeting and map voting remain incomplete/unverified |
+| M9.7 | Full run decisions | Close remaining map, battle, reward, card/grid, event, treasure/chest, shop, rest/campfire and special-minigame variants; inventory must be data-driven and version stamped | At least one legal and one stale/rejected observation for every supported family and character-specific variant | `implemented_unverified` in part; variant inventory remains incomplete |
+| M9.8 | Settlement and post-run | Complete victory/defeat/abandon summary, statistics/unlocks, continue/return controls, and safe transition back to menu; preserve revival edges | Victory, defeat, abandon, revival prevention, unlock flow and return-to-menu | `implemented_unverified` read-only outcome; post-run actions `not_implemented` |
+| M9.9 | Privacy hotkey and window lifecycle | Configurable global shortcut that hides/restores only the authenticated STS2 process window; optional Overlay hide; explicit tray/status recovery; shortcut-collision handling; restore on exit/crash where possible | Windows/Tauri tests for focus, minimize/fullscreen/multi-monitor, process restart, shortcut collision and recovery | `not_implemented` |
+| M9.10 | Keyboard, accessibility and recovery | Full keyboard path for every new phase; deterministic focus; screen-reader labels; readable text; timeout/reconnect/no-replay semantics across meta and run actions | Keyboard-only full chain, assistive technology pass, disconnect at each phase | `implemented_unverified` for existing phases; new phases remain |
+| M9.11 | Compatibility and release qualification | Game/Mod/Overlay version gates, passive diagnostics, external-framework coexistence, Workshop candidate, full-chain evidence matrix and rollback instructions | Supported/incompatible builds, clean install/update/uninstall, private Workshop lifecycle, repeated solo and multiplayer runs | `blocked` on Windows/STS2/Tauri/Steam runtime |
+
+### 9.2 Complete information contract
+
+The control surface must not hide information needed to make the same decision as the native game. At minimum it must expose:
+
+- run identity: mode, seed policy, ascension, act/floor, character, local player, party and connection role;
+- player state: current/max HP, block, energy, all character-specific resources, powers/statuses with amounts and descriptions, companions/minions, and turn availability;
+- inventory: every potion slot including empty slots, capacity, legal targets and discard/use availability; every relic with stack/counter information; gold and other spendable resources;
+- cards: hand with dynamic values, draw/discard/exhaust counts, safe deck/pile inspection, selection constraints and pending selections;
+- encounter state: every enemy/ally identity, HP/block, powers, intents, targetability and multiplayer ownership;
+- decision state: all legal options, locks/costs, selection minimum/maximum, confirmations, votes, pending settlement and an explicit reason whenever OfficeSpire cannot act.
+
+Presentation descriptions remain separate from stable identity. Rich-text cleanup may improve readability but must never rewrite action tokens, card/relic/potion IDs, player IDs, map generations, combat IDs or revisions.
+
+### 9.3 Privacy-hotkey boundary
+
+The privacy feature is a user-controlled window-management convenience, not surveillance or process disguise:
+
+1. Only a deliberate configured shortcut may trigger it; OfficeSpire will not watch cameras, microphones, nearby people, employer software, or foreground applications.
+2. The target window must be resolved from the authenticated session descriptor's STS2 process ID and revalidated immediately before every hide or restore. Arbitrary process/window titles are never accepted from the web UI.
+3. The default action is reversible hide/minimize with an obvious recovery path. It must not rename the process, falsify taskbar metadata, bypass organization policy, or interfere with monitoring/security tools.
+4. A hidden-window state is local UI state, never a game mutation. It must not submit, retry, or replay any game action and must survive Overlay focus changes without changing a run decision.
+5. Global-shortcut registration, Win32 window ownership, exclusive fullscreen behavior and crash recovery remain `implemented_unverified` until exercised on Windows/Tauri.
+
+### 9.4 Implementation sequence
+
+1. Complete M9.1 and M9.2 first so every later control is built on a complete, typed state model.
+2. Add read-only detection for M9.3–M9.5, capture real native types and settlement signals, then enable one mutation family at a time.
+3. Extend ordinary run decisions in M9.7 while keeping unknown/version-specific variants fail closed.
+4. Implement M9.6 multiplayer only after stable local/remote player identity and action ownership are proven; do not project single-player semantics onto co-op.
+5. Implement M9.8 post-run actions with the same expected-revision and authoritative-settlement rules as in-run actions.
+6. Implement M9.9 behind a native Tauri command boundary scoped to the authenticated PID; keep it independent of the game-action transport.
+7. Apply M9.10 to every added surface, then finish M9.11 qualification. Compilation, mocks and static UI tests never promote a capability to `runtime_pass`.
+
+M9 exit criteria:
+
+- every user-visible phase has a typed state, complete information contract and explicit coverage status;
+- supported solo runs can be started, played and concluded without needing the native UI;
+- supported multiplayer sessions can be created/joined, configured, played and concluded without identity ambiguity;
+- every mutation has stable identity, expected revision, main-thread revalidation and authoritative settlement, with no automatic replay after ambiguity;
+- the privacy shortcut hides and restores only the authenticated game window and has a tested recovery path;
+- unsupported variants and version drift fail closed with a clear original-UI handoff;
+- Windows/STS2/Tauri/Steam evidence is recorded separately and no source-only result is called `runtime_pass`.
+
+## 10. Version path
 
 | Version | Name | Meaning | Status |
 |---|---|---|---|
@@ -588,10 +655,11 @@ Exit criteria:
 | v0.6-alpha.4 | Run Decisions | Rewards, selections, events, rest, treasure, shops | `implemented_unverified` |
 | v0.6-beta.1 | Full Run Hardening | Advanced combat, keyboard, recovery, packaging | `implemented_unverified` (safe source delivery complete) |
 | v0.6 | Initial Product Target | Documented, tested supported full-run control surface | `not_implemented` |
+| v0.7 | Full-Chain Control Surface | Menu/setup/party/full HUD/run/post-run/privacy hotkey | `in_progress` |
 
 Version numbers may be adjusted before release, but milestone scope and evidence gates must be updated here first.
 
-## 10. Immediate execution order
+## 11. Immediate execution order
 
 Continue the remaining safe source audit, then use the external runtime in this order:
 
@@ -604,7 +672,7 @@ Continue the remaining safe source audit, then use the external runtime in this 
 7. confirm current STS2 Workshop content policy and test a private candidate manually;
 8. promote only individually evidenced capabilities to `runtime_pass`.
 
-## 11. Documentation ownership
+## 12. Documentation ownership
 
 - **This file** — milestone status, current priority, future development scope, execution order, exit criteria.
 - **[RUNTIME_VALIDATION.md](RUNTIME_VALIDATION.md)** — commands, environment, observations, PASS/FAIL evidence, known runtime limitations.

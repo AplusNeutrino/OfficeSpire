@@ -341,6 +341,40 @@ describe("OfficeSpire wire protocol", () => {
       }),
     ).toBe(false);
   });
+  it("accepts a complete combat player inventory snapshot", () => {
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 13,
+        phase: "combat",
+        action_pending: false,
+        run: {
+          relics: [
+            {
+              id: "burning-blood",
+              name: "Burning Blood",
+              description: "Heal after combat.",
+              stack_count: 1,
+            },
+          ],
+        },
+        screen: {
+          player: {
+            current_hp: 64,
+            max_hp: 80,
+            block: 5,
+            powers: [
+              { name: "Strength", amount: 2, description: "Deal more damage." },
+            ],
+          },
+          hand: [],
+          enemies: [],
+          potion_capacity: 3,
+          potions: [],
+        },
+      }),
+    ).toBe(true);
+  });
   it("creates reward selection and skip actions", () => {
     expect(
       createRewardAction("choose_reward_card", 1, 52, "strike"),

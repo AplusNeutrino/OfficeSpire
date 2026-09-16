@@ -146,6 +146,22 @@ footer,
   border-block: 1px solid rgba(255, 255, 255, 0.11);
   font-size: 13px;
 }
+.detail-list {
+  display: grid;
+  gap: 6px;
+}
+.detail-item {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.detail-item small {
+  color: #b9b2a7;
+  white-space: pre-wrap;
+}
 .map-summary {
   display: flex;
   justify-content: space-between;

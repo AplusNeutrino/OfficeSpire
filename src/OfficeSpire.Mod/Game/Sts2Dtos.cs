@@ -29,12 +29,14 @@ internal sealed record CombatScreenDto(
     IReadOnlyList<CardSnapshotDto> Hand,
     PileSnapshotDto Piles,
     IReadOnlyList<EnemySnapshotDto> Enemies,
+    int PotionCapacity,
     IReadOnlyList<PotionSnapshotDto> Potions);
 
 internal sealed record PlayerSnapshotDto(
     int CurrentHp,
     int MaxHp,
-    int Block);
+    int Block,
+    IReadOnlyList<PowerSnapshotDto> Powers);
 
 internal sealed record PileSnapshotDto(
     int Draw,

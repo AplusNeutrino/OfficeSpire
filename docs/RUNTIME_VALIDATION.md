@@ -311,6 +311,22 @@ Frontend checks after this source pass: `npm test` PASS (15 tests) and `npm run 
 
 Use the M5 matrix in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for the next probes.
 
+## M9 — Full-Chain Control Surface
+
+Overall status: `in_progress`, with all newly added game-facing behavior remaining `implemented_unverified` until Windows/STS2/Tauri evidence exists.
+
+First source slice:
+
+- combat player snapshots now include the native player power/status list with readable descriptions and amounts;
+- combat snapshots expose native potion capacity independently from occupied slots;
+- the Overlay uses the already exported typed relic list and renders names, stack counts, and descriptions;
+- the combat panel always exposes the potion section, including an explicit empty state and occupied/capacity count;
+- no new mutation, replay path, or runtime-pass claim is introduced.
+
+Required live evidence remains: compile against the installed STS2 assemblies; compare powers, relics and potion slots against the native UI for every character; observe add/remove/expiry and slot-capacity changes; verify the Windows/Tauri layout and rich/localized descriptions. Character identity, character-specific resources, companions/minions and full deck inspection are still `not_implemented` pending an installed-assembly API inventory.
+
+The M9 privacy hotkey is planned but not implemented. Its runtime gate includes authenticated-PID-only targeting, hide/restore recovery, global-shortcut collision, fullscreen, multi-monitor, focus, game restart and Overlay-exit behavior. Static code or a mocked window handle will not count as `runtime_pass`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

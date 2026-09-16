@@ -620,13 +620,20 @@ public sealed class Sts2GameAdapter : IGameAdapter
             Player: new PlayerSnapshotDto(
                 player.Creature.CurrentHp,
                 player.Creature.MaxHp,
-                player.Creature.Block),
+                player.Creature.Block,
+                player.Creature.Powers
+                    .Select(power => new PowerSnapshotDto(
+                        SafeFormat(power.Title),
+                        power.Amount,
+                        SafeFormat(power.Description)))
+                    .ToList()),
             Hand: hand,
             Piles: new PileSnapshotDto(
                 playerCombatState.DrawPile.Cards.Count,
                 playerCombatState.DiscardPile.Cards.Count,
                 playerCombatState.ExhaustPile.Cards.Count),
             Enemies: enemies,
+            PotionCapacity: player.PotionSlots.Count,
             Potions: potions);
     }
 

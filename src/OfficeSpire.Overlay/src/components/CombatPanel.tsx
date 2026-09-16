@@ -62,6 +62,41 @@ export function CombatPanel({
         </span>
       </section>
       <section>
+        <h2>Status</h2>
+        {screen.player.powers.length > 0 ? (
+          <div className="detail-list">
+            {screen.player.powers.map((power, index) => (
+              <div className="detail-item" key={`${power.name}-${index}`}>
+                <strong>
+                  {power.name} {power.amount}
+                </strong>
+                <small>{power.description}</small>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <small>No active status effects</small>
+        )}
+      </section>
+      <section>
+        <h2>Relics ({run.relics.length})</h2>
+        {run.relics.length > 0 ? (
+          <div className="detail-list">
+            {run.relics.map((relic, index) => (
+              <div className="detail-item" key={`${relic.id}-${index}`}>
+                <strong>
+                  {relic.name}
+                  {relic.stack_count > 1 ? ` ×${relic.stack_count}` : ""}
+                </strong>
+                <small>{relic.description}</small>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <small>No relics</small>
+        )}
+      </section>
+      <section>
         <h2>Enemies</h2>
         <div className="list">
           {visibleEnemies.map((enemy) => {
@@ -113,9 +148,11 @@ export function CombatPanel({
           <button onClick={onCancelTarget}>Cancel</button>
         </div>
       )}
-      {screen.potions.length > 0 && (
-        <section>
-          <h2>Potions</h2>
+      <section>
+        <h2>
+          Potions ({screen.potions.length}/{screen.potion_capacity})
+        </h2>
+        {screen.potions.length > 0 ? (
           <div className="potion-list">
             {screen.potions.map((potion) => (
               <div className="potion" key={`${potion.id}-${potion.slot_index}`}>
@@ -152,8 +189,10 @@ export function CombatPanel({
               </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <small>No potions</small>
+        )}
+      </section>
       <section>
         <h2>Hand</h2>
         <div className="list">

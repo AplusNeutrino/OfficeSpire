@@ -20,6 +20,12 @@ export interface PowerState {
   amount: number;
   description: string;
 }
+export interface RelicState {
+  id: string;
+  name: string;
+  description: string;
+  stack_count: number;
+}
 export interface EnemyState {
   stable_id: string;
   combat_id: number;
@@ -64,10 +70,16 @@ export interface CombatScreen {
   is_play_phase: boolean;
   energy: number;
   max_energy: number;
-  player: { current_hp: number; max_hp: number; block: number };
+  player: {
+    current_hp: number;
+    max_hp: number;
+    block: number;
+    powers: PowerState[];
+  };
   hand: CardState[];
   piles: { draw: number; discard: number; exhaust: number };
   enemies: EnemyState[];
+  potion_capacity: number;
   potions: PotionState[];
 }
 export interface MapNodeState {
@@ -184,7 +196,7 @@ export interface RunState {
   current_act: number;
   current_floor: number;
   gold: number;
-  relics: unknown[];
+  relics: RelicState[];
 }
 export interface LifecycleScreen {
   waiting_for_input: false;
@@ -329,7 +341,12 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     !!c.screen &&
     (c.phase !== "combat" ||
       (Array.isArray((c.screen as CombatScreen).hand) &&
+        Array.isArray((c.run as RunState).relics) &&
         Array.isArray((c.screen as CombatScreen).enemies) &&
+        Array.isArray((c.screen as CombatScreen).player?.powers) &&
+        Number.isInteger((c.screen as CombatScreen).potion_capacity) &&
+        (c.screen as CombatScreen).potion_capacity >=
+          (c.screen as CombatScreen).potions?.length &&
         Array.isArray((c.screen as CombatScreen).potions))) &&
     (c.phase !== "map" ||
       (Number.isInteger((c.screen as MapScreen).map_generation) &&

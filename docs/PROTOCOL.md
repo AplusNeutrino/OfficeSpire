@@ -92,6 +92,8 @@ A missing run and a visible game-over overlay must remain continuously observabl
 
 All user-facing presentation strings are plain text. The Mod removes game rich-text/color tags (including malformed or leaked `/gold`-style closers), converts explicit breaks and icon markup to readable text, and suppresses unresolved template variables while preserving Unicode. Clients must repeat this normalization defensively only for presentation fields; they must never normalize action names, IDs, stable identities, phase values, tokens, or other protocol semantics.
 
+For `phase="combat"`, `screen.player` contains current/max HP, block, and the complete native player power list (`name`, `amount`, `description`). `screen.energy` and `screen.max_energy` remain combat-level fields. `screen.potion_capacity` is the native slot count, while `screen.potions` contains occupied slots with their original slot indexes, identities, target rules, and availability. Empty slots are therefore represented by capacity minus occupied entries rather than fabricated potion objects. `run.relics` contains each native relic's ID, name, description, and stack count. These presentation additions do not mint a decision revision by themselves and do not change action identity.
+
 ## Action request
 
 The body of an `action` message is:
