@@ -142,6 +142,9 @@ internal sealed record CombatScreenDto(
     bool WaitingForInput,
     int RoundNumber,
     bool IsPlayPhase,
+    string CombatPhase,
+    bool ActionQueuesEmpty,
+    IReadOnlyList<CombatParticipantSnapshotDto> Participants,
     int Energy,
     int MaxEnergy,
     PlayerSnapshotDto Player,
@@ -154,6 +157,13 @@ internal sealed record CombatScreenDto(
     IReadOnlyList<EnemySnapshotDto> Enemies,
     int PotionCapacity,
     IReadOnlyList<PotionSnapshotDto> Potions);
+
+internal sealed record CombatParticipantSnapshotDto(
+    string PlayerId,
+    string TurnPhase,
+    bool IsPlayPhase,
+    bool ActionQueuePaused,
+    bool CanSubmitActions);
 
 internal sealed record PlayerSnapshotDto(
     int CurrentHp,

@@ -83,6 +83,40 @@ export function CombatPanel({
           </span>
         )}
       </section>
+      {screen.participants.length > 1 && (
+        <section>
+          <h2>Combat ownership</h2>
+          <div className="detail-list">
+            {screen.participants.map((participant) => {
+              const member = run.party?.members.find(
+                (candidate) => candidate.id === participant.player_id,
+              );
+              return (
+                <div className="detail-item" key={participant.player_id}>
+                  <strong>
+                    {member?.character_name || participant.player_id}
+                    {member?.is_local ? " (you)" : ""} ·{" "}
+                    {participant.turn_phase}
+                  </strong>
+                  <small>
+                    {participant.can_submit_actions
+                      ? "Local actions available"
+                      : participant.action_queue_paused
+                        ? "Action queue paused"
+                        : participant.is_play_phase
+                          ? "Remote player acting"
+                          : "Not in play phase"}
+                  </small>
+                </div>
+              );
+            })}
+          </div>
+          <small>
+            Synchronizer: {screen.combat_phase} · queues{" "}
+            {screen.action_queues_empty ? "empty" : "resolving"}
+          </small>
+        </section>
+      )}
       {screen.orb_capacity > 0 && (
         <section>
           <h2>

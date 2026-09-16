@@ -1121,8 +1121,24 @@ public sealed class Sts2GameAdapter : IGameAdapter
             .Cast<PotionSnapshotDto>()
             .ToList();
 
+        bool localQueuePaused = RunManager.Instance.ActionQueueSet.ActionQueueIsPaused(player.NetId);
         bool waitingForInput = playerCombatState.Phase == PlayerTurnPhase.Play
-            && !CombatManager.Instance.PlayerActionsDisabled;
+            && !CombatManager.Instance.PlayerActionsDisabled
+            && !localQueuePaused;
+        string localPlayerId = RunManager.Instance.NetService.NetId.ToString();
+        var participants = player.RunState.Players.Select(member =>
+        {
+            PlayerCombatState? memberCombat = member.PlayerCombatState;
+            bool isPlayPhase = memberCombat?.Phase == PlayerTurnPhase.Play;
+            bool queuePaused = RunManager.Instance.ActionQueueSet.ActionQueueIsPaused(member.NetId);
+            bool isLocal = member.NetId.ToString() == localPlayerId;
+            return new CombatParticipantSnapshotDto(
+                member.NetId.ToString(),
+                memberCombat?.Phase.ToString() ?? "Unavailable",
+                isPlayPhase,
+                queuePaused,
+                isLocal && isPlayPhase && !queuePaused && !CombatManager.Instance.PlayerActionsDisabled);
+        }).ToList();
 
         int? stars = player.Character.ShouldAlwaysShowStarCounter || playerCombatState.Stars > 0
             ? playerCombatState.Stars
@@ -1166,6 +1182,9 @@ public sealed class Sts2GameAdapter : IGameAdapter
             WaitingForInput: waitingForInput,
             RoundNumber: combatState.RoundNumber,
             IsPlayPhase: playerCombatState.Phase == PlayerTurnPhase.Play,
+            CombatPhase: RunManager.Instance.ActionQueueSynchronizer.CombatState.ToString(),
+            ActionQueuesEmpty: RunManager.Instance.ActionQueueSet.IsEmpty,
+            Participants: participants,
             Energy: playerCombatState.Energy,
             MaxEnergy: playerCombatState.MaxEnergy,
             Player: new PlayerSnapshotDto(

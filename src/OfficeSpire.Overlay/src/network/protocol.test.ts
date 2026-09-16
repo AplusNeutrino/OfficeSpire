@@ -579,6 +579,25 @@ describe("OfficeSpire wire protocol", () => {
           ],
         },
         screen: {
+          waiting_for_input: true,
+          combat_phase: "PlayPhase",
+          action_queues_empty: true,
+          participants: [
+            {
+              player_id: "1",
+              turn_phase: "Play",
+              is_play_phase: true,
+              action_queue_paused: false,
+              can_submit_actions: true,
+            },
+            {
+              player_id: "2",
+              turn_phase: "Play",
+              is_play_phase: true,
+              action_queue_paused: false,
+              can_submit_actions: false,
+            },
+          ],
           player: {
             current_hp: 64,
             max_hp: 80,

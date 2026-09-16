@@ -93,6 +93,9 @@ export interface CombatScreen {
   waiting_for_input: boolean;
   round_number: number;
   is_play_phase: boolean;
+  combat_phase: string;
+  action_queues_empty: boolean;
+  participants: CombatParticipantState[];
   energy: number;
   max_energy: number;
   player: {
@@ -117,6 +120,13 @@ export interface CombatScreen {
   enemies: EnemyState[];
   potion_capacity: number;
   potions: PotionState[];
+}
+export interface CombatParticipantState {
+  player_id: string;
+  turn_phase: string;
+  is_play_phase: boolean;
+  action_queue_paused: boolean;
+  can_submit_actions: boolean;
 }
 export interface MapNodeState {
   stable_id: string;
@@ -608,6 +618,59 @@ function hasValidDecisionVotes(
   );
 }
 
+function hasValidCombatParticipants(
+  screen: CombatScreen,
+  run: RunState,
+): boolean {
+  if (
+    typeof screen.combat_phase !== "string" ||
+    screen.combat_phase.length === 0 ||
+    typeof screen.action_queues_empty !== "boolean" ||
+    !Array.isArray(screen.participants) ||
+    screen.participants.some(
+      (participant) =>
+        typeof participant.player_id !== "string" ||
+        participant.player_id.length === 0 ||
+        typeof participant.turn_phase !== "string" ||
+        participant.turn_phase.length === 0 ||
+        typeof participant.is_play_phase !== "boolean" ||
+        typeof participant.action_queue_paused !== "boolean" ||
+        typeof participant.can_submit_actions !== "boolean" ||
+        (participant.can_submit_actions &&
+          (!participant.is_play_phase || participant.action_queue_paused)),
+    ) ||
+    new Set(screen.participants.map((participant) => participant.player_id))
+      .size !== screen.participants.length ||
+    screen.participants.filter((participant) => participant.can_submit_actions)
+      .length > 1
+  )
+    return false;
+
+  if (!run.party) {
+    return (
+      screen.participants.length === 1 &&
+      screen.waiting_for_input === screen.participants[0].can_submit_actions
+    );
+  }
+  const partyIds = new Set(run.party.members.map((member) => member.id));
+  const local = screen.participants.find(
+    (participant) => participant.player_id === run.party?.local_player_id,
+  );
+  return (
+    screen.participants.length === partyIds.size &&
+    screen.participants.every((participant) =>
+      partyIds.has(participant.player_id),
+    ) &&
+    local !== undefined &&
+    screen.waiting_for_input === local.can_submit_actions &&
+    screen.participants.every(
+      (participant) =>
+        !participant.can_submit_actions ||
+        participant.player_id === run.party?.local_player_id,
+    )
+  );
+}
+
 export function isStateSnapshot(value: unknown): value is StateSnapshot {
   if (!value || typeof value !== "object") return false;
   const c = value as Partial<StateSnapshot>;
@@ -690,7 +753,11 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         Number.isInteger((c.screen as CombatScreen).potion_capacity) &&
         (c.screen as CombatScreen).potion_capacity >=
           (c.screen as CombatScreen).potions?.length &&
-        Array.isArray((c.screen as CombatScreen).potions))) &&
+        Array.isArray((c.screen as CombatScreen).potions) &&
+        hasValidCombatParticipants(
+          c.screen as CombatScreen,
+          c.run as RunState,
+        ))) &&
     (c.phase !== "map" ||
       (Number.isInteger((c.screen as MapScreen).map_generation) &&
         (c.screen as MapScreen).map_generation >= 0 &&

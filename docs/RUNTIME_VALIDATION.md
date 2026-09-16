@@ -411,6 +411,14 @@ M9.6 per-player rest-decision source checkpoint:
 - the inspected reward synchronizer does not expose a current choice inventory, so reward ownership remains unresolved instead of being inferred from asynchronous settlement messages;
 - current-assembly compilation, 2–4 player rest progress, option removal, target handoff and disconnect behavior remain `implemented_unverified`; teammate targeting remains `not_implemented`.
 
+M9.6 simultaneous-combat ownership source checkpoint:
+
+- combat state now carries the native global synchronizer phase, all-queues-empty flag, and one participant record per stable run-player ID;
+- participant records expose each player's actual combat phase and player-owned queue pause state, but only the local player can report `can_submit_actions=true`;
+- local readiness now also fails closed while the local action queue is paused; no combat request accepts or derives a remote owner ID;
+- protocol validation rejects incomplete/duplicate participant sets, remotely actionable records and a mismatch between local readiness and `waiting_for_input`;
+- these are source/build assertions only. Real simultaneous turns, queue ordering, pause/resume, disconnect and cross-machine settlement remain `implemented_unverified`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

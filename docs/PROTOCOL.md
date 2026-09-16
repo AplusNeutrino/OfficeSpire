@@ -104,6 +104,8 @@ All user-facing presentation strings are plain text. The Mod removes game rich-t
 
 For `phase="combat"`, `run.character_id` and `run.character_name` identify the local player's native character model. `screen.player` contains current/max HP, block, and the complete native player power list (`name`, `amount`, `description`). `screen.energy` and `screen.max_energy` remain combat-level fields. `screen.stars` is the Regent counter when applicable, otherwise `null`. `screen.orb_capacity` plus `screen.orbs` describe the Defect queue; each orb carries native identity, name, description, passive value and evoke value. `screen.companions` contains only entities with authoritative combat state, currently Osty for Necrobinder, including HP/block/alive state and powers. Cosmetic pets are not fabricated as combat entities.
 
+`screen.combat_phase` reports the native action synchronizer phase and `action_queues_empty` reports whether every player-owned action queue is settled. `participants` contains exactly one entry per run player, keyed by stable network ID, with that player's native turn phase and queue-paused state. `can_submit_actions` may be true only for the local player and must equal the top-level `waiting_for_input`; a remote player's simultaneous play phase never enables local controls or authorizes an action on their behalf.
+
 `screen.potion_capacity` is the native slot count, while `screen.potions` contains occupied slots with their original slot indexes, identities, target rules, and availability. Empty slots are therefore represented by capacity minus occupied entries rather than fabricated potion objects. `run.relics` contains each native relic's ID, name, description, and stack count. These presentation additions do not mint a decision revision by themselves and do not change action identity.
 
 `run.deck_cards` lists every authoritative run-deck card separately, retaining its deck index, native ID, upgrade state, type, rarity and description. It deliberately does not merge cards solely by ID because upgraded and base copies may differ. `screen.piles.draw_cards`, `discard_cards`, and `exhaust_cards` list current combat-pile contents with descriptions generated for their native `PileType`. Their array lengths must exactly match the corresponding `draw`, `discard`, and `exhaust` counts or the client rejects the snapshot. These lists are read-only presentation state; only `screen.hand` carries playable hand indexes.
@@ -147,7 +149,7 @@ Rules:
 
 `target_id` can be an integer combat id or `enemy-<combatId>`. It may be omitted for untargeted/AOE/self actions. For an enemy-targeted action, M4 auto-targets only when exactly one hittable enemy exists; otherwise an explicit target is required.
 
-The game thread requires the card's native ID to still match the current hand index, then rechecks STS2 `CanPlay`, player-turn readiness and target legality before enqueueing `PlayCardAction`.
+The game thread requires the card's native ID to still match the current hand index, then rechecks STS2 `CanPlay`, local-player turn readiness and target legality before enqueueing `PlayCardAction`. The action is constructed from `LocalContext.GetMe`; a remote participant ID is never accepted in the payload.
 
 ### `end_turn`
 
