@@ -258,6 +258,7 @@ describe("OfficeSpire wire protocol", () => {
         popup_body: "",
         run_setup: null,
         lobby: null,
+        connection: null,
       },
     };
     expect(isStateSnapshot(menu)).toBe(true);
@@ -324,6 +325,24 @@ describe("OfficeSpire wire protocol", () => {
                 character_name: "Ironclad",
                 is_ready: false,
               },
+            ],
+          },
+          connection: null,
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...menu,
+        screen: {
+          ...menu.screen,
+          menu_screen: "multiplayer_join",
+          connection: {
+            status: "available",
+            connected_players: 0,
+            required_players: null,
+            sessions: [
+              { id: "7656119", label: "Player 7656119", enabled: true },
             ],
           },
         },

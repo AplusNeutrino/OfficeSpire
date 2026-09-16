@@ -293,6 +293,17 @@ export interface MenuLobbyState {
   all_ready: boolean;
   players: MenuLobbyPlayerState[];
 }
+export interface MenuSessionState {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+export interface MenuConnectionState {
+  status: string;
+  connected_players: number;
+  required_players: number | null;
+  sessions: MenuSessionState[];
+}
 export interface MenuScreen {
   waiting_for_input: false;
   menu_screen:
@@ -316,6 +327,7 @@ export interface MenuScreen {
   popup_body: string;
   run_setup: MenuRunSetupState | null;
   lobby: MenuLobbyState | null;
+  connection: MenuConnectionState | null;
 }
 const runEndStatuses = new Set(["victory", "defeat", "abandoned"]);
 const menuScreens = new Set([
@@ -630,6 +642,36 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
             (c.screen as MenuScreen).lobby!.players.find(
               (player) => player.is_local,
             )?.id === (c.screen as MenuScreen).lobby!.local_player_id)) &&
+        ((c.screen as MenuScreen).connection === null ||
+          ([
+            "multiplayer_host",
+            "multiplayer_join",
+            "multiplayer_load",
+          ].includes((c.screen as MenuScreen).menu_screen) &&
+            typeof (c.screen as MenuScreen).connection!.status === "string" &&
+            Number.isInteger(
+              (c.screen as MenuScreen).connection!.connected_players,
+            ) &&
+            (c.screen as MenuScreen).connection!.connected_players >= 0 &&
+            ((c.screen as MenuScreen).connection!.required_players === null ||
+              (Number.isInteger(
+                (c.screen as MenuScreen).connection!.required_players,
+              ) &&
+                (c.screen as MenuScreen).connection!.required_players! >=
+                  (c.screen as MenuScreen).connection!.connected_players)) &&
+            Array.isArray((c.screen as MenuScreen).connection!.sessions) &&
+            (c.screen as MenuScreen).connection!.sessions.every(
+              (session) =>
+                typeof session.id === "string" &&
+                session.id.length > 0 &&
+                typeof session.label === "string" &&
+                typeof session.enabled === "boolean",
+            ) &&
+            new Set(
+              (c.screen as MenuScreen).connection!.sessions.map(
+                (session) => session.id,
+              ),
+            ).size === (c.screen as MenuScreen).connection!.sessions.length)) &&
         (c.screen as MenuScreen).can_mutate === false)) &&
     (c.phase !== "run_end" ||
       (c.action_pending === false &&

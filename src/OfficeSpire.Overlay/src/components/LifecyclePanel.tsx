@@ -60,6 +60,30 @@ export function LifecyclePanel({
             </ul>
           </section>
         )}
+        {snapshot.screen.connection && (
+          <section className="menu-connection" aria-label="Connection state">
+            <h2>Connection</h2>
+            <p>
+              Status: {snapshot.screen.connection.status.replace(/_/g, " ")}
+            </p>
+            {snapshot.screen.connection.required_players !== null && (
+              <p>
+                Connected: {snapshot.screen.connection.connected_players}/
+                {snapshot.screen.connection.required_players}
+              </p>
+            )}
+            {snapshot.screen.connection.sessions.length > 0 && (
+              <ul>
+                {snapshot.screen.connection.sessions.map((session) => (
+                  <li key={session.id}>
+                    {session.label} —{" "}
+                    {session.enabled ? "Available" : "Unavailable"}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
         {snapshot.screen.characters &&
           snapshot.screen.characters.length > 0 && (
             <div className="menu-character-list">

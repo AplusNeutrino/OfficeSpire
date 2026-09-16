@@ -205,11 +205,18 @@ For M9.3–M9.5, the same STS2MCP inspection commit identifies the current nativ
   - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect/NCharacterSelectScreen.cs`
   - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.CustomRun/NCustomRunScreen.cs`
   - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.DailyRun/NDailyRunScreen.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.MainMenu/NJoinFriendScreen.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.MainMenu/NJoinFriendButton.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.MainMenu/NMultiplayerHostSubmenu.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect/NMultiplayerLoadGameScreen.cs`
   - `decompiled/MegaCrit.Sts2.Core.Multiplayer.Game.Lobby/StartRunLobby.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Multiplayer.Game.Lobby/LoadRunLobby.cs`
   - `decompiled/MegaCrit.Sts2.Core.Models/ModifierModel.cs`
 - License/copyright status: decompiled game material; used only to inventory public runtime type/property names. No source or control flow was copied.
 
 For M9.4–M9.6, these files confirm that Standard, Custom and Daily setup converge on `StartRunLobby`, whose read-only properties include `GameMode`, `Ascension`, `MaxAscension`, `Seed`, `DailyTime`, `Modifiers`, `Act1`, `NetService`, `MaxPlayers`, `LocalPlayer` and `Players`. `LobbyPlayer` supplies network ID, slot, character and Ready state. The inspected client contract does not directly identify which remote network ID owns the host role, so OfficeSpire deliberately leaves client-side host attribution unknown. OfficeSpire independently reflects these values and adds no setup or lobby mutation.
+
+The same reference identifies join discovery through visible `NJoinFriendButton.PlayerId` values, asynchronous loading overlays on join/host screens, and saved-run readiness through `LoadRunLobby.ConnectedPlayerIds` plus its serialized player roster. It also shows that joining an already running session throws an explicit not-implemented path in this inspected game build; OfficeSpire therefore does not advertise active-run rejoin support.
 
 ## Licensing rule
 

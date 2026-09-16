@@ -271,6 +271,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             string popupBody = string.Empty;
             MenuRunSetupSnapshotDto? runSetup = null;
             MenuLobbySnapshotDto? lobby = null;
+            MenuConnectionSnapshotDto? connection = null;
             List<MenuOptionSnapshotDto> options;
             if (definition.Screen is "character_select" or "custom_run")
             {
@@ -294,6 +295,18 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 runSetup = BuildRunSetup(screen);
                 lobby = BuildMenuLobby(screen);
             }
+            else if (definition.Screen == "multiplayer_join")
+            {
+                (options, connection) = BuildJoinFriendState(screen);
+            }
+            else if (definition.Screen == "multiplayer_load")
+            {
+                options = [];
+                AddMenuOption(options, screen, "_confirmButton", "confirm", "Confirm");
+                AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
+                AddMenuOption(options, screen, "_backButton", "back", "Back");
+                connection = BuildLoadConnectionState(screen);
+            }
             else if (definition.Screen == "profile_select")
             {
                 options = BuildProfileMenuOptions(screen);
@@ -311,8 +324,9 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     .Where(option => option is not null)
                     .Cast<MenuOptionSnapshotDto>()
                     .ToList();
+                if (definition.Screen == "multiplayer_host") connection = BuildHostConnectionState(screen);
             }
-            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup, lobby);
+            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup, lobby, connection);
         }
 
         return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
@@ -495,6 +509,56 @@ public sealed class Sts2GameAdapter : IGameAdapter
             localPlayerId,
             players.Count > 0 && players.All(player => player.IsReady),
             players);
+    }
+
+    private static (List<MenuOptionSnapshotDto> Options, MenuConnectionSnapshotDto Connection) BuildJoinFriendState(Node screen)
+    {
+        var options = new List<MenuOptionSnapshotDto>();
+        AddMenuOption(options, screen, "_refreshButton", "refresh", "Refresh");
+        var sessions = new List<MenuSessionSnapshotDto>();
+        foreach (Node button in FindNodesByTypeName(screen, "NJoinFriendButton"))
+        {
+            if (button is CanvasItem item && !item.IsVisibleInTree()) continue;
+            string id = button.GetType().GetProperty("PlayerId")?.GetValue(button)?.ToString() ?? string.Empty;
+            if (string.IsNullOrEmpty(id)) continue;
+            bool enabled = button.GetType().GetProperty("IsEnabled")?.GetValue(button) as bool? ?? false;
+            string optionId = $"friend_{id}";
+            string label = $"Player {id}";
+            sessions.Add(new MenuSessionSnapshotDto(id, label, enabled));
+            options.Add(new MenuOptionSnapshotDto(optionId, label, enabled));
+        }
+        string status = IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_loadingOverlay"))
+            ? "joining"
+            : IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_loadingFriendsIndicator"))
+                ? "refreshing"
+                : IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_noFriendsLabel"))
+                    ? "empty"
+                    : "available";
+        return (options, new MenuConnectionSnapshotDto(status, 0, null, sessions));
+    }
+
+    private static MenuConnectionSnapshotDto BuildHostConnectionState(Node screen) =>
+        new(IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_loadingOverlay")) ? "hosting" : "idle", 0, 4, []);
+
+    private static MenuConnectionSnapshotDto BuildLoadConnectionState(Node screen)
+    {
+        object? lobby = GetInstanceFieldValue(screen, "_runLobby");
+        if (lobby is null) return new MenuConnectionSnapshotDto("loading", 0, null, []);
+        int connected = CountEnumerable(lobby.GetType().GetProperty("ConnectedPlayerIds")?.GetValue(lobby));
+        object? run = lobby.GetType().GetProperty("Run")?.GetValue(lobby);
+        int required = CountEnumerable(run?.GetType().GetProperty("Players")?.GetValue(run));
+        return new MenuConnectionSnapshotDto("load_lobby", connected, required > 0 ? required : null, []);
+    }
+
+    private static bool IsVisibleCanvasItem(object? value) =>
+        value is CanvasItem item && item.IsVisibleInTree();
+
+    private static int CountEnumerable(object? value)
+    {
+        if (value is not System.Collections.IEnumerable items) return 0;
+        int count = 0;
+        foreach (object _ in items) count++;
+        return count;
     }
 
     private static string GetModelId(object model)

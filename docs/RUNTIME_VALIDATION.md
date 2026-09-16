@@ -370,6 +370,14 @@ M9.5/M9.6 read-only lobby checkpoint:
 - protocol validation requires exactly one local player plus unique player and slot identities;
 - 2–4 machine hosting/joining, remote host attribution, disconnect/reconnect, readiness changes, host migration, simultaneous combat and shared decisions remain `implemented_unverified` or `not_implemented`.
 
+M9.6 discovery/load source checkpoint:
+
+- join discovery distinguishes refresh, active joining, no available friends and an available-session list using native platform player IDs;
+- host mode exposes its asynchronous loading overlay, while saved-run load lobbies expose connected/required player counts;
+- protocol validation rejects duplicate discovered-session IDs and impossible negative/over-capacity connection counts;
+- disappearing loading state is not treated as success, and no join/load/refresh/host operation is sent by OfficeSpire;
+- real Steam discovery, FastMP fallback, failed connection popups, loaded-run missing-player confirmation, rejoin behavior and version mismatch handling remain `implemented_unverified` or `not_implemented`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

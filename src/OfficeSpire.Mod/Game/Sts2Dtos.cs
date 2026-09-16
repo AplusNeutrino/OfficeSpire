@@ -26,7 +26,8 @@ internal sealed record MenuScreenDto(
     IReadOnlyList<MenuCharacterSnapshotDto>? Characters = null,
     string PopupBody = "",
     MenuRunSetupSnapshotDto? RunSetup = null,
-    MenuLobbySnapshotDto? Lobby = null);
+    MenuLobbySnapshotDto? Lobby = null,
+    MenuConnectionSnapshotDto? Connection = null);
 
 internal sealed record MenuOptionSnapshotDto(
     string Id,
@@ -77,6 +78,17 @@ internal sealed record MenuLobbyPlayerSnapshotDto(
     string CharacterId,
     string CharacterName,
     bool IsReady);
+
+internal sealed record MenuConnectionSnapshotDto(
+    string Status,
+    int ConnectedPlayers,
+    int? RequiredPlayers,
+    IReadOnlyList<MenuSessionSnapshotDto> Sessions);
+
+internal sealed record MenuSessionSnapshotDto(
+    string Id,
+    string Label,
+    bool Enabled);
 
 internal sealed record RelicSnapshotDto(
     string Id,
