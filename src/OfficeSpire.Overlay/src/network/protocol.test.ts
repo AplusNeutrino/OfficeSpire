@@ -28,6 +28,7 @@ import {
   createMenuOptionAction,
   createRunAscensionAction,
   createCustomSeedAction,
+  createRunEndAction,
 } from "../actions/actionDispatcher";
 import { isStateSnapshot, type StateSnapshot } from "../types";
 import { resolveCombatShortcut } from "../actions/combatKeyboard";
@@ -483,10 +484,20 @@ describe("OfficeSpire wire protocol", () => {
       action_pending: false,
       run: {},
       screen: {
-        waiting_for_input: false,
+        waiting_for_input: true,
         status: "victory",
         message: "The game reports that this run ended in victory.",
         can_start_run: false,
+        stage: "outcome",
+        score: 1234,
+        floors_climbed: 51,
+        unlocks_remaining: 2,
+        current_unlock_score: 40,
+        unlock_score_threshold: 100,
+        unlocked_epoch_id: "",
+        discoveries: { cards: 2, relics: 1, potions: 0, enemies: 3, epochs: 0 },
+        can_view_summary: true,
+        can_return_to_menu: false,
       },
     };
     expect(isStateSnapshot(runEnd)).toBe(true);
@@ -494,9 +505,37 @@ describe("OfficeSpire wire protocol", () => {
     expect(
       isStateSnapshot({
         ...runEnd,
+        action_pending: true,
+        screen: {
+          ...runEnd.screen,
+          waiting_for_input: false,
+          stage: "settling",
+          can_view_summary: false,
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...runEnd,
         screen: { ...runEnd.screen, status: "unknown" },
       }),
     ).toBe(false);
+    expect(createRunEndAction("main_menu", 18)).toMatchObject({
+      action: "advance_run_end",
+      expected_revision: 18,
+      payload: { target: "main_menu" },
+    });
+    expect(
+      isStateSnapshot({
+        ...runEnd,
+        screen: {
+          ...runEnd.screen,
+          stage: "summary",
+          can_view_summary: false,
+          can_return_to_menu: true,
+        },
+      }),
+    ).toBe(true);
   });
   it("rejects snapshots with ambiguous actionable identities", () => {
     expect(

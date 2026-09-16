@@ -57,6 +57,7 @@ import {
   createMenuOptionAction,
   createRunAscensionAction,
   createCustomSeedAction,
+  createRunEndAction,
 } from "./actions/actionDispatcher";
 import { resolveCombatShortcut } from "./actions/combatKeyboard";
 import { resolveRunShortcut } from "./actions/runKeyboard";
@@ -813,6 +814,10 @@ export default function App() {
                 snapshot.screen.menu_screen === "custom_run"
               )
                 submit(createCustomSeedAction(seed, snapshot.state_revision));
+            }}
+            onRunEnd={(target) => {
+              if (snapshot.phase === "run_end")
+                submit(createRunEndAction(target, snapshot.state_revision));
             }}
           />
         ) : (

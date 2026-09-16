@@ -312,10 +312,26 @@ export interface RunPartyState {
   members: RunPartyMemberState[];
 }
 export interface LifecycleScreen {
-  waiting_for_input: false;
+  waiting_for_input: boolean;
   status: string;
   message: string;
   can_start_run: false;
+  stage: "settling" | "outcome" | "summary";
+  score: number;
+  floors_climbed: number;
+  unlocks_remaining: number;
+  current_unlock_score: number;
+  unlock_score_threshold: number;
+  unlocked_epoch_id: string;
+  discoveries: {
+    cards: number;
+    relics: number;
+    potions: number;
+    enemies: number;
+    epochs: number;
+  };
+  can_view_summary: boolean;
+  can_return_to_menu: boolean;
 }
 export interface MenuOptionState {
   id: string;
@@ -537,6 +553,7 @@ export interface OverlayAction {
     | "choose_menu_option"
     | "set_run_ascension"
     | "set_custom_seed"
+    | "advance_run_end"
     | "choose_rest_option"
     | "leave_rest_site"
     | "open_treasure"
@@ -1176,11 +1193,42 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
         (c.screen as MenuScreen).waiting_for_input ===
           (c.screen as MenuScreen).can_mutate)) &&
     (c.phase !== "run_end" ||
-      (c.action_pending === false &&
-        (c.screen as LifecycleScreen).waiting_for_input === false &&
+      (typeof (c.screen as LifecycleScreen).waiting_for_input === "boolean" &&
+        c.action_pending === !(c.screen as LifecycleScreen).waiting_for_input &&
         runEndStatuses.has((c.screen as LifecycleScreen).status) &&
         typeof (c.screen as LifecycleScreen).message === "string" &&
-        (c.screen as LifecycleScreen).can_start_run === false)) &&
+        (c.screen as LifecycleScreen).can_start_run === false &&
+        ["settling", "outcome", "summary"].includes(
+          (c.screen as LifecycleScreen).stage,
+        ) &&
+        [
+          "score",
+          "floors_climbed",
+          "unlocks_remaining",
+          "current_unlock_score",
+          "unlock_score_threshold",
+        ].every(
+          (key) =>
+            Number.isInteger(
+              (c.screen as unknown as Record<string, unknown>)[key],
+            ) &&
+            ((c.screen as unknown as Record<string, number>)[key] ?? -1) >= 0,
+        ) &&
+        typeof (c.screen as LifecycleScreen).unlocked_epoch_id === "string" &&
+        typeof (c.screen as LifecycleScreen).discoveries === "object" &&
+        (c.screen as LifecycleScreen).discoveries !== null &&
+        Object.values((c.screen as LifecycleScreen).discoveries).every(
+          (value) => Number.isInteger(value) && value >= 0,
+        ) &&
+        typeof (c.screen as LifecycleScreen).can_view_summary === "boolean" &&
+        typeof (c.screen as LifecycleScreen).can_return_to_menu === "boolean" &&
+        (c.screen as LifecycleScreen).waiting_for_input ===
+          ((c.screen as LifecycleScreen).can_view_summary ||
+            (c.screen as LifecycleScreen).can_return_to_menu) &&
+        ((c.screen as LifecycleScreen).stage === "outcome") ===
+          (c.screen as LifecycleScreen).can_view_summary &&
+        ((c.screen as LifecycleScreen).stage === "summary") ===
+          (c.screen as LifecycleScreen).can_return_to_menu)) &&
     hasStableSnapshotIdentities(c as StateSnapshot)
   );
 }

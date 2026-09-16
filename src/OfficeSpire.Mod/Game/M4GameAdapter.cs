@@ -14,6 +14,7 @@ using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.RestSite;
@@ -66,6 +67,7 @@ public sealed class M4GameAdapter : IGameAdapter
                 "choose_menu_option" => ExecuteChooseMenuOption(request),
                 "set_run_ascension" => ExecuteSetRunAscension(request),
                 "set_custom_seed" => ExecuteSetCustomSeed(request),
+                "advance_run_end" => ExecuteAdvanceRunEnd(request),
                 "choose_rest_option" => ExecuteChooseRestOption(request),
                 "leave_rest_site" => ExecuteLeaveRestSite(request),
                 "open_treasure" => ExecuteOpenTreasure(request),
@@ -464,6 +466,20 @@ public sealed class M4GameAdapter : IGameAdapter
         if (method is null) return Reject(request, "unsupported_state", "The native seed setter is unavailable.");
         method.Invoke(lobby, [string.IsNullOrEmpty(seed) ? null : seed]);
         return Accept(request, "accepted", string.IsNullOrEmpty(seed) ? "Restored a random seed." : "Updated the Custom Run seed.");
+    }
+
+    private static ActionResponse ExecuteAdvanceRunEnd(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "target", out string? target) ||
+            target is not ("summary" or "main_menu"))
+            return Reject(request, "bad_request", "advance_run_end requires payload.target equal to summary or main_menu.");
+        if (NOverlayStack.Instance?.Peek() is not NGameOverScreen screen)
+            return Reject(request, "bad_phase", "The native game-over screen is no longer active.");
+        string field = target == "summary" ? "_continueButton" : "_mainMenuButton";
+        if (GetInstanceFieldValue(screen, field) is not NButton { IsEnabled: true } button || !button.IsVisibleInTree())
+            return Reject(request, "not_ready", $"The native {target} control is not ready.");
+        button.ForceClick();
+        return Accept(request, "accepted", target == "summary" ? "Opened the native run summary." : "Returning to the main menu.");
     }
 
     private static bool TryGetActiveMenuScreen(out Node? screen, out string menuScreen)

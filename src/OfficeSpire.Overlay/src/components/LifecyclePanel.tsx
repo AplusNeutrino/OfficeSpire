@@ -10,12 +10,14 @@ export function LifecyclePanel({
   onOption,
   onAscension,
   onSeed,
+  onRunEnd,
 }: {
   snapshot: LifecycleStateSnapshot | MenuStateSnapshot;
   disabled?: boolean;
   onOption?: (option: MenuOptionState) => void;
   onAscension?: (ascension: number) => void;
   onSeed?: (seed: string | null) => void;
+  onRunEnd?: (target: "summary" | "main_menu") => void;
 }) {
   if (snapshot.phase === "menu") {
     return (
@@ -244,8 +246,46 @@ export function LifecyclePanel({
     <section className="empty lifecycle-panel" aria-live="polite">
       <h1>{title}</h1>
       <p>{snapshot.screen.message}</p>
+      <section className="run-end-summary" aria-label="Run summary">
+        <h2>Run summary</h2>
+        <p>
+          Score: {snapshot.screen.score} · Floors climbed:{" "}
+          {snapshot.screen.floors_climbed}
+        </p>
+        <p>
+          Discoveries: {snapshot.screen.discoveries.cards} cards ·{" "}
+          {snapshot.screen.discoveries.relics} relics ·{" "}
+          {snapshot.screen.discoveries.potions} potions ·{" "}
+          {snapshot.screen.discoveries.enemies} enemies ·{" "}
+          {snapshot.screen.discoveries.epochs} epochs
+        </p>
+        <p>
+          Unlocks remaining: {snapshot.screen.unlocks_remaining}
+          {snapshot.screen.unlock_score_threshold > 0 && (
+            <>
+              {" "}
+              · Progress: {snapshot.screen.current_unlock_score}/
+              {snapshot.screen.unlock_score_threshold}
+            </>
+          )}
+        </p>
+        {snapshot.screen.unlocked_epoch_id && (
+          <p>Unlocked epoch: {snapshot.screen.unlocked_epoch_id}</p>
+        )}
+      </section>
+      {snapshot.screen.can_view_summary && (
+        <button disabled={disabled} onClick={() => onRunEnd?.("summary")}>
+          View native summary
+        </button>
+      )}
+      {snapshot.screen.can_return_to_menu && (
+        <button disabled={disabled} onClick={() => onRunEnd?.("main_menu")}>
+          Return to main menu
+        </button>
+      )}
       <p className="lifecycle-safety">
-        OfficeSpire will not start, resume, or replay a run automatically.
+        OfficeSpire will not start another run or replay a post-run action
+        automatically.
       </p>
     </section>
   );

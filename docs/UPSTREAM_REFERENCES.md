@@ -203,6 +203,8 @@ The M9.6 in-run party slice additionally inspected `RunLobby`, `RunManager`, `IR
 
 ## zhiyue/sts2-rl-agent decompiled API reference
 
+For M9.8, `NGameOverScreen` and `NRunSummary` at commit `1b7e7ce35e608722650763938c153ea8bc370333` establish the two-stage native flow: Continue opens and animates the summary/discovery/unlock processing, then Main Menu becomes enabled. They also identify the authoritative score, unlock progress and discovery inventories used by OfficeSpire's independent DTO and action allowlist. No upstream implementation code is copied.
+
 - Repository: https://github.com/zhiyue/sts2-rl-agent
 - Reference commit: `1b7e7ce35e608722650763938c153ea8bc370333`
 - Files inspected:

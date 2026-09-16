@@ -62,7 +62,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
         try
         {
             IRunState? runState = RunManager.Instance.DebugOnlyGetState();
-            bool gameOverVisible = NOverlayStack.Instance?.Peek() is NGameOverScreen;
+            NGameOverScreen? gameOverScreen = NOverlayStack.Instance?.Peek() as NGameOverScreen;
+            bool gameOverVisible = gameOverScreen is not null;
             _gameOverFrames = gameOverVisible
                 ? Math.Min(_gameOverFrames + 1, RequiredStableLifecycleFrames)
                 : 0;
@@ -80,11 +81,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     runState is null
                         ? new RunSnapshotDto(0, 0, 0, 0, [])
                         : BuildRunSnapshot(runState, LocalContext.GetMe(runState)),
-                    new LifecycleScreenDto(
-                        false,
-                        outcome,
-                        GetRunOutcomeMessage(outcome),
-                        false));
+                    BuildRunEndSnapshot(gameOverScreen!, runState, outcome));
             }
             if (runState is null)
             {
@@ -252,6 +249,41 @@ public sealed class Sts2GameAdapter : IGameAdapter
         "abandoned" => "The game reports that this run was abandoned.",
         _ => "The game reports that this run ended in defeat."
     };
+
+    private static LifecycleScreenDto BuildRunEndSnapshot(NGameOverScreen screen, IRunState? runState, string outcome)
+    {
+        Player? player = runState is null ? null : LocalContext.GetMe(runState);
+        NButton? continueButton = GetInstanceFieldValue(screen, "_continueButton") as NButton;
+        NButton? mainMenuButton = GetInstanceFieldValue(screen, "_mainMenuButton") as NButton;
+        bool canViewSummary = continueButton is { IsEnabled: true } && continueButton.IsVisibleInTree();
+        bool canReturn = mainMenuButton is { IsEnabled: true } && mainMenuButton.IsVisibleInTree();
+        string stage = canReturn ? "summary" : canViewSummary ? "outcome" : "settling";
+        int unlocksRemaining = Math.Max(0, SaveManager.Instance.GetUnlocksRemaining());
+        int currentUnlockScore = Math.Max(0, SaveManager.Instance.GetCurrentScore());
+        int threshold = GetInstanceFieldValue(screen, "_scoreThreshold") is int value ? Math.Max(0, value) : 0;
+        string unlockedEpoch = GetInstanceFieldValue(screen, "_scoreUnlockedEpochId")?.ToString() ?? string.Empty;
+        var discoveries = new LifecycleDiscoveriesDto(
+            player?.DiscoveredCards.Count ?? 0,
+            player?.DiscoveredRelics.Count ?? 0,
+            player?.DiscoveredPotions.Count ?? 0,
+            player?.DiscoveredEnemies.Count ?? 0,
+            player?.DiscoveredEpochs.Count ?? 0);
+        return new LifecycleScreenDto(
+            canViewSummary || canReturn,
+            outcome,
+            GetRunOutcomeMessage(outcome),
+            false,
+            stage,
+            GetInstanceFieldValue(screen, "_score") is int score ? Math.Max(0, score) : 0,
+            Math.Max(0, ReadMember(runState, "TotalFloor") is int floors ? floors : 0),
+            unlocksRemaining,
+            currentUnlockScore,
+            threshold,
+            unlockedEpoch,
+            discoveries,
+            canViewSummary,
+            canReturn);
+    }
 
     private static MenuScreenDto BuildMenuSnapshot()
     {
@@ -1566,6 +1598,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
             return screenValue is MenuScreenDto;
         }
 
+        if (string.Equals(phase, PhaseNames.RunEnd, StringComparison.Ordinal))
+        {
+            return screenValue is LifecycleScreenDto runEnd && runEnd.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -1676,6 +1713,26 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     menu.Connection.Status,
                     Sessions = menu.Connection.Sessions.Select(session => new { session.Id, session.Enabled }).ToArray()
                 }
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.RunEnd, StringComparison.Ordinal) &&
+            screenValue is LifecycleScreenDto runEnd)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                runEnd.Status,
+                runEnd.Stage,
+                runEnd.Score,
+                runEnd.FloorsClimbed,
+                runEnd.UnlocksRemaining,
+                runEnd.CurrentUnlockScore,
+                runEnd.UnlockScoreThreshold,
+                runEnd.UnlockedEpochId,
+                runEnd.Discoveries,
+                runEnd.CanViewSummary,
+                runEnd.CanReturnToMenu
             };
         }
         else if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal) &&

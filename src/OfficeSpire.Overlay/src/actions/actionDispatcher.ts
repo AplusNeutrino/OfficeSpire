@@ -213,6 +213,18 @@ export function createCustomSeedAction(
   };
 }
 
+export function createRunEndAction(
+  target: "summary" | "main_menu",
+  revision: number,
+): OverlayAction {
+  return {
+    request_id: requestId(),
+    action: "advance_run_end",
+    expected_revision: revision,
+    payload: { target },
+  };
+}
+
 export function createRestOptionAction(
   optionIndex: number,
   optionId: string,

@@ -36,7 +36,24 @@ internal sealed record LifecycleScreenDto(
     bool WaitingForInput,
     string Status,
     string Message,
-    bool CanStartRun);
+    bool CanStartRun,
+    string Stage = "settling",
+    int Score = 0,
+    int FloorsClimbed = 0,
+    int UnlocksRemaining = 0,
+    int CurrentUnlockScore = 0,
+    int UnlockScoreThreshold = 0,
+    string UnlockedEpochId = "",
+    LifecycleDiscoveriesDto? Discoveries = null,
+    bool CanViewSummary = false,
+    bool CanReturnToMenu = false);
+
+internal sealed record LifecycleDiscoveriesDto(
+    int Cards,
+    int Relics,
+    int Potions,
+    int Enemies,
+    int Epochs);
 
 internal sealed record MenuScreenDto(
     bool WaitingForInput,
