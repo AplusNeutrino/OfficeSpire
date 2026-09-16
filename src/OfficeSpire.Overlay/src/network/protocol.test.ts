@@ -256,6 +256,7 @@ describe("OfficeSpire wire protocol", () => {
         current_profile_id: null,
         characters: null,
         popup_body: "",
+        run_setup: null,
       },
     };
     expect(isStateSnapshot(menu)).toBe(true);
@@ -287,6 +288,26 @@ describe("OfficeSpire wire protocol", () => {
               starting_deck: ["Strike", "Defend"],
             },
           ],
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        ...menu,
+        screen: {
+          ...menu.screen,
+          menu_screen: "custom_run",
+          run_setup: {
+            mode: "custom",
+            ascension: 10,
+            max_ascension: 20,
+            seed: "OFFICE",
+            act_one: "random",
+            daily_server_time: null,
+            modifiers: [
+              { id: "DRAFT", name: "Draft", description: "Draft a deck." },
+            ],
+          },
         },
       }),
     ).toBe(true);

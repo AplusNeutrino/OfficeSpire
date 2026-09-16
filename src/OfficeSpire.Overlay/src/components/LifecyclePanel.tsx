@@ -14,6 +14,31 @@ export function LifecyclePanel({
         {snapshot.screen.current_profile_id !== null && (
           <p>Current profile: {snapshot.screen.current_profile_id}</p>
         )}
+        {snapshot.screen.run_setup && (
+          <section className="menu-run-setup" aria-label="Run setup">
+            <h2>Run setup</h2>
+            <p>
+              Mode: {snapshot.screen.run_setup.mode} · Ascension{" "}
+              {snapshot.screen.run_setup.ascension}/
+              {snapshot.screen.run_setup.max_ascension}
+            </p>
+            <p>
+              Seed: {snapshot.screen.run_setup.seed || "Random"} · First act:{" "}
+              {snapshot.screen.run_setup.act_one}
+            </p>
+            {snapshot.screen.run_setup.daily_server_time && (
+              <p>
+                Daily server time: {snapshot.screen.run_setup.daily_server_time}
+              </p>
+            )}
+            <p>
+              Modifiers:{" "}
+              {snapshot.screen.run_setup.modifiers
+                .map((modifier) => modifier.name)
+                .join(", ") || "None"}
+            </p>
+          </section>
+        )}
         {snapshot.screen.characters &&
           snapshot.screen.characters.length > 0 && (
             <div className="menu-character-list">

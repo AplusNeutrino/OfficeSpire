@@ -263,6 +263,20 @@ export interface MenuCharacterState {
   starting_relics: MenuStartingRelicState[];
   starting_deck: string[];
 }
+export interface MenuModifierState {
+  id: string;
+  name: string;
+  description: string;
+}
+export interface MenuRunSetupState {
+  mode: string;
+  ascension: number;
+  max_ascension: number;
+  seed: string | null;
+  act_one: string;
+  daily_server_time: string | null;
+  modifiers: MenuModifierState[];
+}
 export interface MenuScreen {
   waiting_for_input: false;
   menu_screen:
@@ -273,6 +287,8 @@ export interface MenuScreen {
     | "multiplayer_join"
     | "multiplayer_load"
     | "character_select"
+    | "custom_run"
+    | "daily_run"
     | "profile_select"
     | "popup"
     | "unknown";
@@ -282,6 +298,7 @@ export interface MenuScreen {
   current_profile_id: number | null;
   characters: MenuCharacterState[] | null;
   popup_body: string;
+  run_setup: MenuRunSetupState | null;
 }
 const runEndStatuses = new Set(["victory", "defeat", "abandoned"]);
 const menuScreens = new Set([
@@ -292,6 +309,8 @@ const menuScreens = new Set([
   "multiplayer_join",
   "multiplayer_load",
   "character_select",
+  "custom_run",
+  "daily_run",
   "profile_select",
   "popup",
   "unknown",
@@ -524,6 +543,32 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
                 ),
             ))) &&
         typeof (c.screen as MenuScreen).popup_body === "string" &&
+        ((c.screen as MenuScreen).run_setup === null ||
+          (["character_select", "custom_run", "daily_run"].includes(
+            (c.screen as MenuScreen).menu_screen,
+          ) &&
+            typeof (c.screen as MenuScreen).run_setup!.mode === "string" &&
+            Number.isInteger((c.screen as MenuScreen).run_setup!.ascension) &&
+            (c.screen as MenuScreen).run_setup!.ascension >= 0 &&
+            Number.isInteger(
+              (c.screen as MenuScreen).run_setup!.max_ascension,
+            ) &&
+            (c.screen as MenuScreen).run_setup!.max_ascension >=
+              (c.screen as MenuScreen).run_setup!.ascension &&
+            ((c.screen as MenuScreen).run_setup!.seed === null ||
+              typeof (c.screen as MenuScreen).run_setup!.seed === "string") &&
+            typeof (c.screen as MenuScreen).run_setup!.act_one === "string" &&
+            ((c.screen as MenuScreen).run_setup!.daily_server_time === null ||
+              typeof (c.screen as MenuScreen).run_setup!.daily_server_time ===
+                "string") &&
+            Array.isArray((c.screen as MenuScreen).run_setup!.modifiers) &&
+            (c.screen as MenuScreen).run_setup!.modifiers.every(
+              (modifier) =>
+                typeof modifier.id === "string" &&
+                modifier.id.length > 0 &&
+                typeof modifier.name === "string" &&
+                typeof modifier.description === "string",
+            ))) &&
         (c.screen as MenuScreen).can_mutate === false)) &&
     (c.phase !== "run_end" ||
       (c.action_pending === false &&

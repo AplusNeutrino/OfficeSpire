@@ -24,7 +24,8 @@ internal sealed record MenuScreenDto(
     bool CanMutate,
     int? CurrentProfileId = null,
     IReadOnlyList<MenuCharacterSnapshotDto>? Characters = null,
-    string PopupBody = "");
+    string PopupBody = "",
+    MenuRunSetupSnapshotDto? RunSetup = null);
 
 internal sealed record MenuOptionSnapshotDto(
     string Id,
@@ -43,6 +44,20 @@ internal sealed record MenuCharacterSnapshotDto(
     IReadOnlyList<string> StartingDeck);
 
 internal sealed record MenuStartingRelicSnapshotDto(
+    string Name,
+    string Description);
+
+internal sealed record MenuRunSetupSnapshotDto(
+    string Mode,
+    int Ascension,
+    int MaxAscension,
+    string? Seed,
+    string ActOne,
+    string? DailyServerTime,
+    IReadOnlyList<MenuModifierSnapshotDto> Modifiers);
+
+internal sealed record MenuModifierSnapshotDto(
+    string Id,
     string Name,
     string Description);
 

@@ -197,6 +197,20 @@ The same inspection confirmed `CardModel.GetDescriptionForPile(PileType)` for pi
 
 For M9.3–M9.5, the same STS2MCP inspection commit identifies the current native screen/control families `NMainMenu`, `NSingleplayerSubmenu`, `NMultiplayerSubmenu`, `NMultiplayerHostSubmenu`, `NJoinFriendScreen`, `NMultiplayerLoadGameScreen`, `NProfileScreen`, `NVerticalPopup`, `NCharacterSelectScreen`, and `NCharacterSelectButton`. It also confirms `SaveManager.CurrentProfileId` and the character-model starting HP/gold/energy, relic and deck properties. OfficeSpire uses these shapes only for independent read-only observation, emits a generic popup rather than guessing its purpose, and does not adopt STS2MCP's menu mutation paths.
 
+## zhiyue/sts2-rl-agent decompiled API reference
+
+- Repository: https://github.com/zhiyue/sts2-rl-agent
+- Reference commit: `1b7e7ce35e608722650763938c153ea8bc370333`
+- Files inspected:
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect/NCharacterSelectScreen.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.CustomRun/NCustomRunScreen.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Nodes.Screens.DailyRun/NDailyRunScreen.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Multiplayer.Game.Lobby/StartRunLobby.cs`
+  - `decompiled/MegaCrit.Sts2.Core.Models/ModifierModel.cs`
+- License/copyright status: decompiled game material; used only to inventory public runtime type/property names. No source or control flow was copied.
+
+For M9.4, these files confirm that Standard, Custom and Daily setup converge on `StartRunLobby`, whose read-only properties include `GameMode`, `Ascension`, `MaxAscension`, `Seed`, `DailyTime`, `Modifiers` and `Act1`. They also establish the distinct `NCustomRunScreen` and `NDailyRunScreen` node names and modifier presentation properties. OfficeSpire independently reflects those values and adds no setup mutation.
+
 ## Licensing rule
 
 Before copying or adapting source from any upstream project:

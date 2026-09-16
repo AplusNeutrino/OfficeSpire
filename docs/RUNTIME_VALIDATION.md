@@ -354,6 +354,14 @@ M9.3 read-only source checkpoint:
 - character selection reports identity, lock state, initial HP/gold/energy, starting relics and starting deck;
 - cold start, saves, exact modded-save warning classification, profile switching, every menu transition and all character data remain `implemented_unverified` until observed against the installed STS2 build.
 
+M9.4 read-only source checkpoint:
+
+- native Standard character selection, Custom Run and Daily Run expose their shared lobby configuration without inventing defaults;
+- observed setup includes mode, current/max ascension, nullable seed, first-act key, selected modifier IDs/names/descriptions and Daily server time when available;
+- loading Daily state may legitimately have `run_setup=null` until its time request initializes the lobby;
+- no configuration or ready/embark mutation exists, and no timed-out setup action can be replayed;
+- installed-assembly compilation, all legal/rejected seed and modifier paths, Daily server/local fallback, and solo/multiplayer synchronization remain `implemented_unverified`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

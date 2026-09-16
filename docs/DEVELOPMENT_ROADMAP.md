@@ -593,7 +593,7 @@ This plan is informed by the current game-facing APIs already used in this repos
 | M9.1 | Surface and API inventory | Version-stamped matrix of every phase, native screen/model, legal action, stable identity, settlement signal, solo/multiplayer difference, and safe fallback | Installed-assembly inspection plus at least one captured observation for every phase | `in_progress` |
 | M9.2 | Complete player and run HUD | Character identity; HP/max HP, block, energy and character resources; player powers/statuses; potion slots/capacity/targets; relics/stacks; gold, ascension, act/floor; deck and pile access; character companions/minions where applicable | Compare every field against the native UI for every playable character, including status expiry and potion/relic changes | `implemented_unverified` in part — HP/block/energy, potions, piles and basic run data existed; powers, relic display and capacity are the first M9 slice |
 | M9.3 | Main menu and save lifecycle | Observe and safely expose continue/new-run/profile/mod-warning/return/quit surfaces; never infer a save or overwrite decision | Cold start, existing save, no save, save-and-quit, resume, and modded-save separation | `implemented_unverified` in part — typed main/singleplayer/multiplayer/host/join/load/profile/character and generic confirmation observation; exact mod-warning classification remains |
-| M9.4 | Mode and run setup | Single-player/multiplayer/custom/daily selection; ascension, seed and custom modifiers; explicit confirmation and cancellation | Each supported mode and validation/rejection path; no hidden defaults | `not_implemented` |
+| M9.4 | Mode and run setup | Single-player/multiplayer/custom/daily selection; ascension, seed and custom modifiers; explicit confirmation and cancellation | Each supported mode and validation/rejection path; no hidden defaults | `implemented_unverified` in part — typed read-only Standard/Custom/Daily setup including ascension, seed and modifiers; mutations remain absent |
 | M9.5 | Character and party selection | Character details, availability, selection, ready/unready and launch; stable character/player identities; character-specific resource declarations | Every playable character in solo and supported party sizes | `implemented_unverified` in part — read-only solo character identity, availability, starting stats, relics and deck; selection and party mutations remain absent |
 | M9.6 | Multiplayer lifecycle | Host/join/invite/lobby state, peers, readiness, reconnect, host migration, simultaneous combat, votes, teammate targets, shared decisions and disconnect degradation | Multi-machine evidence for 2–4 players; incompatible Mod/version behavior; no action attributed to the wrong player | `not_implemented`; current multiplayer rest targeting and map voting remain incomplete/unverified |
 | M9.7 | Full run decisions | Close remaining map, battle, reward, card/grid, event, treasure/chest, shop, rest/campfire and special-minigame variants; inventory must be data-driven and version stamped | At least one legal and one stale/rejected observation for every supported family and character-specific variant | `implemented_unverified` in part; variant inventory remains incomplete |
@@ -629,6 +629,14 @@ M9.3/M9.5 read-only checkpoint — 2026-09-16:
 - character selection now includes native character IDs, localized names, lock state, starting HP/gold/energy, character description, starting relic descriptions and starting deck names;
 - the Overlay presents all of the above as read-only information and the protocol still rejects `can_mutate=true`;
 - source shapes were checked against STS2MCP commit `55e064850a68f3b4cde7e5fd525bf9b2dec4e885`; compilation against the installed STS2 assemblies and every live profile/popup/character transition remain `implemented_unverified`.
+
+M9.4 read-only checkpoint — 2026-09-16:
+
+- Custom and Daily are identified by their actual `NCustomRunScreen` and `NDailyRunScreen` nodes rather than being flattened into ordinary character selection;
+- the shared `StartRunLobby` observation exposes authoritative game mode, current/max ascension, optional seed, first-act key, modifier IDs/names/descriptions and Daily server timestamp when initialized;
+- Standard character selection uses the same setup contract, so the Overlay does not silently assume ascension zero or a random seed;
+- visible confirm, unready and back controls remain informational only, and the protocol still has no mutation capable of changing a seed, modifier, difficulty, mode or ready state;
+- installed-assembly compilation, loading/error transitions, seeded/custom validation, Daily time fallback and multiplayer synchronization remain `implemented_unverified`.
 
 ### 9.2 Complete information contract
 

@@ -247,6 +247,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
         [
             ("NVerticalPopup", "popup", "A native STS2 confirmation is open. Review it in the original window.", []),
             ("NProfileScreen", "profile_select", "Choose a profile in the original STS2 window.", []),
+            ("NCustomRunScreen", "custom_run", "Review the custom run configuration in the original STS2 window.", []),
+            ("NDailyRunScreen", "daily_run", "Review the daily challenge in the original STS2 window.", []),
             ("NCharacterSelectScreen", "character_select", "Choose a character in the original STS2 window.", []),
             ("NJoinFriendScreen", "multiplayer_join", "Choose a multiplayer session in the original STS2 window.", []),
             ("NMultiplayerLoadGameScreen", "multiplayer_load", "Choose a saved multiplayer run in the original STS2 window.", []),
@@ -267,10 +269,27 @@ public sealed class Sts2GameAdapter : IGameAdapter
             List<MenuCharacterSnapshotDto>? characters = null;
             int? currentProfileId = null;
             string popupBody = string.Empty;
+            MenuRunSetupSnapshotDto? runSetup = null;
             List<MenuOptionSnapshotDto> options;
-            if (definition.Screen == "character_select")
+            if (definition.Screen is "character_select" or "custom_run")
             {
                 (options, characters) = BuildCharacterMenuState(screen);
+                runSetup = BuildRunSetup(screen);
+                if (definition.Screen == "custom_run")
+                {
+                    options.RemoveAll(option => option.Id is "confirm" or "unready" or "back");
+                    AddMenuOption(options, screen, "_confirmButton", "confirm", "Confirm");
+                    AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
+                    AddMenuOption(options, screen, "_backButton", "back", "Back");
+                }
+            }
+            else if (definition.Screen == "daily_run")
+            {
+                options = [];
+                AddMenuOption(options, screen, "_embarkButton", "confirm", "Confirm");
+                AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
+                AddMenuOption(options, screen, "_backButton", "back", "Back");
+                runSetup = BuildRunSetup(screen);
             }
             else if (definition.Screen == "profile_select")
             {
@@ -290,7 +309,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     .Cast<MenuOptionSnapshotDto>()
                     .ToList();
             }
-            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody);
+            return new MenuScreenDto(false, definition.Screen, definition.Message, options, false, currentProfileId, characters, popupBody, runSetup);
         }
 
         return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
@@ -302,6 +321,12 @@ public sealed class Sts2GameAdapter : IGameAdapter
         if (value is not CanvasItem item || !item.IsVisibleInTree()) return null;
         bool enabled = value.GetType().GetProperty("IsEnabled")?.GetValue(value) as bool? ?? true;
         return new MenuOptionSnapshotDto(id, label, enabled);
+    }
+
+    private static void AddMenuOption(List<MenuOptionSnapshotDto> options, Node screen, string field, string id, string label)
+    {
+        MenuOptionSnapshotDto? option = BuildMenuOption(screen, field, id, label);
+        if (option is not null) options.Add(option);
     }
 
     private static (List<MenuOptionSnapshotDto> Options, List<MenuCharacterSnapshotDto> Characters) BuildCharacterMenuState(Node screen)
@@ -398,6 +423,35 @@ public sealed class Sts2GameAdapter : IGameAdapter
         if (character.GetType().GetProperty("StartingDeck")?.GetValue(character) is not System.Collections.IEnumerable values) return cards;
         foreach (object card in values) cards.Add(GetLocalizedProperty(card, "Title", GetModelId(card)));
         return cards;
+    }
+
+    private static MenuRunSetupSnapshotDto? BuildRunSetup(Node screen)
+    {
+        object? lobby = screen.GetType().GetProperty("Lobby")?.GetValue(screen)
+            ?? GetInstanceFieldValue(screen, "_lobby");
+        if (lobby is null) return null;
+        object? dailyTime = lobby.GetType().GetProperty("DailyTime")?.GetValue(lobby);
+        object? dailyValue = dailyTime?.GetType().GetProperty("Value")?.GetValue(dailyTime) ?? dailyTime;
+        object? serverTime = dailyValue is null ? null : GetInstanceFieldValue(dailyValue, "serverTime");
+        var modifiers = new List<MenuModifierSnapshotDto>();
+        if (lobby.GetType().GetProperty("Modifiers")?.GetValue(lobby) is System.Collections.IEnumerable values)
+        {
+            foreach (object modifier in values)
+            {
+                modifiers.Add(new MenuModifierSnapshotDto(
+                    GetModelId(modifier),
+                    GetLocalizedProperty(modifier, "Title", GetModelId(modifier)),
+                    GetLocalizedProperty(modifier, "Description")));
+            }
+        }
+        return new MenuRunSetupSnapshotDto(
+            lobby.GetType().GetProperty("GameMode")?.GetValue(lobby)?.ToString()?.ToLowerInvariant() ?? "unknown",
+            GetIntProperty(lobby, "Ascension"),
+            GetIntProperty(lobby, "MaxAscension"),
+            lobby.GetType().GetProperty("Seed")?.GetValue(lobby)?.ToString(),
+            lobby.GetType().GetProperty("Act1")?.GetValue(lobby)?.ToString() ?? "unknown",
+            serverTime is DateTimeOffset timestamp ? timestamp.ToString("O") : null,
+            modifiers);
     }
 
     private static string GetModelId(object model)
