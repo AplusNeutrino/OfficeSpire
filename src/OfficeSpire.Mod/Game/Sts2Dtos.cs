@@ -5,7 +5,9 @@ internal sealed record RunSnapshotDto(
     int CurrentAct,
     int CurrentFloor,
     int Gold,
-    IReadOnlyList<RelicSnapshotDto> Relics);
+    IReadOnlyList<RelicSnapshotDto> Relics,
+    string CharacterId = "",
+    string CharacterName = "");
 
 internal sealed record LifecycleScreenDto(
     bool WaitingForInput,
@@ -26,6 +28,10 @@ internal sealed record CombatScreenDto(
     int Energy,
     int MaxEnergy,
     PlayerSnapshotDto Player,
+    int? Stars,
+    int OrbCapacity,
+    IReadOnlyList<OrbSnapshotDto> Orbs,
+    IReadOnlyList<CompanionSnapshotDto> Companions,
     IReadOnlyList<CardSnapshotDto> Hand,
     PileSnapshotDto Piles,
     IReadOnlyList<EnemySnapshotDto> Enemies,
@@ -74,6 +80,22 @@ internal sealed record PowerSnapshotDto(
     string Name,
     int Amount,
     string Description);
+
+internal sealed record OrbSnapshotDto(
+    string Id,
+    string Name,
+    string Description,
+    int PassiveValue,
+    int EvokeValue);
+
+internal sealed record CompanionSnapshotDto(
+    string Id,
+    string Name,
+    bool IsAlive,
+    int CurrentHp,
+    int MaxHp,
+    int Block,
+    IReadOnlyList<PowerSnapshotDto> Powers);
 
 internal sealed record PotionSnapshotDto(
     int SlotIndex,

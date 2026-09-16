@@ -26,6 +26,22 @@ export interface RelicState {
   description: string;
   stack_count: number;
 }
+export interface OrbState {
+  id: string;
+  name: string;
+  description: string;
+  passive_value: number;
+  evoke_value: number;
+}
+export interface CompanionState {
+  id: string;
+  name: string;
+  is_alive: boolean;
+  current_hp: number;
+  max_hp: number;
+  block: number;
+  powers: PowerState[];
+}
 export interface EnemyState {
   stable_id: string;
   combat_id: number;
@@ -76,6 +92,10 @@ export interface CombatScreen {
     block: number;
     powers: PowerState[];
   };
+  stars: number | null;
+  orb_capacity: number;
+  orbs: OrbState[];
+  companions: CompanionState[];
   hand: CardState[];
   piles: { draw: number; discard: number; exhaust: number };
   enemies: EnemyState[];
@@ -197,6 +217,8 @@ export interface RunState {
   current_floor: number;
   gold: number;
   relics: RelicState[];
+  character_id: string;
+  character_name: string;
 }
 export interface LifecycleScreen {
   waiting_for_input: false;
@@ -342,8 +364,20 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
     (c.phase !== "combat" ||
       (Array.isArray((c.screen as CombatScreen).hand) &&
         Array.isArray((c.run as RunState).relics) &&
+        typeof (c.run as RunState).character_id === "string" &&
+        (c.run as RunState).character_id.length > 0 &&
+        typeof (c.run as RunState).character_name === "string" &&
+        (c.run as RunState).character_name.length > 0 &&
         Array.isArray((c.screen as CombatScreen).enemies) &&
         Array.isArray((c.screen as CombatScreen).player?.powers) &&
+        ((c.screen as CombatScreen).stars === null ||
+          Number.isInteger((c.screen as CombatScreen).stars)) &&
+        Number.isInteger((c.screen as CombatScreen).orb_capacity) &&
+        (c.screen as CombatScreen).orb_capacity >= 0 &&
+        Array.isArray((c.screen as CombatScreen).orbs) &&
+        (c.screen as CombatScreen).orbs.length <=
+          (c.screen as CombatScreen).orb_capacity &&
+        Array.isArray((c.screen as CombatScreen).companions) &&
         Number.isInteger((c.screen as CombatScreen).potion_capacity) &&
         (c.screen as CombatScreen).potion_capacity >=
           (c.screen as CombatScreen).potions?.length &&

@@ -349,6 +349,8 @@ describe("OfficeSpire wire protocol", () => {
         phase: "combat",
         action_pending: false,
         run: {
+          character_id: "IRONCLAD",
+          character_name: "Ironclad",
           relics: [
             {
               id: "burning-blood",
@@ -367,6 +369,10 @@ describe("OfficeSpire wire protocol", () => {
               { name: "Strength", amount: 2, description: "Deal more damage." },
             ],
           },
+          stars: null,
+          orb_capacity: 0,
+          orbs: [],
+          companions: [],
           hand: [],
           enemies: [],
           potion_capacity: 3,

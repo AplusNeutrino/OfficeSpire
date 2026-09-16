@@ -177,6 +177,7 @@ OfficeSpire does not copy BoberInSpire source. Its future overlay is independent
 
 - Repository: https://github.com/Gennadiyev/STS2MCP
 - Observed release commits: `f961c7a` (`0.3.5-rc1`) and `59ddb7e` (`0.3.4`)
+- M9.2 source-inspection commit: `55e064850a68f3b4cde7e5fd525bf9b2dec4e885`
 - Observed game compatibility claim: STS2 `v0.99.1`
 - License shown by the repository: MIT; exact source reuse still requires a pinned full-commit license check.
 
@@ -189,6 +190,8 @@ M9 planning evidence:
 - the project's stated future meta-controls include starting/quitting runs and multiplayer hosting/joining, but those claims are not treated as a stable game API or copied implementation.
 
 No STS2MCP source was copied in this pass. OfficeSpire's M9 plan and player-information implementation remain independent.
+
+At the M9.2 inspection commit, `McpMod.StateBuilder.cs` confirmed current access shapes for `Player.Character`, Regent `PlayerCombatState.Stars`, Defect `OrbQueue`, and Necrobinder `GetPet<Osty>()`. The source also explicitly treats Byrdpip and PaelsLegion as cosmetic rather than real combat-state entities. OfficeSpire uses these findings only to select authoritative native models and independently defines its DTOs, validation, normalization and React rendering.
 
 ## Licensing rule
 

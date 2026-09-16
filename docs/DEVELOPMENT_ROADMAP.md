@@ -602,6 +602,15 @@ This plan is informed by the current game-facing APIs already used in this repos
 | M9.10 | Keyboard, accessibility and recovery | Full keyboard path for every new phase; deterministic focus; screen-reader labels; readable text; timeout/reconnect/no-replay semantics across meta and run actions | Keyboard-only full chain, assistive technology pass, disconnect at each phase | `implemented_unverified` for existing phases; new phases remain |
 | M9.11 | Compatibility and release qualification | Game/Mod/Overlay version gates, passive diagnostics, external-framework coexistence, Workshop candidate, full-chain evidence matrix and rollback instructions | Supported/incompatible builds, clean install/update/uninstall, private Workshop lifecycle, repeated solo and multiplayer runs | `blocked` on Windows/STS2/Tauri/Steam runtime |
 
+M9.2 source checkpoint — 2026-09-16:
+
+- the run snapshot now carries the native character model identity and localized character name;
+- combat state includes Regent stars when the native counter applies, Defect orb capacity/contents with passive and evoke values, and Necrobinder's real combat companion Osty with HP, block and powers;
+- cosmetic pets without native combat state are deliberately not fabricated as companions;
+- the Overlay renders these fields alongside player powers, relics and potion capacity, and rejects incomplete combat snapshots rather than silently hiding missing character state;
+- exact APIs were cross-checked against STS2MCP commit `55e064850a68f3b4cde7e5fd525bf9b2dec4e885`; OfficeSpire's typed DTOs and UI are independently implemented;
+- installed-assembly compilation and live comparison across all characters remain `implemented_unverified`; deck/pile contents beyond counts still remain to be implemented.
+
 ### 9.2 Complete information contract
 
 The control surface must not hide information needed to make the same decision as the native game. At minimum it must expose:
@@ -661,15 +670,15 @@ Version numbers may be adjusted before release, but milestone scope and evidence
 
 ## 11. Immediate execution order
 
-Continue the remaining safe source audit, then use the external runtime in this order:
+Continue M9 source delivery, then use the external runtime in this order:
 
-1. build the Mod against the installed supported STS2 assemblies;
-2. run the manual Windows bundle workflow and PowerShell candidate packager;
-3. validate the Tauri shell, session discovery, focus, settings, and reconnect behavior;
-4. execute potion and one-shot main-thread stale-window probes without replay;
-5. validate map/rest/menu/run-end and death-prevention edges;
-6. complete [M8_QUALIFICATION_MATRIX.md](M8_QUALIFICATION_MATRIX.md), including repeated supported full runs and clean install/upgrade/uninstall checks;
-7. confirm current STS2 Workshop content policy and test a private candidate manually;
+1. complete the M9.1 installed-version surface/API inventory and M9.2 player/run information contract;
+2. add read-only typed observation for main menu, mode, character and lobby phases before enabling their mutations;
+3. close remaining run-decision variants and multiplayer identity/ownership gaps;
+4. add post-run navigation and the authenticated-PID-only privacy shortcut;
+5. build the Mod against installed STS2 assemblies and run the Windows/Tauri qualification matrix;
+6. execute one-shot stale-window probes, full solo/multiplayer runs, and accessibility/recovery checks without replay;
+7. run the candidate packager/verifier, confirm current Workshop policy and test a private candidate manually;
 8. promote only individually evidenced capabilities to `runtime_pass`.
 
 ## 12. Documentation ownership

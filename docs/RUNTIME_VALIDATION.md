@@ -323,7 +323,15 @@ First source slice:
 - the combat panel always exposes the potion section, including an explicit empty state and occupied/capacity count;
 - no new mutation, replay path, or runtime-pass claim is introduced.
 
-Required live evidence remains: compile against the installed STS2 assemblies; compare powers, relics and potion slots against the native UI for every character; observe add/remove/expiry and slot-capacity changes; verify the Windows/Tauri layout and rich/localized descriptions. Character identity, character-specific resources, companions/minions and full deck inspection are still `not_implemented` pending an installed-assembly API inventory.
+Second source slice:
+
+- run state carries native character ID and name;
+- combat state carries Regent stars, Defect orb slots/orbs, and Necrobinder Osty combat state;
+- Osty includes alive state, HP, block and powers; cosmetic pets are omitted instead of receiving invented combat fields;
+- protocol validation fails closed when the complete M9 combat information shape is absent;
+- this is source/build evidence only. Current STS2 assembly compilation and all five-character live comparisons remain `implemented_unverified`.
+
+Required live evidence remains: compile against the installed STS2 assemblies; compare identity, powers, relics, potion slots, Regent stars, Defect orbs and Necrobinder Osty against the native UI; observe add/remove/expiry and capacity changes; verify the Windows/Tauri layout and rich/localized descriptions. Full deck/pile inspection remains `not_implemented`, and any additional character-specific entity discovered in the installed version must be added to the inventory before M9.2 can complete.
 
 The M9 privacy hotkey is planned but not implemented. Its runtime gate includes authenticated-PID-only targeting, hide/restore recovery, global-shortcut collision, fullscreen, multi-monitor, focus, game restart and Overlay-exit behavior. Static code or a mocked window handle will not count as `runtime_pass`.
 

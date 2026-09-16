@@ -14,6 +14,7 @@ using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Nodes;
@@ -566,7 +567,9 @@ public sealed class Sts2GameAdapter : IGameAdapter
             runState.CurrentActIndex + 1,
             runState.ActFloor,
             player?.Gold ?? 0,
-            relics);
+            relics,
+            player?.Character.Id.ToString() ?? string.Empty,
+            player is null ? string.Empty : SafeFormat(player.Character.Title));
     }
 
     private static CombatScreenDto? BuildCombatSnapshot(Player player)
@@ -611,6 +614,44 @@ public sealed class Sts2GameAdapter : IGameAdapter
         bool waitingForInput = playerCombatState.Phase == PlayerTurnPhase.Play
             && !CombatManager.Instance.PlayerActionsDisabled;
 
+        int? stars = player.Character.ShouldAlwaysShowStarCounter || playerCombatState.Stars > 0
+            ? playerCombatState.Stars
+            : null;
+
+        int orbCapacity = playerCombatState.OrbQueue?.Capacity ?? 0;
+        var orbs = playerCombatState.OrbQueue?.Orbs
+            .Select(orb =>
+            {
+                LocString description = orb.SmartDescription;
+                description.Add("energyPrefix", orb.Owner.Character.CardPool.Title);
+                description.Add("Passive", orb.PassiveVal);
+                description.Add("Evoke", orb.EvokeVal);
+                return new OrbSnapshotDto(
+                    orb.Id.ToString(),
+                    SafeFormat(orb.Title),
+                    SafeFormat(description),
+                    orb.PassiveVal,
+                    orb.EvokeVal);
+            })
+            .ToList() ?? [];
+
+        var companions = new List<CompanionSnapshotDto>();
+        Osty? osty = playerCombatState.GetPet<Osty>();
+        if (osty is not null)
+        {
+            companions.Add(new CompanionSnapshotDto(
+                osty.Monster?.Id.ToString() ?? "OSTY",
+                osty.Monster is null ? "Osty" : SafeFormat(osty.Monster.Title),
+                osty.IsAlive,
+                osty.CurrentHp,
+                osty.MaxHp,
+                osty.Block,
+                osty.Powers.Select(power => new PowerSnapshotDto(
+                    SafeFormat(power.Title),
+                    power.Amount,
+                    SafeFormat(power.Description))).ToList()));
+        }
+
         return new CombatScreenDto(
             WaitingForInput: waitingForInput,
             RoundNumber: combatState.RoundNumber,
@@ -627,6 +668,10 @@ public sealed class Sts2GameAdapter : IGameAdapter
                         power.Amount,
                         SafeFormat(power.Description)))
                     .ToList()),
+            Stars: stars,
+            OrbCapacity: orbCapacity,
+            Orbs: orbs,
+            Companions: companions,
             Hand: hand,
             Piles: new PileSnapshotDto(
                 playerCombatState.DrawPile.Cards.Count,

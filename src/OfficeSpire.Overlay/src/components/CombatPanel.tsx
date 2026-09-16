@@ -40,7 +40,7 @@ export function CombatPanel({
     <>
       <header className="run-line">
         <span>
-          ACT {run.current_act} · F{run.current_floor}
+          {run.character_name} · ACT {run.current_act} · F{run.current_floor}
         </span>
         <span>{run.gold}G</span>
       </header>
@@ -60,7 +60,54 @@ export function CombatPanel({
             {screen.energy}/{screen.max_energy}
           </strong>
         </span>
+        {screen.stars !== null && (
+          <span>
+            Stars <strong>{screen.stars}</strong>
+          </span>
+        )}
       </section>
+      {screen.orb_capacity > 0 && (
+        <section>
+          <h2>
+            Orbs ({screen.orbs.length}/{screen.orb_capacity})
+          </h2>
+          <div className="detail-list">
+            {screen.orbs.map((orb, index) => (
+              <div className="detail-item" key={`${orb.id}-${index}`}>
+                <strong>{orb.name}</strong>
+                <small>
+                  Passive {orb.passive_value} · Evoke {orb.evoke_value}
+                </small>
+                <small>{orb.description}</small>
+              </div>
+            ))}
+            {screen.orbs.length === 0 && <small>All orb slots empty</small>}
+          </div>
+        </section>
+      )}
+      {screen.companions.length > 0 && (
+        <section>
+          <h2>Companions</h2>
+          <div className="detail-list">
+            {screen.companions.map((companion) => (
+              <div className="detail-item" key={companion.id}>
+                <strong>
+                  {companion.name} {companion.current_hp}/{companion.max_hp}
+                  {companion.block > 0 ? ` +${companion.block} block` : ""}
+                  {!companion.is_alive ? " · Down" : ""}
+                </strong>
+                {companion.powers.length > 0 && (
+                  <small>
+                    {companion.powers
+                      .map((power) => `${power.name} ${power.amount}`)
+                      .join(" · ")}
+                  </small>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section>
         <h2>Status</h2>
         {screen.player.powers.length > 0 ? (
