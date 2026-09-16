@@ -299,7 +299,8 @@ internal sealed record CardSelectionScreenDto(
     int MinSelect = 1,
     int MaxSelect = 1,
     int CurrentSelectCount = 0,
-    bool CanConfirm = false);
+    bool CanConfirm = false,
+    string? UnavailableReason = null);
 
 internal sealed record EventScreenDto(
     bool WaitingForInput,

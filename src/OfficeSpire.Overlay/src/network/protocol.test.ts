@@ -687,9 +687,51 @@ describe("OfficeSpire wire protocol", () => {
           max_select: 1,
           current_select_count: 0,
           can_confirm: false,
+          unavailable_reason: null,
         },
       }),
     ).toBe(true);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 62,
+        phase: "card_selection",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: false,
+          selection_type: "unsupported_grid",
+          options: [],
+          can_skip: false,
+          min_select: 1,
+          max_select: 1,
+          current_select_count: 0,
+          can_confirm: false,
+          unavailable_reason:
+            "NDeckTransformSelectScreen must be completed in STS2.",
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isStateSnapshot({
+        protocol_version: 1,
+        state_revision: 63,
+        phase: "card_selection",
+        action_pending: false,
+        run: {},
+        screen: {
+          waiting_for_input: true,
+          selection_type: "unsupported_grid",
+          options: [],
+          can_skip: false,
+          min_select: 1,
+          max_select: 1,
+          current_select_count: 0,
+          can_confirm: false,
+          unavailable_reason: "Unsafe variant.",
+        },
+      }),
+    ).toBe(false);
   });
   it("creates a guarded hand-selection confirmation", () => {
     expect(createConfirmCardSelectionAction(62)).toMatchObject({

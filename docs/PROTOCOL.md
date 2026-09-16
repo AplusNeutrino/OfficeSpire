@@ -212,7 +212,7 @@ For a supported generic `NChooseACardSelectionScreen`, the state uses `phase="ca
 - `choose_card_option`: `{ "choice_index": 2, "card_id": "defend" }`
 - `confirm_card_selection`: `{}`
 
-`screen.selection_type` distinguishes single-click, grid/deck, and `hand_multi_select` states. Hand selection also exposes `min_select`, `max_select`, `current_select_count`, and `can_confirm`. Every selection binds index to the native card ID and rejects identity drift before pressing the control. Skip behavior is not enabled without a separately identified native control.
+`screen.selection_type` is one of `choose_a_card`, `deck_card`, `deck_upgrade`, `hand_multi_select`, or `unsupported_grid`. Hand selection also exposes `min_select`, `max_select`, `current_select_count`, and `can_confirm`. Every actionable selection binds index to the native card ID and rejects identity drift before pressing the control. `unsupported_grid` is always non-actionable and carries a non-empty `unavailable_reason`; the user must complete that native screen in STS2. This is intentional because transform, enchant, simple-card, and future grid subclasses have different preview/confirmation semantics. Skip behavior is not enabled without a separately identified native control.
 
 ## M7 event action
 

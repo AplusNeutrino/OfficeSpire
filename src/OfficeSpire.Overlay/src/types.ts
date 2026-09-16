@@ -174,13 +174,19 @@ export interface RewardsScreen {
 }
 export interface CardSelectionScreen {
   waiting_for_input: boolean;
-  selection_type: string;
+  selection_type:
+    | "choose_a_card"
+    | "deck_card"
+    | "deck_upgrade"
+    | "hand_multi_select"
+    | "unsupported_grid";
   options: RewardCardState[];
   can_skip: boolean;
   min_select: number;
   max_select: number;
   current_select_count: number;
   can_confirm: boolean;
+  unavailable_reason: string | null;
 }
 export interface EventOptionState {
   option_index: number;
@@ -671,6 +677,39 @@ function hasValidCombatParticipants(
   );
 }
 
+function isValidCardSelectionScreen(screen: CardSelectionScreen): boolean {
+  const selectionTypes = new Set([
+    "choose_a_card",
+    "deck_card",
+    "deck_upgrade",
+    "hand_multi_select",
+    "unsupported_grid",
+  ]);
+  return (
+    typeof screen.waiting_for_input === "boolean" &&
+    selectionTypes.has(screen.selection_type) &&
+    Array.isArray(screen.options) &&
+    typeof screen.can_skip === "boolean" &&
+    Number.isInteger(screen.min_select) &&
+    screen.min_select >= 0 &&
+    Number.isInteger(screen.max_select) &&
+    screen.max_select >= screen.min_select &&
+    Number.isInteger(screen.current_select_count) &&
+    screen.current_select_count >= 0 &&
+    screen.current_select_count <= screen.max_select &&
+    typeof screen.can_confirm === "boolean" &&
+    (screen.unavailable_reason === null ||
+      (typeof screen.unavailable_reason === "string" &&
+        screen.unavailable_reason.length > 0)) &&
+    (screen.selection_type !== "unsupported_grid" ||
+      (!screen.waiting_for_input &&
+        !screen.can_confirm &&
+        screen.unavailable_reason !== null)) &&
+    (screen.selection_type === "unsupported_grid" ||
+      screen.unavailable_reason === null)
+  );
+}
+
 export function isStateSnapshot(value: unknown): value is StateSnapshot {
   if (!value || typeof value !== "object") return false;
   const c = value as Partial<StateSnapshot>;
@@ -771,7 +810,7 @@ export function isStateSnapshot(value: unknown): value is StateSnapshot {
       (Array.isArray((c.screen as RewardsScreen).items) &&
         Array.isArray((c.screen as RewardsScreen).card_choices))) &&
     (c.phase !== "card_selection" ||
-      Array.isArray((c.screen as CardSelectionScreen).options)) &&
+      isValidCardSelectionScreen(c.screen as CardSelectionScreen)) &&
     (c.phase !== "event" ||
       (Array.isArray((c.screen as EventScreen).options) &&
         Array.isArray((c.screen as EventScreen).votes) &&

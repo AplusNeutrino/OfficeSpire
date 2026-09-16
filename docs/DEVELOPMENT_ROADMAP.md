@@ -695,6 +695,14 @@ M9.6 simultaneous-combat ownership checkpoint — 2026-09-16:
 - the Overlay distinguishes a remote player acting from the local action surface without accepting a player ID in any combat mutation;
 - simultaneous play, queue pause/resume, player-choice gathering, disconnect and host/client ordering remain `implemented_unverified` on real multiplayer STS2.
 
+M9.7 card/grid variant safety checkpoint — 2026-09-16:
+
+- `NCardGridSelectionScreen` is no longer treated as one uniform mutation surface: only the independently audited `NDeckCardSelectScreen` and `NDeckUpgradeSelectScreen` flows remain actionable;
+- choose-a-card, deck-card, deck-upgrade and hand multi-selection now use stable semantic selection kinds instead of leaking native class names into actionable protocol state;
+- transform, enchant, simple-card, unknown and future grid subclasses remain visible but non-actionable as `unsupported_grid`, with a required original-UI handoff reason;
+- the game-thread dispatcher repeats the concrete-type allowlist before touching a card holder, so a forged or stale client snapshot cannot enable an unmodeled subclass;
+- current-assembly compilation and real preview/confirmation settlement remain `implemented_unverified`; transform, enchant and special minigame actions remain `not_implemented` until their complete native flows are modeled.
+
 ### 9.2 Complete information contract
 
 The control surface must not hide information needed to make the same decision as the native game. At minimum it must expose:

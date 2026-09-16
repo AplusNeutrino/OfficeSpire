@@ -20,6 +20,11 @@ export function CardSelectionPanel({
       <p className="selection-kind">
         {screen.selection_type.replace(/_/g, " ")}
       </p>
+      {screen.unavailable_reason && (
+        <p className="readonly-notice" role="status">
+          {screen.unavailable_reason}
+        </p>
+      )}
       {screen.max_select > 1 && (
         <p className="selection-count">
           Selected {screen.current_select_count} · Required {screen.min_select}–

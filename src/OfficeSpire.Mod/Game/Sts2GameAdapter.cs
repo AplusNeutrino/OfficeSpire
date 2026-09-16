@@ -130,6 +130,8 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
             if (NOverlayStack.Instance?.Peek() is NCardGridSelectionScreen gridScreen)
             {
+                (string selectionType, bool actionable, string? unavailableReason) =
+                    DescribeGridSelection(gridScreen);
                 var options = FindNodesRecursive<NGridCardHolder>((Node)gridScreen)
                     .Select((holder, index) => holder.CardModel is null
                         ? null
@@ -141,10 +143,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
                     PhaseNames.CardSelection,
                     run,
                     new CardSelectionScreenDto(
-                        options.Count > 0,
-                        gridScreen.GetType().Name,
+                        actionable && options.Count > 0,
+                        selectionType,
                         options,
-                        false));
+                        false,
+                        UnavailableReason: unavailableReason));
             }
 
             if (NCombatRoom.Instance?.Ui?.Hand is { IsInCardSelection: true } playerHand)
@@ -944,6 +947,20 @@ public sealed class Sts2GameAdapter : IGameAdapter
             maxSelect,
             currentCount,
             canConfirm);
+    }
+
+    private static (string SelectionType, bool Actionable, string? UnavailableReason)
+        DescribeGridSelection(NCardGridSelectionScreen screen)
+    {
+        return screen switch
+        {
+            NDeckCardSelectScreen _ => ("deck_card", true, null),
+            NDeckUpgradeSelectScreen _ => ("deck_upgrade", true, null),
+            _ => (
+                "unsupported_grid",
+                false,
+                $"{screen.GetType().Name} has a distinct confirmation flow; complete it in STS2.")
+        };
     }
 
     private static RewardCardSnapshotDto BuildRewardCard(CardModel card, int index)

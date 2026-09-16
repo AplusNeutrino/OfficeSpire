@@ -419,6 +419,14 @@ M9.6 simultaneous-combat ownership source checkpoint:
 - protocol validation rejects incomplete/duplicate participant sets, remotely actionable records and a mismatch between local readiness and `waiting_for_input`;
 - these are source/build assertions only. Real simultaneous turns, queue ordering, pause/resume, disconnect and cross-machine settlement remain `implemented_unverified`.
 
+M9.7 card/grid variant safety source checkpoint:
+
+- the abstract `NCardGridSelectionScreen` family is now split into semantic protocol kinds rather than assuming every subclass completes on the first card-holder press;
+- only `NDeckCardSelectScreen` and `NDeckUpgradeSelectScreen` are mutation-enabled, retaining card-index plus native-card-ID revalidation and their separately modeled preview confirmation;
+- every other grid subclass reports `waiting_for_input=false`, `selection_type="unsupported_grid"`, and a non-empty original-UI handoff reason;
+- the game-thread dispatcher independently rejects those subclasses with `unsupported_state`, even if a client attempts to submit an action;
+- frontend protocol tests prove an unsupported grid cannot advertise itself as actionable. This is static evidence only: current STS2 compilation and real deck-card/upgrade preview settlement remain `implemented_unverified`.
+
 ## Required evidence format for future probes
 
 Every new runtime record must include:

@@ -352,6 +352,15 @@ public sealed class M4GameAdapter : IGameAdapter
         {
             return Reject(request, "bad_phase", "A supported card selection screen is not active.");
         }
+        if (screen is NCardGridSelectionScreen &&
+            screen is not NDeckCardSelectScreen &&
+            screen is not NDeckUpgradeSelectScreen)
+        {
+            return Reject(
+                request,
+                "unsupported_state",
+                $"{screen.GetType().Name} has an unmodeled confirmation flow; complete it in STS2.");
+        }
         var holders = FindNodesRecursive<NGridCardHolder>(screen);
         if (index < 0 || index >= holders.Count)
         {
