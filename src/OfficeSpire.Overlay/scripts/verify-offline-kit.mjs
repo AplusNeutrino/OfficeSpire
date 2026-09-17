@@ -27,6 +27,7 @@ for (const expected of [
   "edition: Full-Offline",
   "npm run check",
   "npm audit --omit=dev",
+  "npm run tauri icon src-tauri/icons/icon.svg",
   "retention-days: 90",
   "publication_performed = $false",
 ]) {
@@ -42,6 +43,12 @@ for (const expected of [
 ]) {
   requireText(packager, expected, "offline packager");
 }
+
+requireText(
+  read("src/OfficeSpire.Overlay/src-tauri/icons/icon.svg"),
+  'viewBox="0 0 512 512"',
+  "Tauri source icon",
+);
 
 const installer = read("scripts/install-offline.ps1");
 requireText(
