@@ -22,6 +22,7 @@ if (config.bundle?.windows?.webviewInstallMode?.type !== "offlineInstaller") {
 const workflow = read(".github/workflows/windows-offline-kit.yml");
 for (const expected of [
   "workflow_dispatch:",
+  "pull_request:",
   "edition: Lite",
   "edition: Full-Offline",
   "npm run check",
