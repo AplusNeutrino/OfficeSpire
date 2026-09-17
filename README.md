@@ -145,6 +145,7 @@ Do not replay a timed-out or outcome-unknown game mutation while collecting evid
 - [Architecture](docs/ARCHITECTURE.md)
 - [Upstream references](docs/UPSTREAM_REFERENCES.md)
 - [Steam Workshop preparation](docs/STEAM_WORKSHOP_RELEASE.md)
+- [Offline deployment](docs/OFFLINE_DEPLOYMENT.md) — cloud-built Windows packages and one-time Mod assembly
 - [Project scope](PROJECT_PLAN.md)
 
 ## Version and release boundary
