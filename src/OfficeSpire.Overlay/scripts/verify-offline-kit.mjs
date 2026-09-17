@@ -50,6 +50,12 @@ requireText(
   "Tauri source icon",
 );
 
+requireText(
+  read("src/OfficeSpire.Overlay/src-tauri/Cargo.toml"),
+  '"Win32_UI_Input_KeyboardAndMouse"',
+  "Windows privacy feature gates",
+);
+
 const installer = read("scripts/install-offline.ps1");
 requireText(
   installer,
