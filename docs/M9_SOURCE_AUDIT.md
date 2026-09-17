@@ -1,7 +1,9 @@
 # M9 Source Audit and Qualification Boundary
 
-Audit date: 2026-09-16  
-Scope: M9.1–M9.11 on `codex/m6-map-controller`  
+Audit date: 2026-09-16
+
+Scope: M9.1–M9.11 on `codex/m6-map-controller`
+
 Verdict: **source delivery complete; runtime qualification blocked**
 
 This document is the authoritative M9.11 source audit. `source_pass` means the repository contains the checked invariant and its available static tests pass. It never means that STS2, Windows, Tauri, multiplayer or Steam behavior has run successfully.
@@ -59,4 +61,3 @@ Use exact commit and artifact hashes and record results in `RUNTIME_VALIDATION.m
 7. run the PowerShell candidate packager, verify hashes, then manually test clean private install/update/uninstall under current Workshop policy without publishing publicly.
 
 M9.11 remains `blocked` for runtime qualification until those observations exist. No source audit, test double, compilation or package artifact may promote a row to `runtime_pass`.
-

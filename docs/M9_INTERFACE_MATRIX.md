@@ -1,9 +1,12 @@
 # M9 Final Interface Matrix
 
-Inventory date: 2026-09-16  
-Source branch: `codex/m6-map-controller`  
-Target manifest: OfficeSpire `0.6.0`, minimum STS2 `0.107.1`  
-Wire protocol: `1`  
+Inventory date: 2026-09-16
+
+Source branch: `codex/m6-map-controller`
+
+Target manifest: OfficeSpire `0.6.0`, minimum STS2 `0.107.1`
+
+Wire protocol: `1`
 Primary pinned research inputs: `STS2MCP@55e064850a68f3b4cde7e5fd525bf9b2dec4e885` and `zhiyue/sts2-rl-agent@1b7e7ce35e608722650763938c153ea8bc370333`
 
 This is the authoritative M9.1 source inventory. It records what the current adapter actually detects and dispatches. It is not installed-assembly or runtime evidence. Every mutation-enabled row remains `implemented_unverified` until the matching native build has been compiled and observed.
@@ -52,4 +55,3 @@ Every active Run snapshot carries ascension, act/floor, gold, relics, character 
 - Custom modifier editing, teammate rest-target selection, remote reward inventory and unknown grid/custom-event mutation remain native-UI handoffs.
 - Windows privacy-hotkey behavior, Tauri accessibility, installed-assembly compilation, current Workshop policy and all 2–4-machine behavior require external evidence.
 - An item in this matrix can become `runtime_pass` only through the evidence procedure in `M9_SOURCE_AUDIT.md` and `RUNTIME_VALIDATION.md`.
-
