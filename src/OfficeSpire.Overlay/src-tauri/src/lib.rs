@@ -91,7 +91,15 @@ mod windows_privacy {
     use windows_sys::Win32::{
         Foundation::{CloseHandle, BOOL, HWND, LPARAM},
         System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION},
-        UI::WindowsAndMessaging::{EnumWindows, GetMessageW, GetWindowThreadProcessId, IsWindow, IsWindowVisible, RegisterHotKey, ShowWindow, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, MSG, SW_HIDE, SW_RESTORE, VK_F12, WM_HOTKEY},
+        UI::{
+            Input::KeyboardAndMouse::{
+                RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_F12,
+            },
+            WindowsAndMessaging::{
+                EnumWindows, GetMessageW, GetWindowThreadProcessId, IsWindow, IsWindowVisible,
+                ShowWindow, MSG, SW_HIDE, SW_RESTORE, WM_HOTKEY,
+            },
+        },
     };
 
     const HOTKEY_ID: i32 = 0x4f53;
