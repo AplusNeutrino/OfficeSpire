@@ -55,6 +55,11 @@ requireText(
   '"Win32_UI_Input_KeyboardAndMouse"',
   "Windows privacy feature gates",
 );
+requireText(
+  read("src/OfficeSpire.Overlay/src-tauri/src/lib.rs"),
+  "Input::KeyboardAndMouse",
+  "Windows hotkey imports",
+);
 
 const installer = read("scripts/install-offline.ps1");
 requireText(
