@@ -54,6 +54,8 @@ jobs:
         with:
           workspaces: src/OfficeSpire.Overlay/src-tauri -> target
       - run: npm ci
+      - name: Generate bundle icons
+        run: npm run tauri icon src-tauri/icons/icon.svg
       - name: Build Tauri bundle
         shell: pwsh
         run: npm run tauri build -- ${{ matrix.config_args }}
