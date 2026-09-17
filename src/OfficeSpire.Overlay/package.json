@@ -1,12 +1,18 @@
 {
   "name": "officespire-overlay",
   "private": true,
-  "version": "0.6.0-alpha.2",
+  "version": "0.6.0-beta.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
+    "check": "prettier --check src scripts && npm test && npm run test:workshop && npm run audit:m9 && npm run build && node scripts/verify-release.mjs",
+    "audit:m9": "node scripts/audit-m9-source.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "verify:workshop": "node scripts/verify-workshop-candidate.mjs",
+    "test:workshop": "node scripts/verify-workshop-candidate.check.mjs",
+    "analyze:runtime": "node scripts/analyze-runtime-log.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

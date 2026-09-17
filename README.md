@@ -4,7 +4,7 @@ OfficeSpire is a **text-first alternative control surface for Slay the Spire 2**
 
 It pairs a C#/.NET game mod with a compact Tauri/React desktop overlay. STS2 remains authoritative for rules, RNG, saves, actions, and progression; OfficeSpire reads state and submits explicit user choices through an authenticated loopback protocol.
 
-> **Current status:** v0.6-alpha.1 “Playable Backend” is runtime-validated. Development is now focused on v0.6-alpha.2 “Overlay Prototype”.
+> **Current status:** v0.6-alpha.1 “Playable Backend” is runtime-validated. The v0.7 M9 full-chain source package is complete for the audited interface matrix and remains `implemented_unverified`; Windows/Tauri, current STS2, multiplayer, accessibility and Workshop qualification are outstanding.
 
 ## Validated baseline
 
@@ -32,12 +32,14 @@ The validated M4 core includes:
 Deferred M4-adjacent work:
 
 - `use_potion`: `implemented_unverified`;
-- `potion_discard`: `not_implemented`;
+- `potion_discard`: `implemented_unverified`;
 - main-thread extreme race-window stress probe: not yet performed.
 
 See [docs/RUNTIME_VALIDATION.md](docs/RUNTIME_VALIDATION.md) for the evidence record.
 
 ## Current development milestone
+
+v0.7 expands the Overlay across the complete audited chain: menu/profile/mode/setup/lobby, full player and party information, map/combat/Run decisions, settlement/return, multiplayer ownership, keyboard/accessibility recovery and the authenticated privacy hotkey. Unsupported native variants remain visible and fail closed in the original STS2 UI. See the [M9 final interface matrix](docs/M9_INTERFACE_MATRIX.md) and [M9 source audit](docs/M9_SOURCE_AUDIT.md).
 
 v0.6-alpha.2 targets the first usable **semi-transparent text overlay**:
 
@@ -50,6 +52,42 @@ v0.6-alpha.2 targets the first usable **semi-transparent text overlay**:
 - pending, stale, reconnect, and error handling.
 
 The first M5 source implementation is now present and its TypeScript/Vite production build and protocol tests pass. Tauri native compilation, Windows window behavior, live STS2 integration, and combat interaction remain `implemented_unverified` until runtime evidence is recorded.
+
+The v0.6-alpha.3 source adds authoritative map snapshots, reachable-node display, and revision-guarded native route selection. It remains `implemented_unverified`; code presence and frontend builds are not live STS2 proof.
+
+The v0.6-alpha.4 source covers combat rewards, card rewards, card-selection families, events, rest sites, treasures, and shops. These paths remain runtime-unverified.
+
+The same development branch now includes generic choose-a-card, deck/grid selection, upgrade confirmation, and combat-hand multi-selection paths. These remain runtime-unverified; selection skipping is not enabled without an authoritative native control.
+
+Event reading and choice/leave control are also present in the alpha.4 source, including locked-option handling and reuse of the card-selection layer for event follow-up prompts.
+
+Ordinary rest-site choices and leaving are implemented in source, with smith/remove follow-ups delegated to card selection. Multiplayer rest-site targeting remains explicitly unsupported.
+
+Treasure rooms now have source support for opening, authoritative relic voting/choice, predicted local vote display, and leaving. The inspected native synchronizer has no skip/decline mutation, so OfficeSpire does not fabricate one. Live game behavior remains unverified.
+
+The alpha.4 source now covers the planned M7 run decisions, including merchant browsing, purchases, card-removal initiation, and leaving. M7 is `implemented_unverified`, not runtime-complete.
+
+Development has entered the v0.6-beta.1 hardening phase. Combat snapshots now expose authoritative potion availability and legal targets; the overlay supports use, enemy targeting, and confirmed discard through native STS2 action paths. This M8 slice is `implemented_unverified` pending live STS2 validation.
+
+Keyboard controls cover every actionable audited surface. Number keys choose cards, targets, routes, rewards, options, menu entries, special-event cells, relics, or shop items; Shift+number uses potion slots; E ends combat turns; Enter confirms/proceeds; S skips or selects the small Crystal Sphere tool; B selects its big tool; L leaves; R starts merchant card removal; and Escape cancels targeting or returns through supported menus. Live Tauri focus behavior remains unverified.
+
+Action recovery now includes a 15-second client observation deadline, stale request-result filtering, continued authoritative state polling after timeout, and reconnect backoff from 1 to 10 seconds. Timed-out mutations are never automatically replayed.
+
+Versioned local settings now persist background opacity, interface scale, high contrast, and reduced motion. The keyboard-contained settings dialog disables underlying game actions while open; native Tauri rendering remains `implemented_unverified`.
+
+Protocol ingestion now fails closed on ambiguous actionable identities, including duplicate hand/slot/choice indexes, duplicate or negative combat IDs, duplicate map coordinates, and empty/duplicate enemy stable IDs. Malformed snapshots cannot replace the last accepted state or enable mutations.
+
+Protocol compatibility checks now distinguish a structurally valid future envelope from an exactly compatible protocol-v1 connection. A release preflight verifies npm lockfile, Cargo, Tauri, Mod compatibility line, application identity, and bundle activation before packaging.
+
+When STS2 exposes no active run, the backend reports a typed menu lifecycle. Allowlisted main/profile/mode/character/setup/lobby controls can establish or resume a Run through native controls with revision and identity revalidation; destructive, ambiguous and version-drifted choices remain read-only original-UI handoffs. No action is automatically replayed.
+
+A visible native game-over screen produces a typed `run_end` snapshot classified as victory, defeat, or abandoned from engine-owned signals. The Overlay exposes score/unlock/discovery information and guarded native summary/return-to-menu controls, but never auto-starts or replays a Run. This source path remains `implemented_unverified` until observed in STS2.
+
+M8 runtime evidence preparation includes a passive log analyzer for revision monotonicity, phase/revision conflicts, and pending-action cycles. It never submits a game action and never labels its own report as a runtime pass; see [docs/M8_RUNTIME_PROBES.md](docs/M8_RUNTIME_PROBES.md).
+
+Game-originated display text is normalized at both the Mod and Overlay boundaries so color/BBCode markers such as `[gold]...[/gold]`, malformed `/gold` closers, icon markup, line-break tags, and unresolved variables do not leak into the plain-text interface. Unicode text is preserved and protocol identities are excluded from normalization. Live localized strings remain `implemented_unverified`.
+
+M9.1's final interface inventory and M9.11's source audit are complete. Multiplayer campfire target selection, unknown custom events/grids, generic warning confirmation and native host migration remain explicit unsupported/native-UI boundaries. Runtime qualification is still blocked on the external environments listed in the audit.
 
 The single authoritative plan for current status, execution order, later milestones, and exit criteria is:
 
@@ -115,7 +153,7 @@ Build the overlay frontend:
 ```bash
 cd src/OfficeSpire.Overlay
 npm install
-npm run build
+npm run check
 ```
 
 Tauri runtime/build validation remains part of the active M5 milestone; consult the canonical roadmap before treating it as passed.
@@ -137,6 +175,8 @@ Tauri runtime/build validation remains part of the active M5 milestone; consult 
 - [Protocol](docs/PROTOCOL.md)
 - [Upstream references](docs/UPSTREAM_REFERENCES.md)
 - [Project scope](PROJECT_PLAN.md)
+- [Steam Workshop release preparation](docs/STEAM_WORKSHOP_RELEASE.md)
+- [M8 runtime probes](docs/M8_RUNTIME_PROBES.md)
 
 ## Third-party notices and license
 

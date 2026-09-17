@@ -75,6 +75,8 @@ OfficeSpire does not optimistically mutate state after dispatch.
 
 After STS2 accepts a native action, the inbox keeps the public state at `action_pending=true`. The already runtime-validated M3 semantic revision system continues observing the game. When it publishes a **newer settled revision** with its own pending flag false, the inbox marks the request `completed` and releases the single-action gate.
 
+The overlay observes an individual request for at most 15 seconds. A client timeout stops status polling and restores client responsiveness, but does not replay the mutation; periodic state snapshots remain authoritative because the original action may have executed despite a delayed result. Reconnect attempts use bounded backoff and discard stale-socket callbacks.
+
 ```text
 READY rev=N
   -> queued

@@ -12,6 +12,8 @@ export const actionMessage = (action: OverlayAction) =>
   envelope("action", action);
 export const actionStatusMessage = (requestId: string) =>
   envelope("get_action_result", { request_id: requestId });
+export const isCompatibleProtocolVersion = (version: number) =>
+  Number.isInteger(version) && version === PROTOCOL_VERSION;
 export function parseEnvelope(data: string): WireEnvelope {
   const parsed: unknown = JSON.parse(data);
   if (!parsed || typeof parsed !== "object")
@@ -19,7 +21,9 @@ export function parseEnvelope(data: string): WireEnvelope {
   const m = parsed as Partial<WireEnvelope>;
   if (
     typeof m.type !== "string" ||
-    typeof m.protocol_version !== "number" ||
+    m.type.length === 0 ||
+    !Number.isInteger(m.protocol_version) ||
+    Number(m.protocol_version) < 1 ||
     !("body" in m)
   )
     throw new Error("Message is not an OfficeSpire envelope.");

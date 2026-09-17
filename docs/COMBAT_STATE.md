@@ -80,9 +80,14 @@ Example shape:
     "potions": [
       {
         "slot_index": 0,
+        "id": "dexterity_potion",
         "name": "Dexterity Potion",
         "description": "...",
-        "target_type": "Self"
+        "target_type": "Self",
+        "can_use": true,
+        "can_discard": true,
+        "needs_target": false,
+        "valid_target_ids": []
       }
     ]
   }
@@ -96,6 +101,7 @@ Example shape:
 - `damage` and `block` are read from the card's current DynamicVars when those keys are available. Some cards may legitimately expose neither.
 - `description` is formatted through the game's localization/dynamic-variable system where possible, with unresolved image/template markup stripped as a fallback.
 - `can_play` comes from the game's own `CardModel.CanPlay` result. OfficeSpire does not independently reimplement card legality.
+- Potion availability and target IDs are captured from the live player/combat state. The write adapter rechecks the current slot and permissions before either use or discard.
 - `valid_target_ids` currently enumerates hittable enemies for cards that require an explicit target.
 - `waiting_for_input` is true only when the local player is in `PlayerTurnPhase.Play` and `CombatManager.PlayerActionsDisabled` is false.
 

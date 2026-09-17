@@ -18,6 +18,7 @@ export function CardButton({ card, disabled, onPlay }: Props) {
       disabled={disabled || !card.can_play}
       onClick={() => onPlay(card)}
       title={card.unplayable_reason ?? card.description}
+      aria-keyshortcuts={`${card.hand_index + 1}`}
     >
       <span className="card-index">{card.hand_index + 1}</span>
       <span className="card-name">{card.name}</span>

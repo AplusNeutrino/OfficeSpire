@@ -1,6 +1,6 @@
 # OfficeSpire Overlay Tauri Shell
 
-Status: M5.1 in progress
+Status: M9.9 source complete (`implemented_unverified`)
 
 Implemented:
 
@@ -14,10 +14,10 @@ Configured target behavior:
 - borderless window
 - resizable window
 - always-on-top mode
+- authenticated Windows process/window validation
+- global `Ctrl+Shift+F12` game hide/restore shortcut
+- optional Overlay hide with shortcut recovery
+- collision/error status and normal-exit restoration
 
-Not yet implemented:
-
-- drag handling
-- WebSocket client
-- backend connection
-- live state rendering
+Runtime validation still required on Windows for shortcut collisions, fullscreen,
+multi-monitor layouts, process restart, crash recovery and STS2/Tauri interaction.

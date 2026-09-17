@@ -1,10 +1,26 @@
 using System.Text.Json;
+using System.Reflection;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Map;
+using Godot;
+using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen;
+using MegaCrit.Sts2.Core.Events;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.RestSite;
+using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
@@ -37,6 +53,30 @@ public sealed class M4GameAdapter : IGameAdapter
                 "play_card" => ExecutePlayCard(request),
                 "end_turn" => ExecuteEndTurn(request),
                 "use_potion" => ExecuteUsePotion(request),
+                "discard_potion" => ExecuteDiscardPotion(request),
+                "choose_map_node" => ExecuteChooseMapNode(request),
+                "choose_reward" => ExecuteChooseReward(request),
+                "choose_reward_card" => ExecuteChooseRewardCard(request),
+                "skip_rewards" => ExecuteSkipRewards(request),
+                "choose_card_option" => ExecuteChooseCardOption(request),
+                "confirm_card_selection" => ExecuteConfirmCardSelection(request),
+                "choose_event_option" => ExecuteChooseEventOption(request),
+                "choose_special_event_cell" => ExecuteChooseSpecialEventCell(request),
+                "select_special_event_tool" => ExecuteSelectSpecialEventTool(request),
+                "proceed_special_event" => ExecuteProceedSpecialEvent(request),
+                "choose_menu_option" => ExecuteChooseMenuOption(request),
+                "set_run_ascension" => ExecuteSetRunAscension(request),
+                "set_custom_seed" => ExecuteSetCustomSeed(request),
+                "advance_run_end" => ExecuteAdvanceRunEnd(request),
+                "choose_rest_option" => ExecuteChooseRestOption(request),
+                "leave_rest_site" => ExecuteLeaveRestSite(request),
+                "open_treasure" => ExecuteOpenTreasure(request),
+                "choose_treasure_relic" => ExecuteChooseTreasureRelic(request),
+                "leave_treasure" => ExecuteLeaveTreasure(request),
+                "open_shop" => ExecuteOpenShop(request),
+                "buy_shop_item" => ExecuteBuyShopItem(request),
+                "request_card_removal" => ExecuteRequestCardRemoval(request),
+                "leave_shop" => ExecuteLeaveShop(request),
                 _ => Reject(
                     request,
                     "unsupported_action",
@@ -52,6 +92,725 @@ public sealed class M4GameAdapter : IGameAdapter
         }
     }
 
+    private static ActionResponse ExecuteOpenShop(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "A merchant room is not active.");
+        }
+        if (!room.Inventory.IsOpen) room.MerchantButton.ForceClick();
+        return Accept(request, "accepted", "Opened the merchant inventory.");
+    }
+
+    private static ActionResponse ExecuteBuyShopItem(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        var inventory = room?.Room.GetLocalInventory();
+        if (room is null || inventory is null)
+        {
+            return Reject(request, "bad_phase", "A merchant inventory is not available.");
+        }
+        if (!TryReadRequiredString(request.Payload, "category", out string? category) ||
+            !TryReadRequiredInt(request.Payload, "item_index", out int index) || index < 0 ||
+            !TryReadRequiredString(request.Payload, "item_id", out string? itemId))
+        {
+            return Reject(request, "bad_request", "buy_shop_item requires payload.category, payload.item_id, and non-negative payload.item_index.");
+        }
+        MerchantEntry? entry = category switch
+        {
+            "character_card" when index < inventory.CharacterCardEntries.Count => inventory.CharacterCardEntries[index],
+            "colorless_card" when index < inventory.ColorlessCardEntries.Count => inventory.ColorlessCardEntries[index],
+            "relic" when index < inventory.RelicEntries.Count => inventory.RelicEntries[index],
+            "potion" when index < inventory.PotionEntries.Count => inventory.PotionEntries[index],
+            _ => null
+        };
+        if (entry is null) return Reject(request, "bad_index", $"Shop item {category}[{index}] is unavailable.");
+        string? currentItemId = category switch
+        {
+            "character_card" => inventory.CharacterCardEntries[index].CreationResult?.Card?.Id.ToString(),
+            "colorless_card" => inventory.ColorlessCardEntries[index].CreationResult?.Card?.Id.ToString(),
+            "relic" => inventory.RelicEntries[index].Model?.Id.ToString(),
+            "potion" => inventory.PotionEntries[index].Model?.Id.ToString(),
+            _ => null
+        };
+        if (!string.Equals(currentItemId, itemId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected merchant item changed before dispatch.");
+        }
+        if (!entry.IsStocked) return Reject(request, "out_of_stock", "The selected shop item is out of stock.");
+        if (!entry.EnoughGold) return Reject(request, "insufficient_gold", "There is not enough gold for this item.");
+        if (!room.Inventory.IsOpen) room.OpenInventory();
+        TaskHelper.RunSafely(entry.OnTryPurchaseWrapper(inventory));
+        return Accept(request, "accepted", $"Started purchase for {category}[{index}].");
+    }
+
+    private static ActionResponse ExecuteRequestCardRemoval(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        var inventory = room?.Room.GetLocalInventory();
+        if (room is null || inventory?.CardRemovalEntry is not { IsStocked: true, EnoughGold: true })
+        {
+            return Reject(request, "not_ready", "Merchant card removal is unavailable or unaffordable.");
+        }
+        if (!room.Inventory.IsOpen) room.OpenInventory();
+        NMerchantCardRemoval? slot = room.Inventory.GetAllSlots().OfType<NMerchantCardRemoval>().FirstOrDefault();
+        var method = typeof(NMerchantCardRemoval).GetMethod(
+            "OnTryPurchase",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (slot is null || method?.Invoke(slot, [inventory]) is not Task task)
+        {
+            return Reject(request, "not_ready", "The native card-removal control is unavailable.");
+        }
+        TaskHelper.RunSafely(task);
+        return Accept(request, "accepted", "Started merchant card removal.");
+    }
+
+    private static ActionResponse ExecuteLeaveShop(ActionRequest request)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        if (room is null) return Reject(request, "bad_phase", "A merchant room is not active.");
+        if (room.Inventory.IsOpen)
+        {
+            NBackButton? back = FindNodesRecursive<NBackButton>(room.Inventory).FirstOrDefault();
+            if (back is null) return Reject(request, "not_ready", "The merchant back control is unavailable.");
+            back.ForceClick();
+        }
+        if (!room.ProceedButton.IsEnabled) return Reject(request, "not_ready", "The merchant proceed control is unavailable.");
+        room.ProceedButton.ForceClick();
+        return Accept(request, "accepted", "Left the merchant room.");
+    }
+
+    private static ActionResponse ExecuteOpenTreasure(ActionRequest request)
+    {
+        var room = NRun.Instance?.TreasureRoom;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "A treasure room is not active.");
+        }
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        if (room.GetType().GetField("_hasChestBeenOpened", flags)?.GetValue(room) is true)
+        {
+            return Reject(request, "already_settled", "The treasure chest is already open.");
+        }
+        NButton? chest = room.GetNodeOrNull<NButton>("%Chest");
+        if (chest is not { IsEnabled: true })
+        {
+            return Reject(request, "not_ready", "The treasure chest control is unavailable.");
+        }
+        chest.EmitSignal(NClickableControl.SignalName.Released, chest);
+        return Accept(request, "accepted", "Opened the treasure chest.");
+    }
+
+    private static ActionResponse ExecuteChooseTreasureRelic(ActionRequest request)
+    {
+        if (NRun.Instance?.TreasureRoom is null)
+        {
+            return Reject(request, "bad_phase", "A treasure room is not active.");
+        }
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var room = NRun.Instance!.TreasureRoom!;
+        if (room.GetType().GetField("_isRelicCollectionOpen", flags)?.GetValue(room) is not true)
+        {
+            return Reject(request, "not_ready", "Treasure relic voting is not active.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "relic_id", out string? relicId))
+        {
+            return Reject(request, "bad_request", "choose_treasure_relic requires payload.choice_index and payload.relic_id.");
+        }
+        var synchronizer = RunManager.Instance.TreasureRoomRelicSynchronizer;
+        if (synchronizer.CurrentRelics is null || index < 0 || index >= synchronizer.CurrentRelics.Count)
+        {
+            return Reject(request, "bad_index", $"Treasure relic {index} is unavailable.");
+        }
+        if (!string.Equals(synchronizer.CurrentRelics[index].Id.ToString(), relicId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected treasure relic changed before dispatch.");
+        }
+        synchronizer.PickRelicLocally(index);
+        return Accept(request, "accepted", $"Selected treasure relic {index}.");
+    }
+
+    private static ActionResponse ExecuteLeaveTreasure(ActionRequest request)
+    {
+        var room = NRun.Instance?.TreasureRoom;
+        if (room?.ProceedButton is not { IsEnabled: true } proceed)
+        {
+            return Reject(request, "not_ready", "The treasure-room proceed button is unavailable.");
+        }
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Left the treasure room.");
+    }
+
+    private static ActionResponse ExecuteChooseRestOption(ActionRequest request)
+    {
+        NRestSiteRoom? room = NRestSiteRoom.Instance;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "A rest site is not active.");
+        }
+        if (NTargetManager.Instance is { IsInSelection: true })
+        {
+            return Reject(request, "unsupported_state", "Rest-site player targeting is not implemented.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "option_index", out int index))
+        {
+            return Reject(request, "bad_request", "choose_rest_option requires integer payload.option_index.");
+        }
+        if (!TryReadRequiredString(request.Payload, "option_id", out string? optionId))
+        {
+            return Reject(request, "bad_request", "choose_rest_option requires non-empty payload.option_id.");
+        }
+        var options = room.Options.ToList();
+        if (index < 0 || index >= options.Count ||
+            !string.Equals(options[index].OptionId, optionId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected rest option changed before dispatch.");
+        }
+        var buttons = FindNodesRecursive<NRestSiteButton>((Node)room);
+        if (buttons.Count != options.Count || index >= buttons.Count)
+        {
+            return Reject(request, "unsupported_state", "Rest-site controls do not match the authoritative option list.");
+        }
+        buttons[index].ForceClick();
+        return Accept(request, "accepted", $"Selected rest option {index}.");
+    }
+
+    private static ActionResponse ExecuteLeaveRestSite(ActionRequest request)
+    {
+        NRestSiteRoom? room = NRestSiteRoom.Instance;
+        if (room?.ProceedButton is not { IsEnabled: true } proceed)
+        {
+            return Reject(request, "not_ready", "The rest-site proceed button is unavailable.");
+        }
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Left the rest site.");
+    }
+
+    private static ActionResponse ExecuteChooseEventOption(ActionRequest request)
+    {
+        NEventRoom? room = NRun.Instance?.EventRoom;
+        if (room is null)
+        {
+            return Reject(request, "bad_phase", "An event room is not active.");
+        }
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        if (typeof(NEventRoom).GetField("_event", flags)?.GetValue(room) is not EventModel model)
+        {
+            return Reject(request, "not_ready", "Authoritative event data is unavailable.");
+        }
+        if (model.IsFinished)
+        {
+            if (!TryReadRequiredString(request.Payload, "action_token", out string? proceedToken) ||
+                !string.Equals(proceedToken, "event-proceed", StringComparison.Ordinal))
+            {
+                return Reject(request, "stale_state", "The completed-event action token is stale.");
+            }
+            NEventRoom.Proceed();
+            return Accept(request, "accepted", "Left the completed event.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "option_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "action_token", out string? actionToken))
+        {
+            return Reject(request, "bad_request", "choose_event_option requires payload.option_index and payload.action_token.");
+        }
+        if (index < 0 || index >= model.CurrentOptions.Count)
+        {
+            return Reject(request, "bad_index", $"Event option {index} is unavailable.");
+        }
+        var option = model.CurrentOptions[index];
+        if (!string.Equals(NativeActionToken.For(option), actionToken, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected event option changed before dispatch.");
+        }
+        if (option.IsLocked)
+        {
+            return Reject(request, "option_locked", $"Event option {index} is locked.");
+        }
+        room.OptionButtonClicked(option, index);
+        return Accept(request, "accepted", $"Selected event option {index}.");
+    }
+
+    private static ActionResponse ExecuteChooseSpecialEventCell(ActionRequest request)
+    {
+        Node? screen = NOverlayStack.Instance?.Peek();
+        if (screen?.GetType().Name != "NCrystalSphereScreen")
+            return Reject(request, "bad_phase", "The Crystal Sphere screen is not active.");
+        if (!TryReadRequiredInt(request.Payload, "x", out int x) ||
+            !TryReadRequiredInt(request.Payload, "y", out int y) ||
+            !TryReadRequiredString(request.Payload, "stable_id", out string? stableId) ||
+            !string.Equals(stableId, $"crystal-cell-{x}-{y}", StringComparison.Ordinal))
+            return Reject(request, "bad_request", "choose_special_event_cell requires matching payload.x, payload.y, and payload.stable_id.");
+
+        Node? target = FindNodesRecursive<Node>(screen).FirstOrDefault(node =>
+        {
+            if (node.GetType().Name != "NCrystalSphereCell" || node is not CanvasItem { Visible: true }) return false;
+            object? entity = ReadMember(node, "Entity");
+            return ReadMember(entity, "IsHidden") is true &&
+                ReadMember(entity, "X") is int currentX && currentX == x &&
+                ReadMember(entity, "Y") is int currentY && currentY == y;
+        });
+        if (target is null) return Reject(request, "stale_state", "The selected Crystal Sphere cell is no longer hidden.");
+        target.EmitSignal(NClickableControl.SignalName.Released, target);
+        return Accept(request, "accepted", $"Selected Crystal Sphere cell {x},{y}.");
+    }
+
+    private static ActionResponse ExecuteSelectSpecialEventTool(ActionRequest request)
+    {
+        Node? screen = NOverlayStack.Instance?.Peek();
+        if (screen?.GetType().Name != "NCrystalSphereScreen")
+            return Reject(request, "bad_phase", "The Crystal Sphere screen is not active.");
+        if (!TryReadRequiredString(request.Payload, "tool", out string? tool) || tool is not ("small" or "big"))
+            return Reject(request, "bad_request", "select_special_event_tool requires payload.tool equal to small or big.");
+        string path = tool == "small" ? "%SmallDivinationButton" : "%BigDivinationButton";
+        if (screen.GetNodeOrNull<NButton>(path) is not { IsEnabled: true } button)
+            return Reject(request, "not_ready", $"The {tool} divination tool is unavailable.");
+        button.ForceClick();
+        return Accept(request, "accepted", $"Selected the {tool} divination tool.");
+    }
+
+    private static ActionResponse ExecuteProceedSpecialEvent(ActionRequest request)
+    {
+        Node? screen = NOverlayStack.Instance?.Peek();
+        if (screen?.GetType().Name != "NCrystalSphereScreen")
+            return Reject(request, "bad_phase", "The Crystal Sphere screen is not active.");
+        if (screen.GetNodeOrNull<NButton>("%ProceedButton") is not { IsEnabled: true } proceed)
+            return Reject(request, "not_ready", "The special-event proceed button is unavailable.");
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Continued from the Crystal Sphere.");
+    }
+
+    private static object? ReadMember(object? target, string name)
+    {
+        if (target is null) return null;
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        Type type = target.GetType();
+        return type.GetProperty(name, flags)?.GetValue(target) ?? GetInstanceFieldValue(target, name);
+    }
+
+    private static ActionResponse ExecuteChooseMenuOption(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "menu_screen", out string? expectedScreen) ||
+            !TryReadRequiredString(request.Payload, "option_id", out string? optionId))
+        {
+            return Reject(request, "bad_request", "choose_menu_option requires payload.menu_screen and payload.option_id.");
+        }
+        if (!TryGetActiveMenuScreen(out Node? screen, out string currentScreen) ||
+            !string.Equals(currentScreen, expectedScreen, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The visible STS2 menu changed before dispatch.");
+        }
+        if (!TryResolveMenuOption(screen!, currentScreen, optionId!, out NButton? button))
+        {
+            return Reject(request, "unsupported_state", $"Menu option '{optionId}' is not a supported native control on '{currentScreen}'.");
+        }
+        if (button is not { IsEnabled: true } || !button.IsVisibleInTree())
+        {
+            return Reject(request, "not_ready", $"Menu option '{optionId}' is disabled or no longer visible.");
+        }
+        button.ForceClick();
+        return Accept(request, "accepted", $"Selected menu option '{optionId}'.");
+    }
+
+    private static ActionResponse ExecuteSetRunAscension(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "menu_screen", out string? expectedScreen) ||
+            !TryReadRequiredInt(request.Payload, "ascension", out int ascension))
+        {
+            return Reject(request, "bad_request", "set_run_ascension requires payload.menu_screen and payload.ascension.");
+        }
+        if (expectedScreen is not ("character_select" or "custom_run") ||
+            !TryGetActiveMenuScreen(out Node? screen, out string currentScreen) ||
+            !string.Equals(currentScreen, expectedScreen, StringComparison.Ordinal))
+        {
+            return Reject(request, "bad_phase", "Ascension can be changed only on the active Standard or Custom setup screen.");
+        }
+        object? lobby = ReadMember(screen, "Lobby") ?? ReadMember(screen, "_lobby");
+        if (lobby is null) return Reject(request, "not_ready", "The native run lobby is not initialized.");
+        int max = ReadMember(lobby, "MaxAscension") is int maxValue ? maxValue : 0;
+        string role = ReadMember(ReadMember(lobby, "NetService"), "Type")?.ToString()?.ToLowerInvariant() ?? "unknown";
+        if (role == "client") return Reject(request, "ownership_error", "Only the host or single-player owner can change ascension.");
+        if (ascension < 0 || ascension > max) return Reject(request, "bad_request", $"Ascension must be between 0 and {max}.");
+        MethodInfo? method = lobby.GetType().GetMethod("SyncAscensionChange", BindingFlags.Public | BindingFlags.Instance);
+        if (method is null) return Reject(request, "unsupported_state", "The native ascension setter is unavailable.");
+        method.Invoke(lobby, [ascension]);
+        return Accept(request, "accepted", $"Set ascension to {ascension}.");
+    }
+
+    private static ActionResponse ExecuteSetCustomSeed(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "menu_screen", out string? expectedScreen) ||
+            request.Payload.ValueKind != JsonValueKind.Object ||
+            !request.Payload.TryGetProperty("seed", out JsonElement seedElement) ||
+            seedElement.ValueKind is not (JsonValueKind.String or JsonValueKind.Null))
+        {
+            return Reject(request, "bad_request", "set_custom_seed requires payload.menu_screen and a string or null payload.seed.");
+        }
+        if (expectedScreen != "custom_run" ||
+            !TryGetActiveMenuScreen(out Node? screen, out string currentScreen) ||
+            currentScreen != "custom_run")
+        {
+            return Reject(request, "bad_phase", "A seed can be changed only on the active Custom Run screen.");
+        }
+        string? seed = seedElement.ValueKind == JsonValueKind.Null ? null : seedElement.GetString();
+        if (seed is { Length: > 64 } || seed?.Any(char.IsControl) == true)
+            return Reject(request, "bad_request", "The seed must be at most 64 characters and contain no control characters.");
+        object? lobby = ReadMember(screen, "Lobby") ?? ReadMember(screen, "_lobby");
+        if (lobby is null) return Reject(request, "not_ready", "The native run lobby is not initialized.");
+        string role = ReadMember(ReadMember(lobby, "NetService"), "Type")?.ToString()?.ToLowerInvariant() ?? "unknown";
+        if (role == "client") return Reject(request, "ownership_error", "Only the host or single-player owner can change the seed.");
+        MethodInfo? method = lobby.GetType().GetMethod("SetSeed", BindingFlags.Public | BindingFlags.Instance);
+        if (method is null) return Reject(request, "unsupported_state", "The native seed setter is unavailable.");
+        method.Invoke(lobby, [string.IsNullOrEmpty(seed) ? null : seed]);
+        return Accept(request, "accepted", string.IsNullOrEmpty(seed) ? "Restored a random seed." : "Updated the Custom Run seed.");
+    }
+
+    private static ActionResponse ExecuteAdvanceRunEnd(ActionRequest request)
+    {
+        if (!TryReadRequiredString(request.Payload, "target", out string? target) ||
+            target is not ("summary" or "main_menu"))
+            return Reject(request, "bad_request", "advance_run_end requires payload.target equal to summary or main_menu.");
+        if (NOverlayStack.Instance?.Peek() is not NGameOverScreen screen)
+            return Reject(request, "bad_phase", "The native game-over screen is no longer active.");
+        string field = target == "summary" ? "_continueButton" : "_mainMenuButton";
+        if (GetInstanceFieldValue(screen, field) is not NButton { IsEnabled: true } button || !button.IsVisibleInTree())
+            return Reject(request, "not_ready", $"The native {target} control is not ready.");
+        button.ForceClick();
+        return Accept(request, "accepted", target == "summary" ? "Opened the native run summary." : "Returning to the main menu.");
+    }
+
+    private static bool TryGetActiveMenuScreen(out Node? screen, out string menuScreen)
+    {
+        screen = null;
+        menuScreen = "unknown";
+        if (Engine.GetMainLoop() is not SceneTree tree || tree.Root is null) return false;
+        foreach ((string Type, string Screen) definition in new[]
+        {
+            ("NErrorPopup", "error_popup"), ("NVerticalPopup", "popup"),
+            ("NProfileScreen", "profile_select"), ("NCustomRunScreen", "custom_run"),
+            ("NDailyRunScreen", "daily_run"), ("NCharacterSelectScreen", "character_select"),
+            ("NJoinFriendScreen", "multiplayer_join"), ("NMultiplayerLoadGameScreen", "multiplayer_load"),
+            ("NMultiplayerHostSubmenu", "multiplayer_host"), ("NMultiplayerSubmenu", "multiplayer"),
+            ("NSingleplayerSubmenu", "singleplayer"), ("NMainMenu", "main")
+        })
+        {
+            Node? candidate = FindNodesByTypeName(tree.Root, definition.Type)
+                .FirstOrDefault(node => node is CanvasItem item && item.IsVisibleInTree());
+            if (candidate is null) continue;
+            screen = candidate;
+            menuScreen = definition.Screen;
+            return true;
+        }
+        return false;
+    }
+
+    private static bool TryResolveMenuOption(Node screen, string menuScreen, string optionId, out NButton? button)
+    {
+        button = null;
+        string? field = (menuScreen, optionId) switch
+        {
+            ("main", "continue") => "_continueButton",
+            ("main", "profiles") => "_openProfileScreenButton",
+            ("main", "singleplayer") => "_singleplayerButton",
+            ("main", "multiplayer") => "_multiplayerButton",
+            ("singleplayer", "standard") or ("multiplayer_host", "standard") => "_standardButton",
+            ("singleplayer", "daily") or ("multiplayer_host", "daily") => "_dailyButton",
+            ("singleplayer", "custom") or ("multiplayer_host", "custom") => "_customButton",
+            ("multiplayer", "host") => "_hostButton",
+            ("multiplayer", "join") => "_joinButton",
+            ("multiplayer", "load") => "_loadButton",
+            ("multiplayer_join", "refresh") => "_refreshButton",
+            ("character_select", "confirm") => "_embarkButton",
+            ("custom_run", "confirm") => "_confirmButton",
+            ("daily_run", "confirm") => "_embarkButton",
+            ("multiplayer_load", "confirm") => "_confirmButton",
+            ("character_select" or "custom_run" or "daily_run" or "multiplayer_load", "unready") => "_unreadyButton",
+            (_, "back") => "_backButton",
+            _ => null
+        };
+        if (field is not null)
+        {
+            button = ReadMember(screen, field) as NButton;
+            return button is not null;
+        }
+        if (menuScreen == "profile_select" && optionId.StartsWith("profile_", StringComparison.Ordinal) &&
+            int.TryParse(optionId[8..], out int profileId) && ReadMember(screen, "_profileButtons") is System.Collections.IEnumerable profiles)
+        {
+            button = profiles.Cast<object>()
+                .FirstOrDefault(candidate => ReadMember(candidate, "_profileId") is int id && id == profileId) as NButton;
+            return button is not null;
+        }
+        if (menuScreen == "multiplayer_join" && optionId.StartsWith("friend_", StringComparison.Ordinal))
+        {
+            string playerId = optionId[7..];
+            button = FindNodesByTypeName(screen, "NJoinFriendButton")
+                .FirstOrDefault(candidate => string.Equals(ReadMember(candidate, "PlayerId")?.ToString(), playerId, StringComparison.Ordinal)) as NButton;
+            return button is not null;
+        }
+        if (menuScreen is "character_select" or "custom_run")
+        {
+            button = FindNodesByTypeName(screen, "NCharacterSelectButton")
+                .FirstOrDefault(candidate => string.Equals(GetModelId(ReadMember(candidate, "Character")), optionId, StringComparison.Ordinal)) as NButton;
+            return button is not null;
+        }
+        return false;
+    }
+
+    private static object? GetInstanceFieldValue(object instance, string fieldName)
+    {
+        for (Type? type = instance.GetType(); type is not null; type = type.BaseType)
+        {
+            FieldInfo? field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field is not null) return field.GetValue(instance);
+        }
+        return null;
+    }
+
+    private static List<Node> FindNodesByTypeName(Node parent, string typeName, List<Node>? results = null)
+    {
+        results ??= [];
+        if (parent.GetType().Name == typeName) results.Add(parent);
+        foreach (Node child in parent.GetChildren()) FindNodesByTypeName(child, typeName, results);
+        return results;
+    }
+
+    private static string GetModelId(object? model)
+    {
+        object? id = ReadMember(model, "Id");
+        return ReadMember(id, "Entry")?.ToString() ?? id?.ToString() ?? string.Empty;
+    }
+
+    private static ActionResponse ExecuteChooseCardOption(ActionRequest request)
+    {
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "card_id", out string? cardId))
+        {
+            return Reject(request, "bad_request", "choose_card_option requires payload.choice_index and payload.card_id.");
+        }
+
+        if (NCombatRoom.Instance?.Ui?.Hand is { IsInCardSelection: true } playerHand)
+        {
+            var handHolders = FindNodesRecursive<NHandCardHolder>(playerHand).Where(holder => holder.Visible).ToList();
+            if (index < 0 || index >= handHolders.Count)
+            {
+                return Reject(request, "bad_index", $"Hand card option {index} is unavailable.");
+            }
+            string? currentCardId = handHolders[index].CardNode?.Model?.Id.ToString();
+            if (!string.Equals(currentCardId, cardId, StringComparison.Ordinal))
+            {
+                return Reject(request, "stale_state", "The selected hand card changed before dispatch.");
+            }
+            handHolders[index].EmitSignal(NCardHolder.SignalName.Pressed, handHolders[index]);
+            return Accept(request, "accepted", $"Toggled hand card option {index}.");
+        }
+
+        Node? screen = NOverlayStack.Instance?.Peek() as Node;
+        if (screen is not NChooseACardSelectionScreen && screen is not NCardGridSelectionScreen)
+        {
+            return Reject(request, "bad_phase", "A supported card selection screen is not active.");
+        }
+        if (screen is NCardGridSelectionScreen &&
+            screen is not NDeckCardSelectScreen &&
+            screen is not NDeckUpgradeSelectScreen)
+        {
+            return Reject(
+                request,
+                "unsupported_state",
+                $"{screen.GetType().Name} has an unmodeled confirmation flow; complete it in STS2.");
+        }
+        var holders = FindNodesRecursive<NGridCardHolder>(screen);
+        if (index < 0 || index >= holders.Count)
+        {
+            return Reject(request, "bad_index", $"Card option {index} is unavailable.");
+        }
+        if (!string.Equals(holders[index].CardModel?.Id.ToString(), cardId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected card changed before dispatch.");
+        }
+        holders[index].EmitSignal(NCardHolder.SignalName.Pressed, holders[index]);
+
+        if (screen is NDeckUpgradeSelectScreen upgradeScreen)
+        {
+            NConfirmButton? confirm = ((Node)upgradeScreen).GetNodeOrNull<NConfirmButton>("%UpgradeSinglePreviewContainer/Confirm");
+            if (confirm is not { IsEnabled: true })
+            {
+                return Reject(request, "not_ready", "Upgrade confirmation was not available after selection.");
+            }
+            confirm.ForceClick();
+        }
+        else if (screen is NDeckCardSelectScreen deckScreen)
+        {
+            Control? preview = ((Node)deckScreen).GetNodeOrNull<Control>("%PreviewContainer");
+            if (preview is { Visible: true } &&
+                preview.GetNodeOrNull<NConfirmButton>("%PreviewConfirm") is { IsEnabled: true } previewConfirm)
+            {
+                previewConfirm.ForceClick();
+            }
+        }
+        return Accept(request, "accepted", $"Selected card option {index}.");
+    }
+
+    private static ActionResponse ExecuteConfirmCardSelection(ActionRequest request)
+    {
+        if (NCombatRoom.Instance?.Ui?.Hand is not { IsInCardSelection: true } playerHand)
+        {
+            return Reject(request, "bad_phase", "Hand card selection is not active.");
+        }
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        if (typeof(NPlayerHand).GetField("_selectModeConfirmButton", flags)?.GetValue(playerHand) is not NConfirmButton confirm)
+        {
+            return Reject(request, "not_ready", "Hand selection confirmation is unavailable.");
+        }
+        if (!confirm.IsEnabled)
+        {
+            return Reject(request, "not_ready", "The current hand selection count cannot be confirmed.");
+        }
+        confirm.ForceClick();
+        return Accept(request, "accepted", "Confirmed the hand card selection.");
+    }
+
+    private static ActionResponse ExecuteChooseReward(ActionRequest request)
+    {
+        if (NOverlayStack.Instance?.Peek() is not NRewardsScreen screen)
+        {
+            return Reject(request, "bad_phase", "The combat rewards screen is not active.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "action_token", out string? actionToken))
+        {
+            return Reject(request, "bad_request", "choose_reward requires payload.choice_index and payload.action_token.");
+        }
+        var buttons = FindNodesRecursive<NRewardButton>((Node)screen);
+        if (index < 0 || index >= buttons.Count)
+        {
+            return Reject(request, "bad_index", $"Reward choice {index} is unavailable.");
+        }
+        if (!string.Equals(NativeActionToken.For(buttons[index].Reward), actionToken, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected reward changed before dispatch.");
+        }
+        buttons[index].ForceClick();
+        return Accept(request, "accepted", $"Selected reward {index}.");
+    }
+
+    private static ActionResponse ExecuteChooseRewardCard(ActionRequest request)
+    {
+        if (NOverlayStack.Instance?.Peek() is not NCardRewardSelectionScreen screen)
+        {
+            return Reject(request, "bad_phase", "The card reward selection screen is not active.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "choice_index", out int index) ||
+            !TryReadRequiredString(request.Payload, "card_id", out string? cardId))
+        {
+            return Reject(request, "bad_request", "choose_reward_card requires payload.choice_index and payload.card_id.");
+        }
+        var holders = FindNodesRecursive<NCardHolder>((Node)screen);
+        if (index < 0 || index >= holders.Count)
+        {
+            return Reject(request, "bad_index", $"Card reward choice {index} is unavailable.");
+        }
+        string? currentCardId = holders[index].GetChildren().OfType<NCard>().FirstOrDefault()?.Model?.Id.ToString();
+        if (!string.Equals(currentCardId, cardId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected reward card changed before dispatch.");
+        }
+        holders[index].EmitSignal(NCardHolder.SignalName.Pressed, holders[index]);
+        return Accept(request, "accepted", $"Selected reward card {index}.");
+    }
+
+    private static ActionResponse ExecuteSkipRewards(ActionRequest request)
+    {
+        if (NOverlayStack.Instance?.Peek() is not NRewardsScreen screen)
+        {
+            return Reject(request, "bad_phase", "The combat rewards screen is not active.");
+        }
+        NProceedButton? proceed = FindNodesRecursive<NProceedButton>((Node)screen).FirstOrDefault(button => button.IsEnabled);
+        if (proceed is null)
+        {
+            return Reject(request, "not_ready", "No enabled reward skip/continue button is available.");
+        }
+        proceed.ForceClick();
+        return Accept(request, "accepted", "Skipped the remaining rewards.");
+    }
+
+    private static List<T> FindNodesRecursive<T>(Node parent, List<T>? results = null) where T : Node
+    {
+        results ??= [];
+        foreach (Node child in parent.GetChildren())
+        {
+            if (child is T match) results.Add(match);
+            FindNodesRecursive(child, results);
+        }
+        return results;
+    }
+
+    private static ActionResponse ExecuteChooseMapNode(ActionRequest request)
+    {
+        if (CombatManager.Instance.IsInProgress)
+        {
+            return Reject(request, "bad_phase", "Map selection is unavailable during combat.");
+        }
+
+        IRunState? runState = RunManager.Instance.DebugOnlyGetState();
+        if (runState?.Map is null)
+        {
+            return Reject(request, "not_ready", "Authoritative map state is unavailable.");
+        }
+
+        Player? player = LocalContext.GetMe(runState);
+        if (player is null)
+        {
+            return Reject(request, "not_ready", "Local player is unavailable.");
+        }
+
+        if (RunManager.Instance.ActionExecutor?.CurrentlyRunningAction is not null)
+        {
+            return Reject(request, "not_ready", "STS2 is still executing a game action.");
+        }
+
+        if (!TryReadRequiredInt(request.Payload, "column", out int column) ||
+            !TryReadRequiredInt(request.Payload, "row", out int row))
+        {
+            return Reject(request, "bad_request", "choose_map_node requires integer payload.column and payload.row.");
+        }
+        if (!TryReadRequiredInt(request.Payload, "map_generation", out int expectedGeneration) ||
+            !TryReadRequiredString(request.Payload, "stable_id", out string? stableId))
+        {
+            return Reject(request, "bad_request", "choose_map_node requires payload.map_generation and payload.stable_id.");
+        }
+
+        int currentGeneration = RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
+        string expectedStableId = $"map-{currentGeneration}-{column}-{row}";
+        if (expectedGeneration != currentGeneration ||
+            !string.Equals(stableId, expectedStableId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The selected map generation or node identity changed before dispatch.");
+        }
+
+        IEnumerable<MapPoint> legalTargets = runState.CurrentMapPoint is null
+            ? runState.Map.startMapPoints
+            : runState.CurrentMapPoint.Children;
+        var target = legalTargets.FirstOrDefault(point =>
+            point.coord.col == column && point.coord.row == row);
+        if (target is null)
+        {
+            return Reject(request, "unreachable_node", $"Map node ({column},{row}) is not currently reachable.");
+        }
+
+        var coordinate = new MapCoord(column, row);
+        var vote = new MapVote
+        {
+            mapGenerationCount = currentGeneration,
+            coord = coordinate
+        };
+        var action = new VoteForMapCoordAction(player, runState.MapLocation, vote);
+        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
+        return Accept(request, "accepted", $"Queued map selection ({column},{row}).");
+    }
+
     private static ActionResponse ExecutePlayCard(ActionRequest request)
     {
         if (!TryGetCombatContext(request, out Player? player, out CombatState? combatState, out ActionResponse? rejection))
@@ -59,9 +818,10 @@ public sealed class M4GameAdapter : IGameAdapter
             return rejection!;
         }
 
-        if (!TryReadRequiredInt(request.Payload, "hand_index", out int handIndex))
+        if (!TryReadRequiredInt(request.Payload, "hand_index", out int handIndex) ||
+            !TryReadRequiredString(request.Payload, "card_id", out string? cardId))
         {
-            return Reject(request, "bad_request", "play_card requires integer payload.hand_index.");
+            return Reject(request, "bad_request", "play_card requires payload.hand_index and payload.card_id.");
         }
 
         var hand = player!.PlayerCombatState!.Hand.Cards;
@@ -74,6 +834,10 @@ public sealed class M4GameAdapter : IGameAdapter
         }
 
         CardModel card = hand[handIndex];
+        if (!string.Equals(card.Id.ToString(), cardId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The card in the selected hand slot changed before dispatch.");
+        }
         if (!card.CanPlay(out var reason, out _))
         {
             return Reject(
@@ -123,9 +887,10 @@ public sealed class M4GameAdapter : IGameAdapter
             return rejection!;
         }
 
-        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex))
+        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex) ||
+            !TryReadRequiredString(request.Payload, "potion_id", out string? potionId))
         {
-            return Reject(request, "bad_request", "use_potion requires integer payload.slot_index.");
+            return Reject(request, "bad_request", "use_potion requires payload.slot_index and payload.potion_id.");
         }
 
         var slots = player!.PotionSlots;
@@ -135,6 +900,14 @@ public sealed class M4GameAdapter : IGameAdapter
         }
 
         var potion = slots[slotIndex]!;
+        if (!string.Equals(potion.Id.ToString(), potionId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The potion in the selected slot changed before dispatch.");
+        }
+        if (!player.CanUseOrRemovePotions || potion.IsQueued || potion.HasBeenRemovedFromState)
+        {
+            return Reject(request, "not_playable", $"Potion in slot {slotIndex} cannot be used now.");
+        }
         if (!TryResolveTarget(
                 request,
                 request.Payload,
@@ -149,6 +922,36 @@ public sealed class M4GameAdapter : IGameAdapter
 
         potion.EnqueueManualUse(target);
         return Accept(request, "accepted", $"Queued use_potion for slot {slotIndex}.");
+    }
+
+    private static ActionResponse ExecuteDiscardPotion(ActionRequest request)
+    {
+        if (!TryGetCombatContext(request, out Player? player, out _, out ActionResponse? rejection))
+        {
+            return rejection!;
+        }
+        if (!TryReadRequiredIntEither(request.Payload, "slot_index", "slot", out int slotIndex) ||
+            !TryReadRequiredString(request.Payload, "potion_id", out string? potionId))
+        {
+            return Reject(request, "bad_request", "discard_potion requires payload.slot_index and payload.potion_id.");
+        }
+        var slots = player!.PotionSlots;
+        if (slotIndex < 0 || slotIndex >= slots.Count || slots[slotIndex] is null)
+        {
+            return Reject(request, "bad_index", $"No potion exists in slot {slotIndex}.");
+        }
+        var potion = slots[slotIndex]!;
+        if (!string.Equals(potion.Id.ToString(), potionId, StringComparison.Ordinal))
+        {
+            return Reject(request, "stale_state", "The potion in the selected slot changed before dispatch.");
+        }
+        if (!player.CanUseOrRemovePotions || potion.IsQueued || potion.HasBeenRemovedFromState)
+        {
+            return Reject(request, "not_playable", $"Potion in slot {slotIndex} cannot be discarded now.");
+        }
+        var action = new DiscardPotionGameAction(player, checked((uint)slotIndex), inCombat: true);
+        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
+        return Accept(request, "accepted", $"Queued discard_potion for slot {slotIndex}.");
     }
 
     private static bool TryGetCombatContext(
@@ -349,6 +1152,19 @@ public sealed class M4GameAdapter : IGameAdapter
                payload.TryGetProperty(name, out JsonElement element) &&
                element.ValueKind == JsonValueKind.Number &&
                element.TryGetInt32(out value);
+    }
+
+    private static bool TryReadRequiredString(JsonElement payload, string name, out string? value)
+    {
+        value = null;
+        if (payload.ValueKind != JsonValueKind.Object ||
+            !payload.TryGetProperty(name, out JsonElement element) ||
+            element.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+        value = element.GetString();
+        return !string.IsNullOrWhiteSpace(value);
     }
 
     private static bool TryReadRequiredIntEither(

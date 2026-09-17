@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -12,6 +14,23 @@ using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Monsters;
+using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Nodes.Screens.Map;
+using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Cards;
+using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen;
+using MegaCrit.Sts2.Core.Saves;
+using MegaCrit.Sts2.Core.Rewards;
+using MegaCrit.Sts2.Core.Events;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Entities.RestSite;
+using MegaCrit.Sts2.Core.Nodes.RestSite;
 using MegaCrit.Sts2.Core.Runs;
 using OfficeSpire.Protocol;
 
@@ -27,6 +46,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
     // engine is genuinely quiet. Promote a changed semantic decision state only after three
     // consecutive identical actionable frames. Presentation/localization fields are excluded.
     private const int RequiredStableDecisionFrames = 3;
+    private const int RequiredStableLifecycleFrames = 3;
 
     private long _revision;
     private string _lastFingerprint = string.Empty;
@@ -34,22 +54,150 @@ public sealed class Sts2GameAdapter : IGameAdapter
     private string _candidateFingerprint = string.Empty;
     private int _candidateStableFrames;
     private bool _candidateActive;
+    private int _noRunFrames;
+    private int _gameOverFrames;
 
     public StateEnvelope CaptureState()
     {
         try
         {
             IRunState? runState = RunManager.Instance.DebugOnlyGetState();
+            NGameOverScreen? gameOverScreen = NOverlayStack.Instance?.Peek() as NGameOverScreen;
+            bool gameOverVisible = gameOverScreen is not null;
+            _gameOverFrames = gameOverVisible
+                ? Math.Min(_gameOverFrames + 1, RequiredStableLifecycleFrames)
+                : 0;
+            if (gameOverVisible && _gameOverFrames < RequiredStableLifecycleFrames)
+            {
+                _noRunFrames = 0;
+                return CreateTransitionEnvelope("Confirming the native game-over screen.");
+            }
+            if (gameOverVisible)
+            {
+                _noRunFrames = 0;
+                string outcome = GetRunOutcome(runState);
+                return CreateEnvelope(
+                    PhaseNames.RunEnd,
+                    runState is null
+                        ? new RunSnapshotDto(0, 0, 0, 0, [])
+                        : BuildRunSnapshot(runState, LocalContext.GetMe(runState)),
+                    BuildRunEndSnapshot(gameOverScreen!, runState, outcome));
+            }
             if (runState is null)
             {
+                _noRunFrames = Math.Min(_noRunFrames + 1, RequiredStableLifecycleFrames);
+                if (_noRunFrames < RequiredStableLifecycleFrames)
+                {
+                    return CreateTransitionEnvelope("Waiting for an authoritative run or menu state.");
+                }
                 return CreateEnvelope(
-                    PhaseNames.Unknown,
+                    PhaseNames.Menu,
                     new RunSnapshotDto(0, 0, 0, 0, []),
-                    new { waiting_for_input = false });
+                    BuildMenuSnapshot());
             }
+
+            _noRunFrames = 0;
 
             Player? player = LocalContext.GetMe(runState);
             RunSnapshotDto run = BuildRunSnapshot(runState, player);
+
+            if (NOverlayStack.Instance?.Peek() is NRewardsScreen or NCardRewardSelectionScreen)
+            {
+                RewardsScreenDto? rewards = BuildRewardsSnapshot(player);
+                return CreateEnvelope(
+                    PhaseNames.Rewards,
+                    run,
+                    rewards ?? new RewardsScreenDto(false, "unavailable", player?.NetId.ToString() ?? string.Empty, [], [], false));
+            }
+
+            if (NOverlayStack.Instance?.Peek() is NChooseACardSelectionScreen chooseScreen)
+            {
+                var options = FindNodesRecursive<NGridCardHolder>((Node)chooseScreen)
+                    .Select((holder, index) => holder.CardModel is null
+                        ? null
+                        : BuildRewardCard(holder.CardModel, index))
+                    .Where(card => card is not null)
+                    .Cast<RewardCardSnapshotDto>()
+                    .ToList();
+                return CreateEnvelope(
+                    PhaseNames.CardSelection,
+                    run,
+                    new CardSelectionScreenDto(options.Count > 0, "choose_a_card", options, false));
+            }
+
+            if (NOverlayStack.Instance?.Peek() is NCardGridSelectionScreen gridScreen)
+            {
+                (string selectionType, bool actionable, string? unavailableReason) =
+                    DescribeGridSelection(gridScreen);
+                var options = FindNodesRecursive<NGridCardHolder>((Node)gridScreen)
+                    .Select((holder, index) => holder.CardModel is null
+                        ? null
+                        : BuildRewardCard(holder.CardModel, index))
+                    .Where(card => card is not null)
+                    .Cast<RewardCardSnapshotDto>()
+                    .ToList();
+                return CreateEnvelope(
+                    PhaseNames.CardSelection,
+                    run,
+                    new CardSelectionScreenDto(
+                        actionable && options.Count > 0,
+                        selectionType,
+                        options,
+                        false,
+                        UnavailableReason: unavailableReason));
+            }
+
+            if (NCombatRoom.Instance?.Ui?.Hand is { IsInCardSelection: true } playerHand)
+            {
+                return CreateEnvelope(PhaseNames.CardSelection, run, BuildHandSelectionSnapshot(playerHand));
+            }
+
+            Node? topOverlay = NOverlayStack.Instance?.Peek();
+            if (topOverlay?.GetType().Name == "NCrystalSphereScreen")
+            {
+                return CreateEnvelope(
+                    PhaseNames.SpecialEvent,
+                    run,
+                    BuildCrystalSphereSnapshot(topOverlay));
+            }
+
+            if (NMapScreen.Instance?.IsOpen == true)
+            {
+                return CreateEnvelope(PhaseNames.Map, run, BuildMapSnapshot(runState));
+            }
+
+            if (NRun.Instance?.EventRoom is not null)
+            {
+                SpecialEventScreenDto? specialEvent = BuildCustomEventSnapshot(NRun.Instance.EventRoom);
+                if (specialEvent is not null)
+                {
+                    return CreateEnvelope(PhaseNames.SpecialEvent, run, specialEvent);
+                }
+                EventScreenDto? eventScreen = BuildEventSnapshot(runState);
+                return CreateEnvelope(
+                    PhaseNames.Event,
+                    run,
+                    eventScreen ?? new EventScreenDto(false, string.Empty, "Event is loading.", false, [], false, []));
+            }
+
+            if (NRestSiteRoom.Instance is not null)
+            {
+                return CreateEnvelope(PhaseNames.Rest, run, BuildRestSnapshot(runState));
+            }
+
+            if (NRun.Instance?.TreasureRoom is not null)
+            {
+                return CreateEnvelope(PhaseNames.Treasure, run, BuildTreasureSnapshot(runState));
+            }
+
+            if (NRun.Instance?.MerchantRoom is not null)
+            {
+                ShopScreenDto? shop = BuildShopSnapshot(player);
+                return CreateEnvelope(
+                    PhaseNames.Shop,
+                    run,
+                    shop ?? new ShopScreenDto(false, false, player?.Gold ?? 0, [], false, 0, false));
+            }
 
             if (!CombatManager.Instance.IsInProgress || player?.PlayerCombatState is null)
             {
@@ -83,6 +231,967 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
     }
 
+    private static string GetRunOutcome(IRunState? runState)
+    {
+        if (RunManager.Instance.IsAbandoned)
+        {
+            return "abandoned";
+        }
+
+        return runState?.CurrentRoom?.IsVictoryRoom is true || RunManager.Instance.WinTime > 0
+            ? "victory"
+            : "defeat";
+    }
+
+    private static string GetRunOutcomeMessage(string outcome) => outcome switch
+    {
+        "victory" => "The game reports that this run ended in victory.",
+        "abandoned" => "The game reports that this run was abandoned.",
+        _ => "The game reports that this run ended in defeat."
+    };
+
+    private static LifecycleScreenDto BuildRunEndSnapshot(NGameOverScreen screen, IRunState? runState, string outcome)
+    {
+        Player? player = runState is null ? null : LocalContext.GetMe(runState);
+        NButton? continueButton = GetInstanceFieldValue(screen, "_continueButton") as NButton;
+        NButton? mainMenuButton = GetInstanceFieldValue(screen, "_mainMenuButton") as NButton;
+        bool canViewSummary = continueButton is { IsEnabled: true } && continueButton.IsVisibleInTree();
+        bool canReturn = mainMenuButton is { IsEnabled: true } && mainMenuButton.IsVisibleInTree();
+        string stage = canReturn ? "summary" : canViewSummary ? "outcome" : "settling";
+        int unlocksRemaining = Math.Max(0, SaveManager.Instance.GetUnlocksRemaining());
+        int currentUnlockScore = Math.Max(0, SaveManager.Instance.GetCurrentScore());
+        int threshold = GetInstanceFieldValue(screen, "_scoreThreshold") is int value ? Math.Max(0, value) : 0;
+        string unlockedEpoch = GetInstanceFieldValue(screen, "_scoreUnlockedEpochId")?.ToString() ?? string.Empty;
+        var discoveries = new LifecycleDiscoveriesDto(
+            player?.DiscoveredCards.Count ?? 0,
+            player?.DiscoveredRelics.Count ?? 0,
+            player?.DiscoveredPotions.Count ?? 0,
+            player?.DiscoveredEnemies.Count ?? 0,
+            player?.DiscoveredEpochs.Count ?? 0);
+        return new LifecycleScreenDto(
+            canViewSummary || canReturn,
+            outcome,
+            GetRunOutcomeMessage(outcome),
+            false,
+            stage,
+            GetInstanceFieldValue(screen, "_score") is int score ? Math.Max(0, score) : 0,
+            Math.Max(0, ReadMember(runState, "TotalFloor") is int floors ? floors : 0),
+            unlocksRemaining,
+            currentUnlockScore,
+            threshold,
+            unlockedEpoch,
+            discoveries,
+            canViewSummary,
+            canReturn);
+    }
+
+    private static MenuScreenDto BuildMenuSnapshot()
+    {
+        if (Engine.GetMainLoop() is not SceneTree tree || tree.Root is null)
+        {
+            return new MenuScreenDto(false, "unknown", "No active run; the visible menu could not be identified.", [], false);
+        }
+
+        (string TypeName, string Screen, string Message, (string Field, string Id, string Label)[] Fields)[] definitions =
+        [
+            ("NErrorPopup", "error_popup", "STS2 reported an error. Review recovery choices in the original window.", []),
+            ("NVerticalPopup", "popup", "A native STS2 confirmation is open. Review it in the original window.", []),
+            ("NProfileScreen", "profile_select", "Choose a profile in the original STS2 window.", []),
+            ("NCustomRunScreen", "custom_run", "Review the custom run configuration in the original STS2 window.", []),
+            ("NDailyRunScreen", "daily_run", "Review the daily challenge in the original STS2 window.", []),
+            ("NCharacterSelectScreen", "character_select", "Choose a character in the original STS2 window.", []),
+            ("NJoinFriendScreen", "multiplayer_join", "Choose a multiplayer session in the original STS2 window.", []),
+            ("NMultiplayerLoadGameScreen", "multiplayer_load", "Choose a saved multiplayer run in the original STS2 window.", []),
+            ("NMultiplayerHostSubmenu", "multiplayer_host", "Choose the multiplayer game mode in the original STS2 window.",
+                [("_standardButton", "standard", "Standard"), ("_dailyButton", "daily", "Daily"), ("_customButton", "custom", "Custom"), ("_backButton", "back", "Back")]),
+            ("NMultiplayerSubmenu", "multiplayer", "Choose a multiplayer action in the original STS2 window.",
+                [("_hostButton", "host", "Host"), ("_joinButton", "join", "Join"), ("_loadButton", "load", "Load"), ("_abandonButton", "abandon", "Abandon"), ("_backButton", "back", "Back")]),
+            ("NSingleplayerSubmenu", "singleplayer", "Choose the single-player game mode in the original STS2 window.",
+                [("_standardButton", "standard", "Standard"), ("_dailyButton", "daily", "Daily"), ("_customButton", "custom", "Custom"), ("_backButton", "back", "Back")]),
+            ("NMainMenu", "main", "Choose an action in the original STS2 window.",
+                [("_continueButton", "continue", "Continue"), ("_openProfileScreenButton", "profiles", "Profiles"), ("_abandonRunButton", "abandon_run", "Abandon run"), ("_singleplayerButton", "singleplayer", "Single player"), ("_multiplayerButton", "multiplayer", "Multiplayer"), ("_compendiumButton", "compendium", "Compendium"), ("_timelineButton", "timeline", "Timeline"), ("_settingsButton", "settings", "Settings"), ("_quitButton", "quit", "Quit")])
+        ];
+
+        foreach (var definition in definitions)
+        {
+            Node? screen = FindVisibleNodeByTypeName(tree.Root, definition.TypeName);
+            if (screen is null) continue;
+            List<MenuCharacterSnapshotDto>? characters = null;
+            int? currentProfileId = null;
+            string popupBody = string.Empty;
+            MenuRunSetupSnapshotDto? runSetup = null;
+            MenuLobbySnapshotDto? lobby = null;
+            MenuConnectionSnapshotDto? connection = null;
+            MenuSavedRunSnapshotDto? savedRun = null;
+            string popupTitle = string.Empty;
+            List<MenuOptionSnapshotDto> options;
+            if (definition.Screen is "character_select" or "custom_run")
+            {
+                (options, characters) = BuildCharacterMenuState(screen);
+                runSetup = BuildRunSetup(screen);
+                lobby = BuildMenuLobby(screen);
+                if (definition.Screen == "custom_run")
+                {
+                    options.RemoveAll(option => option.Id is "confirm" or "unready" or "back");
+                    AddMenuOption(options, screen, "_confirmButton", "confirm", "Confirm");
+                    AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
+                    AddMenuOption(options, screen, "_backButton", "back", "Back");
+                }
+            }
+            else if (definition.Screen == "daily_run")
+            {
+                options = [];
+                AddMenuOption(options, screen, "_embarkButton", "confirm", "Confirm");
+                AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
+                AddMenuOption(options, screen, "_backButton", "back", "Back");
+                runSetup = BuildRunSetup(screen);
+                lobby = BuildMenuLobby(screen);
+                AddInviteOption(options, screen);
+            }
+            else if (definition.Screen == "multiplayer_join")
+            {
+                (options, connection) = BuildJoinFriendState(screen);
+            }
+            else if (definition.Screen == "multiplayer_load")
+            {
+                options = [];
+                AddMenuOption(options, screen, "_confirmButton", "confirm", "Confirm");
+                AddMenuOption(options, screen, "_unreadyButton", "unready", "Unready");
+                AddMenuOption(options, screen, "_backButton", "back", "Back");
+                (connection, savedRun) = BuildLoadConnectionState(screen);
+            }
+            else if (definition.Screen == "profile_select")
+            {
+                options = BuildProfileMenuOptions(screen);
+                currentProfileId = SaveManager.Instance?.CurrentProfileId;
+            }
+            else if (definition.Screen is "popup" or "error_popup")
+            {
+                (options, popupTitle, popupBody) = BuildPopupMenuState(screen);
+                if (options.Count == 0) continue;
+            }
+            else
+            {
+                options = definition.Fields
+                    .Select(field => BuildMenuOption(screen, field.Field, field.Id, field.Label))
+                    .Where(option => option is not null)
+                    .Cast<MenuOptionSnapshotDto>()
+                    .ToList();
+                if (definition.Screen == "multiplayer_host") connection = BuildHostConnectionState(screen);
+            }
+            options = options
+                .Select(option => option with { Actionable = IsSupportedMenuOption(definition.Screen, option.Id) })
+                .ToList();
+            bool canMutate = options.Any(option => option.Actionable && option.Enabled) ||
+                CanEditRunSetup(definition.Screen, runSetup, lobby);
+            string message = canMutate
+                ? "Choose an available action. OfficeSpire will revalidate it on the STS2 main thread."
+                : definition.Message;
+            return new MenuScreenDto(canMutate, definition.Screen, message, options, canMutate, currentProfileId, characters, popupBody, runSetup, lobby, connection, savedRun, popupTitle);
+        }
+
+        return new MenuScreenDto(false, "unknown", "No active run; use the original STS2 window to continue.", [], false);
+    }
+
+    private static bool CanEditRunSetup(string screen, MenuRunSetupSnapshotDto? setup, MenuLobbySnapshotDto? lobby) =>
+        setup is not null && lobby is not null &&
+        lobby.Role is "singleplayer" or "host" &&
+        screen is "character_select" or "custom_run";
+
+    private static bool IsSupportedMenuOption(string screen, string optionId) => screen switch
+    {
+        "main" => optionId is "continue" or "profiles" or "singleplayer" or "multiplayer",
+        "singleplayer" => optionId is "standard" or "daily" or "custom" or "back",
+        "multiplayer" => optionId is "host" or "join" or "load" or "back",
+        "multiplayer_host" => optionId is "standard" or "daily" or "custom" or "back",
+        "multiplayer_join" => optionId == "refresh" || optionId.StartsWith("friend_", StringComparison.Ordinal),
+        "multiplayer_load" => optionId is "confirm" or "unready" or "back",
+        "profile_select" => optionId == "back" || optionId.StartsWith("profile_", StringComparison.Ordinal),
+        "character_select" or "custom_run" =>
+            optionId is "confirm" or "unready" or "back" ||
+            optionId is not "invite",
+        "daily_run" => optionId is "confirm" or "unready" or "back",
+        _ => false
+    };
+
+    private static MenuOptionSnapshotDto? BuildMenuOption(Node screen, string fieldName, string id, string label)
+    {
+        object? value = GetInstanceFieldValue(screen, fieldName);
+        if (value is not CanvasItem item || !item.IsVisibleInTree()) return null;
+        bool enabled = value.GetType().GetProperty("IsEnabled")?.GetValue(value) as bool? ?? true;
+        return new MenuOptionSnapshotDto(id, label, enabled);
+    }
+
+    private static void AddMenuOption(List<MenuOptionSnapshotDto> options, Node screen, string field, string id, string label)
+    {
+        MenuOptionSnapshotDto? option = BuildMenuOption(screen, field, id, label);
+        if (option is not null) options.Add(option);
+    }
+
+    private static (List<MenuOptionSnapshotDto> Options, List<MenuCharacterSnapshotDto> Characters) BuildCharacterMenuState(Node screen)
+    {
+        var options = new List<MenuOptionSnapshotDto>();
+        var characters = new List<MenuCharacterSnapshotDto>();
+        foreach (Node button in FindNodesByTypeName(screen, "NCharacterSelectButton"))
+        {
+            object? character = button.GetType().GetProperty("Character")?.GetValue(button);
+            if (character is null) continue;
+            string id = GetModelId(character);
+            if (string.IsNullOrWhiteSpace(id)) continue;
+            string label = GetLocalizedProperty(character, "Title", id);
+            bool locked = button.GetType().GetProperty("IsLocked")?.GetValue(button) as bool? ?? false;
+            options.Add(new MenuOptionSnapshotDto(id, label, !locked));
+            characters.Add(new MenuCharacterSnapshotDto(
+                id,
+                label,
+                locked,
+                GetIntProperty(character, "StartingHp"),
+                GetIntProperty(character, "StartingGold"),
+                GetIntProperty(character, "MaxEnergy"),
+                GetLocalizedProperty(character, "CardsModifierDescription"),
+                BuildStartingRelics(character),
+                BuildStartingDeck(character)));
+        }
+
+        foreach ((string field, string id, string label) in new[]
+        {
+            ("_embarkButton", "confirm", "Confirm"),
+            ("_unreadyButton", "unready", "Unready"),
+            ("_backButton", "back", "Back")
+        })
+        {
+            MenuOptionSnapshotDto? option = BuildMenuOption(screen, field, id, label);
+            if (option is not null) options.Add(option);
+        }
+        AddInviteOption(options, screen);
+        return (options, characters);
+    }
+
+    private static void AddInviteOption(List<MenuOptionSnapshotDto> options, Node screen)
+    {
+        Node? invite = FindVisibleNodeByTypeName(screen, "NInvitePlayersButton");
+        if (invite is null) return;
+        bool enabled = invite.GetType().GetProperty("IsEnabled")?.GetValue(invite) as bool? ?? false;
+        options.Add(new MenuOptionSnapshotDto("invite", "Invite players", enabled));
+    }
+
+    private static List<MenuOptionSnapshotDto> BuildProfileMenuOptions(Node screen)
+    {
+        var options = new List<MenuOptionSnapshotDto>();
+        if (GetInstanceFieldValue(screen, "_profileButtons") is System.Collections.IEnumerable buttons)
+        {
+            foreach (object button in buttons)
+            {
+                if (GetInstanceFieldValue(button, "_profileId") is not int id) continue;
+                bool enabled = button.GetType().GetProperty("IsEnabled")?.GetValue(button) as bool? ?? false;
+                options.Add(new MenuOptionSnapshotDto($"profile_{id}", $"Profile {id}", enabled));
+            }
+        }
+        MenuOptionSnapshotDto? back = BuildMenuOption(screen, "_backButton", "back", "Back");
+        if (back is not null) options.Add(back);
+        return options;
+    }
+
+    private static (List<MenuOptionSnapshotDto> Options, string Title, string Body) BuildPopupMenuState(Node screen)
+    {
+        Node popup = screen.GetType().Name == "NVerticalPopup"
+            ? screen
+            : FindNodesByTypeName(screen, "NVerticalPopup").FirstOrDefault() ?? screen;
+        var options = new List<MenuOptionSnapshotDto>();
+        foreach ((string property, string id, string label) in new[]
+        {
+            ("YesButton", "yes", "Yes"),
+            ("NoButton", "no", "No")
+        })
+        {
+            object? button = popup.GetType().GetProperty(property)?.GetValue(popup);
+            if (button is not CanvasItem item || !item.IsVisibleInTree()) continue;
+            bool enabled = button.GetType().GetProperty("IsEnabled")?.GetValue(button) as bool? ?? false;
+            options.Add(new MenuOptionSnapshotDto(id, label, enabled));
+        }
+        string title = ReadControlText(popup.GetType().GetProperty("TitleLabel")?.GetValue(popup) as Node);
+        string body = ReadControlText(popup.GetType().GetProperty("BodyLabel")?.GetValue(popup) as Node);
+        return (options, title, body);
+    }
+
+    private static List<MenuStartingRelicSnapshotDto> BuildStartingRelics(object character)
+    {
+        var relics = new List<MenuStartingRelicSnapshotDto>();
+        if (character.GetType().GetProperty("StartingRelics")?.GetValue(character) is not System.Collections.IEnumerable values) return relics;
+        foreach (object relic in values)
+        {
+            relics.Add(new MenuStartingRelicSnapshotDto(
+                GetLocalizedProperty(relic, "Title", GetModelId(relic)),
+                GetLocalizedProperty(relic, "DynamicDescription")));
+        }
+        return relics;
+    }
+
+    private static List<string> BuildStartingDeck(object character)
+    {
+        var cards = new List<string>();
+        if (character.GetType().GetProperty("StartingDeck")?.GetValue(character) is not System.Collections.IEnumerable values) return cards;
+        foreach (object card in values) cards.Add(GetLocalizedProperty(card, "Title", GetModelId(card)));
+        return cards;
+    }
+
+    private static MenuRunSetupSnapshotDto? BuildRunSetup(Node screen)
+    {
+        object? lobby = screen.GetType().GetProperty("Lobby")?.GetValue(screen)
+            ?? GetInstanceFieldValue(screen, "_lobby");
+        if (lobby is null) return null;
+        object? dailyTime = lobby.GetType().GetProperty("DailyTime")?.GetValue(lobby);
+        object? dailyValue = dailyTime?.GetType().GetProperty("Value")?.GetValue(dailyTime) ?? dailyTime;
+        object? serverTime = dailyValue is null ? null : GetInstanceFieldValue(dailyValue, "serverTime");
+        var modifiers = new List<MenuModifierSnapshotDto>();
+        if (lobby.GetType().GetProperty("Modifiers")?.GetValue(lobby) is System.Collections.IEnumerable values)
+        {
+            foreach (object modifier in values)
+            {
+                modifiers.Add(new MenuModifierSnapshotDto(
+                    GetModelId(modifier),
+                    GetLocalizedProperty(modifier, "Title", GetModelId(modifier)),
+                    GetLocalizedProperty(modifier, "Description")));
+            }
+        }
+        return new MenuRunSetupSnapshotDto(
+            lobby.GetType().GetProperty("GameMode")?.GetValue(lobby)?.ToString()?.ToLowerInvariant() ?? "unknown",
+            GetIntProperty(lobby, "Ascension"),
+            GetIntProperty(lobby, "MaxAscension"),
+            lobby.GetType().GetProperty("Seed")?.GetValue(lobby)?.ToString(),
+            lobby.GetType().GetProperty("Act1")?.GetValue(lobby)?.ToString() ?? "unknown",
+            serverTime is DateTimeOffset timestamp ? timestamp.ToString("O") : null,
+            modifiers);
+    }
+
+    private static MenuLobbySnapshotDto? BuildMenuLobby(Node screen)
+    {
+        object? lobby = screen.GetType().GetProperty("Lobby")?.GetValue(screen)
+            ?? GetInstanceFieldValue(screen, "_lobby");
+        if (lobby is null) return null;
+        object? netService = lobby.GetType().GetProperty("NetService")?.GetValue(lobby);
+        string role = netService?.GetType().GetProperty("Type")?.GetValue(netService)?.ToString()?.ToLowerInvariant() ?? "unknown";
+        string localPlayerId = string.Empty;
+        object? localPlayer = lobby.GetType().GetProperty("LocalPlayer")?.GetValue(lobby);
+        if (localPlayer is not null) localPlayerId = GetInstanceFieldValue(localPlayer, "id")?.ToString() ?? string.Empty;
+        var players = new List<MenuLobbyPlayerSnapshotDto>();
+        if (lobby.GetType().GetProperty("Players")?.GetValue(lobby) is System.Collections.IEnumerable values)
+        {
+            foreach (object player in values)
+            {
+                string id = GetInstanceFieldValue(player, "id")?.ToString() ?? string.Empty;
+                int slotId = GetInstanceFieldValue(player, "slotId") as int? ?? -1;
+                if (string.IsNullOrEmpty(id) || slotId < 0) continue;
+                object? character = GetInstanceFieldValue(player, "character");
+                bool isLocal = !string.IsNullOrEmpty(localPlayerId) && id == localPlayerId;
+                players.Add(new MenuLobbyPlayerSnapshotDto(
+                    id,
+                    slotId,
+                    isLocal,
+                    role == "host" ? isLocal : null,
+                    character is null ? string.Empty : GetModelId(character),
+                    character is null ? string.Empty : GetLocalizedProperty(character, "Title", GetModelId(character)),
+                    GetInstanceFieldValue(player, "isReady") as bool? ?? false));
+            }
+        }
+        if (players.Count == 0 || players.Count(player => player.IsLocal) != 1) return null;
+        int maxPlayers = GetIntProperty(lobby, "MaxPlayers");
+        return new MenuLobbySnapshotDto(
+            role,
+            maxPlayers > 0 ? maxPlayers : null,
+            localPlayerId,
+            players.Count > 0 && players.All(player => player.IsReady),
+            players);
+    }
+
+    private static (List<MenuOptionSnapshotDto> Options, MenuConnectionSnapshotDto Connection) BuildJoinFriendState(Node screen)
+    {
+        var options = new List<MenuOptionSnapshotDto>();
+        AddMenuOption(options, screen, "_refreshButton", "refresh", "Refresh");
+        var sessions = new List<MenuSessionSnapshotDto>();
+        foreach (Node button in FindNodesByTypeName(screen, "NJoinFriendButton"))
+        {
+            if (button is CanvasItem item && !item.IsVisibleInTree()) continue;
+            string id = button.GetType().GetProperty("PlayerId")?.GetValue(button)?.ToString() ?? string.Empty;
+            if (string.IsNullOrEmpty(id)) continue;
+            bool enabled = button.GetType().GetProperty("IsEnabled")?.GetValue(button) as bool? ?? false;
+            string optionId = $"friend_{id}";
+            string label = $"Player {id}";
+            sessions.Add(new MenuSessionSnapshotDto(id, label, enabled));
+            options.Add(new MenuOptionSnapshotDto(optionId, label, enabled));
+        }
+        string status = IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_loadingOverlay"))
+            ? "joining"
+            : IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_loadingFriendsIndicator"))
+                ? "refreshing"
+                : IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_noFriendsLabel"))
+                    ? "empty"
+                    : "available";
+        return (options, new MenuConnectionSnapshotDto(status, 0, null, sessions));
+    }
+
+    private static MenuConnectionSnapshotDto BuildHostConnectionState(Node screen) =>
+        new(IsVisibleCanvasItem(GetInstanceFieldValue(screen, "_loadingOverlay")) ? "hosting" : "idle", 0, 4, []);
+
+    private static (MenuConnectionSnapshotDto Connection, MenuSavedRunSnapshotDto? SavedRun) BuildLoadConnectionState(Node screen)
+    {
+        object? lobby = GetInstanceFieldValue(screen, "_runLobby");
+        if (lobby is null) return (new MenuConnectionSnapshotDto("loading", 0, null, []), null);
+        object? connectedValues = lobby.GetType().GetProperty("ConnectedPlayerIds")?.GetValue(lobby);
+        var connectedIds = ToStringSet(connectedValues);
+        int connected = connectedIds.Count;
+        object? run = lobby.GetType().GetProperty("Run")?.GetValue(lobby);
+        int required = CountEnumerable(run?.GetType().GetProperty("Players")?.GetValue(run));
+        var connection = new MenuConnectionSnapshotDto("load_lobby", connected, required > 0 ? required : null, []);
+        if (run is null) return (connection, null);
+        var players = new List<MenuSavedPlayerSnapshotDto>();
+        if (run.GetType().GetProperty("Players")?.GetValue(run) is System.Collections.IEnumerable savedPlayers)
+        {
+            foreach (object player in savedPlayers)
+            {
+                string id = player.GetType().GetProperty("NetId")?.GetValue(player)?.ToString() ?? string.Empty;
+                if (string.IsNullOrEmpty(id)) continue;
+                object? characterId = player.GetType().GetProperty("CharacterId")?.GetValue(player);
+                players.Add(new MenuSavedPlayerSnapshotDto(
+                    id,
+                    GetIdEntry(characterId),
+                    GetIntProperty(player, "CurrentHp"),
+                    GetIntProperty(player, "MaxHp"),
+                    GetIntProperty(player, "MaxEnergy"),
+                    GetIntProperty(player, "MaxPotionSlotCount"),
+                    GetIntProperty(player, "Gold"),
+                    connectedIds.Contains(id)));
+            }
+        }
+        if (players.Count == 0 || players.Select(player => player.Id).Distinct().Count() != players.Count) return (connection, null);
+        string mode = lobby.GetType().GetProperty("GameMode")?.GetValue(lobby)?.ToString()?.ToLowerInvariant() ?? "unknown";
+        var savedRun = new MenuSavedRunSnapshotDto(
+            mode,
+            GetIntProperty(run, "Ascension"),
+            GetIntProperty(run, "CurrentActIndex") + 1,
+            CountEnumerable(run.GetType().GetProperty("VisitedMapCoords")?.GetValue(run)),
+            players.Count(player => !player.Connected),
+            players);
+        return (connection, savedRun);
+    }
+
+    private static bool IsVisibleCanvasItem(object? value) =>
+        value is CanvasItem item && item.IsVisibleInTree();
+
+    private static int CountEnumerable(object? value)
+    {
+        if (value is not System.Collections.IEnumerable items) return 0;
+        int count = 0;
+        foreach (object _ in items) count++;
+        return count;
+    }
+
+    private static HashSet<string> ToStringSet(object? value)
+    {
+        var results = new HashSet<string>(StringComparer.Ordinal);
+        if (value is not System.Collections.IEnumerable items) return results;
+        foreach (object item in items)
+        {
+            string id = item.ToString() ?? string.Empty;
+            if (!string.IsNullOrEmpty(id)) results.Add(id);
+        }
+        return results;
+    }
+
+    private static string GetModelId(object model)
+    {
+        object? id = model.GetType().GetProperty("Id")?.GetValue(model);
+        return id?.GetType().GetProperty("Entry")?.GetValue(id)?.ToString() ?? id?.ToString() ?? string.Empty;
+    }
+
+    private static string GetIdEntry(object? id) =>
+        id?.GetType().GetProperty("Entry")?.GetValue(id)?.ToString() ?? id?.ToString() ?? string.Empty;
+
+    private static int GetIntProperty(object instance, string propertyName) =>
+        instance.GetType().GetProperty(propertyName)?.GetValue(instance) as int? ?? 0;
+
+    private static string GetLocalizedProperty(object instance, string propertyName, string fallback = "") =>
+        instance.GetType().GetProperty(propertyName)?.GetValue(instance) is LocString value
+            ? SafeFormat(value)
+            : fallback;
+
+    private static string ReadControlText(Node? node)
+    {
+        if (node is null) return string.Empty;
+        Variant text = node.Get("text");
+        return text.VariantType == Variant.Type.Nil ? string.Empty : NormalizeRichText(text.AsString());
+    }
+
+    private static object? GetInstanceFieldValue(object instance, string fieldName)
+    {
+        for (Type? type = instance.GetType(); type is not null; type = type.BaseType)
+        {
+            FieldInfo? field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field is not null) return field.GetValue(instance);
+        }
+        return null;
+    }
+
+    private static Node? FindVisibleNodeByTypeName(Node parent, string typeName) =>
+        FindNodesByTypeName(parent, typeName).FirstOrDefault(node => node is CanvasItem item && item.IsVisibleInTree());
+
+    private static List<Node> FindNodesByTypeName(Node parent, string typeName, List<Node>? results = null)
+    {
+        results ??= [];
+        if (parent.GetType().Name == typeName) results.Add(parent);
+        foreach (Node child in parent.GetChildren()) FindNodesByTypeName(child, typeName, results);
+        return results;
+    }
+
+    private static RewardsScreenDto? BuildRewardsSnapshot(Player? owner)
+    {
+        string ownerPlayerId = owner?.NetId.ToString() ?? string.Empty;
+        var overlay = NOverlayStack.Instance?.Peek();
+        if (overlay is NCardRewardSelectionScreen cardScreen)
+        {
+            var cards = FindNodesRecursive<NCardHolder>((Node)cardScreen)
+                .Select((holder, index) =>
+                {
+                    CardModel? card = holder.GetChildren().OfType<NCard>().FirstOrDefault()?.Model;
+                    return card is null ? null : BuildRewardCard(card, index);
+                })
+                .Where(card => card is not null)
+                .Cast<RewardCardSnapshotDto>()
+                .ToList();
+            return new RewardsScreenDto(cards.Count > 0, "card_selection", ownerPlayerId, [], cards, false);
+        }
+
+        if (overlay is not NRewardsScreen rewardsScreen)
+        {
+            return null;
+        }
+
+        var items = new List<RewardItemSnapshotDto>();
+        foreach ((NRewardButton button, int index) in FindNodesRecursive<NRewardButton>((Node)rewardsScreen).Select((button, index) => (button, index)))
+        {
+            switch (button.Reward)
+            {
+                case CardReward cardReward:
+                    items.Add(new RewardItemSnapshotDto(
+                        index,
+                        NativeActionToken.For(button.Reward),
+                        "card",
+                        "Card reward",
+                        SafeFormat(cardReward.Description),
+                        cardReward.Cards.Select((card, cardIndex) => BuildRewardCard(card, cardIndex)).ToList()));
+                    break;
+                case GoldReward goldReward:
+                    items.Add(new RewardItemSnapshotDto(index, NativeActionToken.For(button.Reward), "gold", $"{goldReward.Amount} gold", SafeFormat(goldReward.Description), []));
+                    break;
+                case RelicReward relicReward:
+                    string relic = SafeFormat(relicReward.Description);
+                    items.Add(new RewardItemSnapshotDto(index, NativeActionToken.For(button.Reward), "relic", relic, relic, []));
+                    break;
+                case PotionReward potionReward:
+                    items.Add(new RewardItemSnapshotDto(index, NativeActionToken.For(button.Reward), "potion", "Potion", SafeFormat(potionReward.Description), []));
+                    break;
+            }
+        }
+
+        bool canSkip = FindNodesRecursive<NProceedButton>((Node)rewardsScreen).Any(button => button.IsEnabled);
+        return new RewardsScreenDto(items.Count > 0 || canSkip, "rewards", ownerPlayerId, items, [], canSkip);
+    }
+
+    private static EventScreenDto? BuildEventSnapshot(IRunState runState)
+    {
+        NEventRoom? room = NRun.Instance?.EventRoom;
+        if (room is null)
+        {
+            return null;
+        }
+
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        if (typeof(NEventRoom).GetField("_event", flags)?.GetValue(room) is not EventModel model)
+        {
+            return null;
+        }
+
+        var options = model.CurrentOptions
+            .Select((option, index) => new EventOptionSnapshotDto(
+                index,
+                NativeActionToken.For(option),
+                SafeFormat(option.Title),
+                SafeFormat(option.Description),
+                option.IsLocked,
+                option.IsProceed))
+            .ToList();
+        if (model.IsFinished && options.Count == 0)
+        {
+            options.Add(new EventOptionSnapshotDto(0, "event-proceed", "Leave", "Leave the event.", false, true));
+        }
+
+        bool actionable = model.IsFinished || options.Any(option => !option.IsLocked);
+        var synchronizer = RunManager.Instance.EventSynchronizer;
+        bool isShared = synchronizer.IsShared;
+        var votes = isShared
+            ? runState.Players.Select(player =>
+            {
+                uint? vote = synchronizer.GetPlayerVote(player);
+                int? index = vote.HasValue ? checked((int)vote.Value) : null;
+                string? choiceId = index is >= 0 && index < options.Count
+                    ? options[index.Value].ActionToken
+                    : null;
+                return new DecisionVoteSnapshotDto(player.NetId.ToString(), index, choiceId);
+            }).ToList()
+            : [];
+        return new EventScreenDto(
+            actionable,
+            SafeFormat(model.Title),
+            SafeFormat(model.Description),
+            model.IsFinished,
+            options,
+            isShared,
+            votes);
+    }
+
+    private static SpecialEventScreenDto BuildCrystalSphereSnapshot(Node screen)
+    {
+        object? entity = ReadMember(screen, "_entity");
+        string? tool = ReadMember(entity, "CrystalSphereTool")?.ToString()?.ToLowerInvariant();
+        int? remaining = ReadMember(entity, "DivinationCount") is int count ? count : null;
+        var cells = FindNodesRecursive<Node>(screen)
+            .Where(node => node.GetType().Name == "NCrystalSphereCell" && node is CanvasItem { Visible: true })
+            .Select(node =>
+            {
+                object? cell = ReadMember(node, "Entity");
+                if (ReadMember(cell, "IsHidden") is not true ||
+                    ReadMember(cell, "X") is not int x ||
+                    ReadMember(cell, "Y") is not int y)
+                {
+                    return null;
+                }
+                return new SpecialEventCellSnapshotDto(x, y, $"crystal-cell-{x}-{y}", $"Hidden cell {x + 1}, {y + 1}");
+            })
+            .Where(cell => cell is not null)
+            .Cast<SpecialEventCellSnapshotDto>()
+            .OrderBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .ToList();
+        bool canProceed = screen.GetNodeOrNull<NButton>("%ProceedButton") is { IsEnabled: true };
+        bool canSmall = screen.GetNodeOrNull<NButton>("%SmallDivinationButton") is { IsEnabled: true };
+        bool canBig = screen.GetNodeOrNull<NButton>("%BigDivinationButton") is { IsEnabled: true };
+        bool waiting = canProceed || (remaining > 0 && cells.Count > 0 && (canSmall || canBig));
+        return new SpecialEventScreenDto(
+            waiting,
+            "crystal_sphere",
+            screen.GetType().FullName ?? screen.GetType().Name,
+            canProceed ? "Divination is complete. Continue when ready." : "Choose a divination tool, then reveal a hidden cell.",
+            tool,
+            remaining,
+            cells,
+            canSmall,
+            canBig,
+            canProceed,
+            null);
+    }
+
+    private static SpecialEventScreenDto? BuildCustomEventSnapshot(NEventRoom room)
+    {
+        Node? custom = FindNodesRecursive<Node>(room)
+            .FirstOrDefault(node => node.GetType().Name is "NFakeMerchant" or "NAncientEventLayout");
+        if (custom is null)
+        {
+            return null;
+        }
+
+        if (custom.GetType().Name == "NAncientEventLayout" && ReadMember(custom, "IsDialogueOnLastLine") is true)
+        {
+            // Once the final native dialogue line is reached, ordinary authoritative event
+            // options are active and should flow through the normal EventModel contract.
+            return null;
+        }
+
+        string variant = custom.GetType().Name == "NFakeMerchant" ? "fake_merchant" : "ancient_dialogue";
+        string message = variant == "fake_merchant"
+            ? "This custom merchant uses a version-specific inventory flow. Continue in the original STS2 window."
+            : "This event has native dialogue before ordinary choices. Advance the dialogue in STS2; OfficeSpire will expose the choices when they become authoritative.";
+        return new SpecialEventScreenDto(
+            false,
+            variant,
+            custom.GetType().FullName ?? custom.GetType().Name,
+            message,
+            null,
+            null,
+            [],
+            false,
+            false,
+            false,
+            "No version-stable action contract is available for this custom event surface.");
+    }
+
+    private static object? ReadMember(object? target, string name)
+    {
+        if (target is null) return null;
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        Type type = target.GetType();
+        return type.GetProperty(name, flags)?.GetValue(target) ?? type.GetField(name, flags)?.GetValue(target);
+    }
+
+    private static RestScreenDto BuildRestSnapshot(IRunState runState)
+    {
+        NRestSiteRoom room = NRestSiteRoom.Instance!;
+        var options = room.Options
+            .Select((option, index) => new RestOptionSnapshotDto(
+                index,
+                option.OptionId,
+                SafeFormat(option.Title),
+                SafeFormat(option.Description)))
+            .ToList();
+        bool canProceed = options.Count == 0 && room.ProceedButton is { IsEnabled: true };
+        bool targetSelectionPending = NTargetManager.Instance is { IsInSelection: true };
+        string interactionState = targetSelectionPending
+            ? "player_target"
+            : options.Count > 0
+                ? "options"
+                : canProceed
+                    ? "proceed"
+                    : "resolving";
+        var synchronizer = RunManager.Instance.RestSiteSynchronizer;
+        var playerDecisions = runState.Players.Select(player =>
+        {
+            var availableOptions = synchronizer.GetOptionsForPlayer(player)
+                .Select((option, index) => new RestOptionSnapshotDto(
+                    index,
+                    option.OptionId,
+                    SafeFormat(option.Title),
+                    SafeFormat(option.Description)))
+                .ToList();
+            return new PlayerRestDecisionSnapshotDto(
+                player.NetId.ToString(),
+                availableOptions,
+                synchronizer.GetChosenOptionIndex(player.NetId),
+                synchronizer.GetHoveredOptionIndex(player.NetId));
+        }).ToList();
+        return new RestScreenDto(
+            !targetSelectionPending && (options.Count > 0 || canProceed),
+            interactionState,
+            options,
+            canProceed,
+            targetSelectionPending,
+            playerDecisions);
+    }
+
+    private static TreasureScreenDto BuildTreasureSnapshot(IRunState runState)
+    {
+        var room = NRun.Instance!.TreasureRoom!;
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        bool chestOpened = (bool)(room.GetType().GetField("_hasChestBeenOpened", flags)?.GetValue(room) ?? false);
+        bool isPicking = (bool)(room.GetType().GetField("_isRelicCollectionOpen", flags)?.GetValue(room) ?? false);
+        bool canLeave = room.ProceedButton.IsEnabled;
+        var synchronizer = RunManager.Instance.TreasureRoomRelicSynchronizer;
+        var relics = synchronizer.CurrentRelics?
+            .Select((relic, index) => new TreasureRelicSnapshotDto(
+                index,
+                relic.Id.ToString(),
+                SafeFormat(relic.Title),
+                SafeFormat(relic.DynamicDescription)))
+            .ToList() ?? [];
+        isPicking = isPicking && relics.Count > 0;
+
+        int? selectedIndex = null;
+        object? predictedVote = synchronizer.GetType().GetField("_predictedVote", flags)?.GetValue(synchronizer);
+        if (isPicking && predictedVote is int index && index >= 0 && index < relics.Count)
+        {
+            selectedIndex = index;
+        }
+
+        List<DecisionVoteSnapshotDto> votes = synchronizer.CurrentRelics is null || relics.Count == 0
+            ? []
+            : runState.Players.Select(player =>
+            {
+                int? vote = synchronizer.GetPlayerVote(player);
+                string? choiceId = vote is >= 0 && vote < relics.Count
+                    ? relics[vote.Value].Id
+                    : null;
+                return new DecisionVoteSnapshotDto(player.NetId.ToString(), vote, choiceId);
+            }).ToList();
+
+        return new TreasureScreenDto(
+            !chestOpened || isPicking || canLeave,
+            chestOpened,
+            isPicking,
+            canLeave,
+            relics,
+            selectedIndex,
+            votes);
+    }
+
+    private static ShopScreenDto? BuildShopSnapshot(Player? player)
+    {
+        var room = NRun.Instance?.MerchantRoom;
+        var inventory = room?.Room.GetLocalInventory();
+        if (room is null || inventory is null)
+        {
+            return null;
+        }
+
+        var items = new List<ShopItemSnapshotDto>();
+        items.AddRange(inventory.CharacterCardEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "character_card", index, entry.CreationResult?.Card?.Id.ToString() ?? string.Empty,
+            NormalizeRichText(entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card"),
+            entry.Cost, GetCardDescription(entry.CreationResult?.Card), entry.IsStocked, entry.EnoughGold)));
+        items.AddRange(inventory.ColorlessCardEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "colorless_card", index, entry.CreationResult?.Card?.Id.ToString() ?? string.Empty,
+            NormalizeRichText(entry.CreationResult?.Card?.Title.ToString() ?? "Unknown card"),
+            entry.Cost, GetCardDescription(entry.CreationResult?.Card), entry.IsStocked, entry.EnoughGold)));
+        items.AddRange(inventory.RelicEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "relic", index, entry.Model?.Id.ToString() ?? string.Empty,
+            entry.Model is null ? "Unknown relic" : SafeFormat(entry.Model.Title),
+            entry.Cost, entry.Model is null ? string.Empty : SafeFormat(entry.Model.DynamicDescription), entry.IsStocked, entry.EnoughGold)));
+        items.AddRange(inventory.PotionEntries.Select((entry, index) => new ShopItemSnapshotDto(
+            "potion", index, entry.Model?.Id.ToString() ?? string.Empty,
+            entry.Model is null ? "Unknown potion" : SafeFormat(entry.Model.Title),
+            entry.Cost, entry.Model is null ? string.Empty : SafeFormat(entry.Model.DynamicDescription), entry.IsStocked, entry.EnoughGold)));
+
+        bool removalAvailable = inventory.CardRemovalEntry is { IsStocked: true };
+        int removalCost = removalAvailable ? inventory.CardRemovalEntry!.Cost : 0;
+        bool inventoryOpen = room.Inventory.IsOpen;
+        bool canLeave = room.ProceedButton.IsEnabled || inventoryOpen;
+        return new ShopScreenDto(
+            true,
+            inventoryOpen,
+            player?.Gold ?? 0,
+            items,
+            removalAvailable,
+            removalCost,
+            canLeave);
+    }
+
+    private static CardSelectionScreenDto BuildHandSelectionSnapshot(NPlayerHand playerHand)
+    {
+        var holders = FindNodesRecursive<NHandCardHolder>(playerHand)
+            .Where(holder => holder.Visible)
+            .ToList();
+        var options = holders
+            .Select((holder, index) => holder.CardNode?.Model is CardModel card
+                ? BuildRewardCard(card, index)
+                : null)
+            .Where(card => card is not null)
+            .Cast<RewardCardSnapshotDto>()
+            .ToList();
+
+        int minSelect = 1;
+        int maxSelect = 1;
+        int currentCount = 0;
+        bool canConfirm = false;
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        object? preferences = typeof(NPlayerHand).GetField("_prefs", flags)?.GetValue(playerHand);
+        if (preferences is not null)
+        {
+            minSelect = (int)(preferences.GetType().GetProperty("MinSelect")?.GetValue(preferences) ?? 1);
+            maxSelect = (int)(preferences.GetType().GetProperty("MaxSelect")?.GetValue(preferences) ?? 1);
+        }
+        if (typeof(NPlayerHand).GetField("_selectedCards", flags)?.GetValue(playerHand) is System.Collections.ICollection selected)
+        {
+            currentCount = selected.Count;
+        }
+        if (typeof(NPlayerHand).GetField("_selectModeConfirmButton", flags)?.GetValue(playerHand) is NConfirmButton confirm)
+        {
+            canConfirm = confirm.IsEnabled;
+        }
+
+        return new CardSelectionScreenDto(
+            options.Count > 0,
+            "hand_multi_select",
+            options,
+            false,
+            minSelect,
+            maxSelect,
+            currentCount,
+            canConfirm);
+    }
+
+    private static (string SelectionType, bool Actionable, string? UnavailableReason)
+        DescribeGridSelection(NCardGridSelectionScreen screen)
+    {
+        return screen switch
+        {
+            NDeckCardSelectScreen _ => ("deck_card", true, null),
+            NDeckUpgradeSelectScreen _ => ("deck_upgrade", true, null),
+            _ => (
+                "unsupported_grid",
+                false,
+                $"{screen.GetType().Name} has a distinct confirmation flow; complete it in STS2.")
+        };
+    }
+
+    private static RewardCardSnapshotDto BuildRewardCard(CardModel card, int index)
+    {
+        return new RewardCardSnapshotDto(
+            index,
+            card.Id.ToString(),
+            NormalizeRichText(card.Title.ToString() ?? string.Empty),
+            card.EnergyCost.GetWithModifiers(CostModifiers.All),
+            card.Type.ToString(),
+            card.Rarity.ToString(),
+            GetCardDescription(card));
+    }
+
+    private static List<T> FindNodesRecursive<T>(Node parent, List<T>? results = null) where T : Node
+    {
+        results ??= [];
+        foreach (Node child in parent.GetChildren())
+        {
+            if (child is T match)
+            {
+                results.Add(match);
+            }
+            FindNodesRecursive(child, results);
+        }
+        return results;
+    }
+
+    private static MapScreenDto BuildMapSnapshot(IRunState runState)
+    {
+        int mapGeneration = RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
+        MapPoint? current = runState.CurrentMapPoint;
+        IEnumerable<MapPoint> reachable = current is null
+            ? runState.Map?.startMapPoints ?? []
+            : current.Children;
+
+        var reachableCoordinates = reachable
+            .Select(point => (point.coord.col, point.coord.row))
+            .ToHashSet();
+
+        var allPoints = new HashSet<MapPoint>(runState.Map?.GetAllMapPoints() ?? []);
+        if (runState.Map is not null)
+        {
+            foreach (MapPoint start in runState.Map.startMapPoints)
+            {
+                allPoints.Add(start);
+            }
+        }
+
+        MapNodeSnapshotDto Convert(MapPoint point) => new(
+            StableId: $"map-{mapGeneration}-{point.coord.col}-{point.coord.row}",
+            Column: point.coord.col,
+            Row: point.coord.row,
+            NodeType: point.PointType.ToString(),
+            Reachable: reachableCoordinates.Contains((point.coord.col, point.coord.row)));
+
+        var votes = runState.Players.Select(player =>
+        {
+            var vote = RunManager.Instance.MapSelectionSynchronizer.GetVote(player);
+            string? choiceId = vote is { } selected && selected.mapGenerationCount == mapGeneration
+                ? $"map-{mapGeneration}-{selected.coord.col}-{selected.coord.row}"
+                : null;
+            return new DecisionVoteSnapshotDto(player.NetId.ToString(), null, choiceId);
+        }).ToList();
+
+        return new MapScreenDto(
+            WaitingForInput: reachable.Any(),
+            MapGeneration: mapGeneration,
+            CurrentNode: current is null ? null : Convert(current),
+            ReachableNodes: reachable.Select(Convert).OrderBy(p => p.Column).ToList(),
+            AllNodes: allPoints.Select(Convert).OrderBy(p => p.Row).ThenBy(p => p.Column).ToList(),
+            Votes: votes);
+    }
+
     public ActionResponse Dispatch(ActionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -105,12 +1214,46 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 relic.StackCount))
             .ToList() ?? [];
 
+        var deckCards = player?.Deck?.Cards
+            .Select((card, index) => BuildInventoryCard(card, index, PileType.None))
+            .ToList() ?? [];
+
         return new RunSnapshotDto(
             runState.AscensionLevel,
             runState.CurrentActIndex + 1,
             runState.ActFloor,
             player?.Gold ?? 0,
-            relics);
+            relics,
+            player?.Character.Id.ToString() ?? string.Empty,
+            player is null ? string.Empty : SafeFormat(player.Character.Title),
+            deckCards,
+            BuildRunParty(runState));
+    }
+
+    private static RunPartySnapshotDto? BuildRunParty(IRunState runState)
+    {
+        if (runState.Players.Count <= 1 || RunManager.Instance.RunLobby is not { } runLobby) return null;
+        string localPlayerId = RunManager.Instance.NetService.NetId.ToString();
+        string role = RunManager.Instance.NetService.Type.ToString().ToLowerInvariant();
+        var connectedIds = runLobby.ConnectedPlayerIds
+            .Select(id => id.ToString())
+            .ToHashSet(StringComparer.Ordinal);
+        var members = runState.Players.Select(member => new RunPartyMemberSnapshotDto(
+            member.NetId.ToString(),
+            member.NetId.ToString() == localPlayerId,
+            connectedIds.Contains(member.NetId.ToString()),
+            member.Character.Id.ToString(),
+            SafeFormat(member.Character.Title),
+            member.Creature.CurrentHp,
+            member.Creature.MaxHp,
+            member.Creature.Block,
+            member.Creature.IsAlive,
+            member.Gold,
+            member.MaxEnergy,
+            member.Potions.Count(),
+            member.MaxPotionCount)).ToList();
+        if (members.Count(member => member.IsLocal) != 1) return null;
+        return new RunPartySnapshotDto(role, localPlayerId, connectedIds.Count, members);
     }
 
     private static CombatScreenDto? BuildCombatSnapshot(Player player)
@@ -135,32 +1278,119 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 ? null
                 : new PotionSnapshotDto(
                     index,
+                    potion.Id.ToString(),
                     SafeFormat(potion.Title),
                     SafeFormat(potion.DynamicDescription),
-                    potion.TargetType.ToString()))
+                    potion.TargetType.ToString(),
+                    player.CanUseOrRemovePotions && !potion.IsQueued && !potion.HasBeenRemovedFromState,
+                    player.CanUseOrRemovePotions && !potion.IsQueued && !potion.HasBeenRemovedFromState,
+                    NeedsExplicitTarget(potion.TargetType),
+                    NeedsExplicitTarget(potion.TargetType)
+                        ? combatState.HittableEnemies
+                            .Where(enemy => enemy.IsAlive && enemy.CombatId.HasValue)
+                            .Select(enemy => checked((int)enemy.CombatId!.Value))
+                            .ToList()
+                        : []))
             .Where(potion => potion is not null)
             .Cast<PotionSnapshotDto>()
             .ToList();
 
+        bool localQueuePaused = RunManager.Instance.ActionQueueSet.ActionQueueIsPaused(player.NetId);
         bool waitingForInput = playerCombatState.Phase == PlayerTurnPhase.Play
-            && !CombatManager.Instance.PlayerActionsDisabled;
+            && !CombatManager.Instance.PlayerActionsDisabled
+            && !localQueuePaused;
+        string localPlayerId = RunManager.Instance.NetService.NetId.ToString();
+        var participants = player.RunState.Players.Select(member =>
+        {
+            PlayerCombatState? memberCombat = member.PlayerCombatState;
+            bool isPlayPhase = memberCombat?.Phase == PlayerTurnPhase.Play;
+            bool queuePaused = RunManager.Instance.ActionQueueSet.ActionQueueIsPaused(member.NetId);
+            bool isLocal = member.NetId.ToString() == localPlayerId;
+            return new CombatParticipantSnapshotDto(
+                member.NetId.ToString(),
+                memberCombat?.Phase.ToString() ?? "Unavailable",
+                isPlayPhase,
+                queuePaused,
+                isLocal && isPlayPhase && !queuePaused && !CombatManager.Instance.PlayerActionsDisabled);
+        }).ToList();
+
+        int? stars = player.Character.ShouldAlwaysShowStarCounter || playerCombatState.Stars > 0
+            ? playerCombatState.Stars
+            : null;
+
+        int orbCapacity = playerCombatState.OrbQueue?.Capacity ?? 0;
+        var orbs = playerCombatState.OrbQueue?.Orbs
+            .Select(orb =>
+            {
+                LocString description = orb.SmartDescription;
+                description.Add("energyPrefix", orb.Owner.Character.CardPool.Title);
+                description.Add("Passive", orb.PassiveVal);
+                description.Add("Evoke", orb.EvokeVal);
+                return new OrbSnapshotDto(
+                    orb.Id.ToString(),
+                    SafeFormat(orb.Title),
+                    SafeFormat(description),
+                    orb.PassiveVal,
+                    orb.EvokeVal);
+            })
+            .ToList() ?? [];
+
+        var companions = new List<CompanionSnapshotDto>();
+        Osty? osty = playerCombatState.GetPet<Osty>();
+        if (osty is not null)
+        {
+            companions.Add(new CompanionSnapshotDto(
+                osty.Monster?.Id.ToString() ?? "OSTY",
+                osty.Monster is null ? "Osty" : SafeFormat(osty.Monster.Title),
+                osty.IsAlive,
+                osty.CurrentHp,
+                osty.MaxHp,
+                osty.Block,
+                osty.Powers.Select(power => new PowerSnapshotDto(
+                    SafeFormat(power.Title),
+                    power.Amount,
+                    SafeFormat(power.Description))).ToList()));
+        }
 
         return new CombatScreenDto(
             WaitingForInput: waitingForInput,
             RoundNumber: combatState.RoundNumber,
             IsPlayPhase: playerCombatState.Phase == PlayerTurnPhase.Play,
+            CombatPhase: RunManager.Instance.ActionQueueSynchronizer.CombatState.ToString(),
+            ActionQueuesEmpty: RunManager.Instance.ActionQueueSet.IsEmpty,
+            Participants: participants,
             Energy: playerCombatState.Energy,
             MaxEnergy: playerCombatState.MaxEnergy,
             Player: new PlayerSnapshotDto(
                 player.Creature.CurrentHp,
                 player.Creature.MaxHp,
-                player.Creature.Block),
+                player.Creature.Block,
+                player.Creature.Powers
+                    .Select(power => new PowerSnapshotDto(
+                        SafeFormat(power.Title),
+                        power.Amount,
+                        SafeFormat(power.Description)))
+                    .ToList()),
+            Stars: stars,
+            OrbCapacity: orbCapacity,
+            Orbs: orbs,
+            Companions: companions,
             Hand: hand,
             Piles: new PileSnapshotDto(
                 playerCombatState.DrawPile.Cards.Count,
                 playerCombatState.DiscardPile.Cards.Count,
-                playerCombatState.ExhaustPile.Cards.Count),
+                playerCombatState.ExhaustPile.Cards.Count,
+                playerCombatState.DrawPile.Cards
+                    .Select((card, index) => BuildInventoryCard(card, index, PileType.Draw))
+                    .ToList(),
+                playerCombatState.DiscardPile.Cards
+                    .Select((card, index) => BuildInventoryCard(card, index, PileType.Discard))
+                    .ToList(),
+                playerCombatState.ExhaustPile.Cards
+                    .Select((card, index) => BuildInventoryCard(card, index, PileType.Exhaust))
+                    .ToList()),
             Enemies: enemies,
+            PotionCapacity: player.PotionSlots.Count,
             Potions: potions);
     }
 
@@ -192,7 +1422,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
         return new CardSnapshotDto(
             HandIndex: handIndex,
             Id: card.Id.ToString(),
-            Name: CleanIcons(card.Title),
+            Name: NormalizeRichText(card.Title),
             Cost: card.EnergyCost.GetWithModifiers(CostModifiers.All),
             Type: card.Type.ToString(),
             Rarity: card.Rarity.ToString(),
@@ -204,6 +1434,18 @@ public sealed class Sts2GameAdapter : IGameAdapter
             NeedsTarget: needsTarget,
             ValidTargetIds: validTargetIds);
     }
+
+    private static CardInventorySnapshotDto BuildInventoryCard(
+        CardModel card,
+        int index,
+        PileType pile) => new(
+            index,
+            card.Id.ToString(),
+            SafeFormat(card.Title),
+            card.Type.ToString(),
+            card.Rarity.ToString(),
+            GetCardDescription(card, pile),
+            card.IsUpgraded);
 
     private static EnemySnapshotDto BuildEnemySnapshot(Creature enemy, int fallbackIndex)
     {
@@ -228,7 +1470,7 @@ public sealed class Sts2GameAdapter : IGameAdapter
             CurrentHp: enemy.CurrentHp,
             MaxHp: enemy.MaxHp,
             Block: enemy.Block,
-            Intent: intent,
+            Intent: NormalizeRichText(intent),
             Powers: powers,
             IsAlive: enemy.IsAlive,
             IsHittable: enemy.IsHittable);
@@ -251,14 +1493,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
                 ? ComputeDecisionFingerprint(phase, runValue, screenValue)
                 : string.Empty;
             _revision++;
-            actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal)
-                && !stableDecisionState;
+            actionPending = !stableDecisionState;
         }
         else if (!stableDecisionState)
         {
             // Publish live animation/action-queue state but retain the last committed decision revision.
             ResetCandidate();
-            actionPending = string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal);
+            actionPending = true;
         }
         else
         {
@@ -308,6 +1549,61 @@ public sealed class Sts2GameAdapter : IGameAdapter
     /// </summary>
     private static bool IsStableDecisionState(string phase, object screenValue)
     {
+        if (string.Equals(phase, PhaseNames.Unknown, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal))
+        {
+            return screenValue is MapScreenDto map && map.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal))
+        {
+            return screenValue is RewardsScreenDto rewards && rewards.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal))
+        {
+            return screenValue is CardSelectionScreenDto selection && selection.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal))
+        {
+            return screenValue is EventScreenDto eventScreen && eventScreen.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.SpecialEvent, StringComparison.Ordinal))
+        {
+            return screenValue is SpecialEventScreenDto special && special.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal))
+        {
+            return screenValue is RestScreenDto rest && rest.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal))
+        {
+            return screenValue is TreasureScreenDto treasure && treasure.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.Shop, StringComparison.Ordinal))
+        {
+            return screenValue is ShopScreenDto shop && shop.WaitingForInput;
+        }
+
+        if (string.Equals(phase, PhaseNames.Menu, StringComparison.Ordinal))
+        {
+            return screenValue is MenuScreenDto;
+        }
+
+        if (string.Equals(phase, PhaseNames.RunEnd, StringComparison.Ordinal))
+        {
+            return screenValue is LifecycleScreenDto runEnd && runEnd.WaitingForInput;
+        }
+
         if (!string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal))
         {
             return true;
@@ -361,7 +1657,201 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
 
         object projection;
-        if (string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal) &&
+        if (string.Equals(phase, PhaseNames.Shop, StringComparison.Ordinal) &&
+            screenValue is ShopScreenDto shop)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                shop.InventoryOpen,
+                shop.Gold,
+                Items = shop.Items.Select(item => new
+                {
+                    item.Category,
+                    item.ItemIndex,
+                    item.Price,
+                    item.IsStocked,
+                    item.EnoughGold
+                }).ToArray(),
+                shop.CardRemovalAvailable,
+                shop.CardRemovalCost,
+                shop.CanLeave
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Menu, StringComparison.Ordinal) &&
+            screenValue is MenuScreenDto menu)
+        {
+            projection = new
+            {
+                Phase = phase,
+                menu.MenuScreen,
+                Options = menu.Options.Select(option => new { option.Id, option.Enabled, option.Actionable }).ToArray(),
+                menu.CurrentProfileId,
+                Characters = menu.Characters?.Select(character => new { character.Id, character.Locked }).ToArray(),
+                RunSetup = menu.RunSetup is null ? null : new
+                {
+                    menu.RunSetup.Mode,
+                    menu.RunSetup.Ascension,
+                    menu.RunSetup.MaxAscension,
+                    menu.RunSetup.Seed,
+                    menu.RunSetup.ActOne,
+                    Modifiers = menu.RunSetup.Modifiers.Select(modifier => modifier.Id).ToArray()
+                },
+                Lobby = menu.Lobby is null ? null : new
+                {
+                    menu.Lobby.Role,
+                    menu.Lobby.LocalPlayerId,
+                    Players = menu.Lobby.Players.Select(player => new
+                    {
+                        player.Id,
+                        player.CharacterId,
+                        player.IsReady
+                    }).ToArray()
+                },
+                Connection = menu.Connection is null ? null : new
+                {
+                    menu.Connection.Status,
+                    Sessions = menu.Connection.Sessions.Select(session => new { session.Id, session.Enabled }).ToArray()
+                }
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.RunEnd, StringComparison.Ordinal) &&
+            screenValue is LifecycleScreenDto runEnd)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                runEnd.Status,
+                runEnd.Stage,
+                runEnd.Score,
+                runEnd.FloorsClimbed,
+                runEnd.UnlocksRemaining,
+                runEnd.CurrentUnlockScore,
+                runEnd.UnlockScoreThreshold,
+                runEnd.UnlockedEpochId,
+                runEnd.Discoveries,
+                runEnd.CanViewSummary,
+                runEnd.CanReturnToMenu
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal) &&
+            screenValue is TreasureScreenDto treasure)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                treasure.ChestOpened,
+                treasure.IsPicking,
+                treasure.CanLeave,
+                Relics = treasure.Relics.Select(relic => new { relic.ChoiceIndex, relic.Id }).ToArray(),
+                treasure.SelectedRelicIndex
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal) &&
+            screenValue is RestScreenDto rest)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                Options = rest.Options.Select(option => new { option.OptionIndex, option.Id }).ToArray(),
+                rest.InteractionState,
+                rest.CanProceed,
+                rest.TargetSelectionPending
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal) &&
+            screenValue is EventScreenDto eventScreen)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                eventScreen.IsFinished,
+                Options = eventScreen.Options.Select(option => new
+                {
+                    option.OptionIndex,
+                    option.IsLocked,
+                    option.IsProceed
+                }).ToArray()
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.SpecialEvent, StringComparison.Ordinal) &&
+            screenValue is SpecialEventScreenDto special)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                special.Variant,
+                special.SelectedTool,
+                special.RemainingActions,
+                Cells = special.Cells.Select(cell => new { cell.X, cell.Y, cell.StableId }).ToArray(),
+                special.CanSelectSmallTool,
+                special.CanSelectBigTool,
+                special.CanProceed,
+                special.UnavailableReason
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal) &&
+            screenValue is CardSelectionScreenDto selection)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                selection.SelectionType,
+                Options = selection.Options.Select(card => new { card.ChoiceIndex, card.Id }).ToArray(),
+                selection.CanSkip,
+                selection.MinSelect,
+                selection.MaxSelect,
+                selection.CurrentSelectCount,
+                selection.CanConfirm
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal) &&
+            screenValue is RewardsScreenDto rewards)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                rewards.Mode,
+                rewards.OwnerPlayerId,
+                Items = rewards.Items.Select(item => new
+                {
+                    item.ChoiceIndex,
+                    item.RewardType,
+                    Cards = item.CardOptions.Select(card => card.Id).ToArray()
+                }).ToArray(),
+                Cards = rewards.CardChoices.Select(card => new { card.ChoiceIndex, card.Id }).ToArray(),
+                rewards.CanSkip
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal) &&
+            screenValue is MapScreenDto map)
+        {
+            projection = new
+            {
+                Phase = phase,
+                Run = runProjection,
+                Map = new
+                {
+                    Current = map.CurrentNode is null
+                        ? null
+                        : new { map.CurrentNode.Column, map.CurrentNode.Row },
+                    Reachable = map.ReachableNodes
+                        .OrderBy(node => node.Row)
+                        .ThenBy(node => node.Column)
+                        .Select(node => new { node.Column, node.Row, node.NodeType })
+                        .ToArray()
+                }
+            };
+        }
+        else if (string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal) &&
             screenValue is CombatScreenDto combat)
         {
             projection = new
@@ -425,8 +1915,11 @@ public sealed class Sts2GameAdapter : IGameAdapter
                         .Select(potion => new
                         {
                             potion.SlotIndex,
-                            potion.Name,
-                            potion.TargetType
+                            potion.Id,
+                            potion.TargetType,
+                            potion.CanUse,
+                            potion.CanDiscard,
+                            ValidTargetIds = potion.ValidTargetIds.OrderBy(id => id).ToArray()
                         })
                         .ToArray()
                 }
@@ -452,6 +1945,16 @@ public sealed class Sts2GameAdapter : IGameAdapter
         _candidateActive = false;
     }
 
+    private StateEnvelope CreateTransitionEnvelope(string message) => CreateEnvelope(
+        PhaseNames.Unknown,
+        new RunSnapshotDto(0, 0, 0, 0, []),
+        new
+        {
+            waiting_for_input = false,
+            transition = true,
+            message
+        });
+
     private static bool NeedsExplicitTarget(TargetType targetType)
     {
         return targetType is not (
@@ -471,13 +1974,13 @@ public sealed class Sts2GameAdapter : IGameAdapter
 
         try
         {
-            return CleanIcons(value.GetFormattedText() ?? string.Empty);
+            return NormalizeRichText(value.GetFormattedText() ?? string.Empty);
         }
         catch
         {
             try
             {
-                return CleanIcons(value.GetRawText());
+                return NormalizeRichText(value.GetRawText());
             }
             catch
             {
@@ -486,28 +1989,34 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
     }
 
-    private static string GetCardDescription(CardModel card)
+    private static string GetCardDescription(CardModel? card, PileType pile = PileType.Hand)
     {
+        if (card is null) return string.Empty;
+        try
+        {
+            return NormalizeRichText(card.GetDescriptionForPile(pile));
+        }
+        catch
+        {
+            // Fall through to the older description construction path for version compatibility.
+        }
         try
         {
             LocString description = card.Description;
             card.DynamicVars.AddTo(description);
             description.Add(new IfUpgradedVar(card.IsUpgraded ? UpgradeDisplay.Upgraded : UpgradeDisplay.Normal));
-            description.Add("InCombat", true);
+            description.Add("InCombat", CombatManager.Instance.IsInProgress);
             description.Add("OnTable", false);
             description.Add("IsTargeting", false);
             description.Add("energyPrefix", EnergyIconHelper.GetPrefix(card));
 
-            string result = CleanIcons(description.GetFormattedText());
-            return result.Contains('{')
-                ? Regex.Replace(result, @"\{[^}]+\}", string.Empty).Trim()
-                : result;
+            return NormalizeRichText(description.GetFormattedText());
         }
         catch
         {
             try
             {
-                return Regex.Replace(card.Description.GetRawText(), @"\{[^}]+\}", string.Empty).Trim();
+                return NormalizeRichText(card.Description.GetRawText());
             }
             catch
             {
@@ -516,8 +2025,42 @@ public sealed class Sts2GameAdapter : IGameAdapter
         }
     }
 
-    private static string CleanIcons(string text)
+    private static string NormalizeRichText(string? text)
     {
-        return Regex.Replace(text ?? string.Empty, @"\[img\][^]]*\[/img\]", string.Empty).Trim();
+        string normalized = text ?? string.Empty;
+        normalized = Regex.Replace(normalized, @"\[br\s*/?\]", "\n", RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"\[img[^\]]*\](?<path>[^\[]*)\[/img\]",
+            match =>
+            {
+                string filename = Path.GetFileNameWithoutExtension(match.Groups["path"].Value);
+                filename = Regex.Replace(filename, @"_icon$", string.Empty, RegexOptions.IgnoreCase);
+                filename = Regex.Replace(filename, @".*_energy$", "energy", RegexOptions.IgnoreCase);
+                return string.IsNullOrWhiteSpace(filename)
+                    ? " "
+                    : $" {filename.Replace('_', ' ').Replace('-', ' ')} ";
+            },
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"\[/?[a-z][a-z0-9_-]*(?:[=\s][^\]]*)?\]",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"\[/?[a-z][a-z0-9_-]*(?:=[^\]\s]+)?(?=\s|$|[.,;:!?])",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"/(?:gold|red|green|blue|purple|orange|grey|gray|white)\b",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized, @"\{[^{}]+\}", string.Empty);
+        normalized = Regex.Replace(normalized, @"[ \t]+", " ");
+        normalized = Regex.Replace(normalized, @" *\r?\n *", "\n");
+        normalized = Regex.Replace(normalized, @"\n{3,}", "\n\n");
+        return normalized.Trim();
     }
 }

@@ -74,12 +74,12 @@ internal sealed class ActionInbox
                 return false;
             }
 
-            if (!string.Equals(current.Phase, PhaseNames.Combat, StringComparison.Ordinal))
+            if (!IsActionAllowedInPhase(request.Action, current.Phase))
             {
                 response = Reject(
                     request,
                     "bad_phase",
-                    $"Combat action requested while phase='{current.Phase}'.",
+                    $"Action '{request.Action}' is unavailable while phase='{current.Phase}'.",
                     current.StateRevision);
                 Remember(response);
                 return false;
@@ -142,12 +142,12 @@ internal sealed class ActionInbox
                     "STS2 decision state became pending before main-thread dispatch.",
                     freshState.StateRevision);
             }
-            else if (!string.Equals(freshState.Phase, PhaseNames.Combat, StringComparison.Ordinal))
+            else if (!IsActionAllowedInPhase(request.Action, freshState.Phase))
             {
                 result = Reject(
                     request,
                     "bad_phase",
-                    $"Combat ended or changed phase before dispatch: phase='{freshState.Phase}'.",
+                    $"Action phase changed before dispatch: phase='{freshState.Phase}'.",
                     freshState.StateRevision);
             }
             else
@@ -187,6 +187,33 @@ internal sealed class ActionInbox
 
             Remember(result);
         }
+    }
+
+    private static bool IsActionAllowedInPhase(string action, string phase)
+    {
+        return action switch
+        {
+            "choose_menu_option" or "set_run_ascension" or "set_custom_seed" =>
+                string.Equals(phase, PhaseNames.Menu, StringComparison.Ordinal),
+            "advance_run_end" => string.Equals(phase, PhaseNames.RunEnd, StringComparison.Ordinal),
+            "choose_map_node" => string.Equals(phase, PhaseNames.Map, StringComparison.Ordinal),
+            "choose_reward" or "choose_reward_card" or "skip_rewards" =>
+                string.Equals(phase, PhaseNames.Rewards, StringComparison.Ordinal),
+            "choose_card_option" or "confirm_card_selection" =>
+                string.Equals(phase, PhaseNames.CardSelection, StringComparison.Ordinal),
+            "choose_event_option" => string.Equals(phase, PhaseNames.Event, StringComparison.Ordinal),
+            "choose_special_event_cell" or "select_special_event_tool" or "proceed_special_event" =>
+                string.Equals(phase, PhaseNames.SpecialEvent, StringComparison.Ordinal),
+            "choose_rest_option" or "leave_rest_site" =>
+                string.Equals(phase, PhaseNames.Rest, StringComparison.Ordinal),
+            "open_treasure" or "choose_treasure_relic" or "leave_treasure" =>
+                string.Equals(phase, PhaseNames.Treasure, StringComparison.Ordinal),
+            "open_shop" or "buy_shop_item" or "request_card_removal" or "leave_shop" =>
+                string.Equals(phase, PhaseNames.Shop, StringComparison.Ordinal),
+            "play_card" or "end_turn" or "use_potion" or "discard_potion" =>
+                string.Equals(phase, PhaseNames.Combat, StringComparison.Ordinal),
+            _ => false
+        };
     }
 
     /// <summary>
